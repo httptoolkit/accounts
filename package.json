@@ -1,24 +1,24 @@
 {
-  "name": "httptoolkit-internals",
+  "name": "httptoolkit-accounts",
   "version": "0.1.0",
-  "description": "Netlify functions powering various internal HTTP Toolkit services",
+  "description": "Netlify functions powering HTTP Toolkit account services",
   "private": true,
   "main": "index.js",
   "scripts": {
     "start": "netlify-lambda serve --port 2021 src/",
-    "build": "netlify-lambda build src/ && mkdir public/",
+    "build": "netlify-lambda build src/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/httptoolkit/internals.git"
+    "url": "git+https://github.com/httptoolkit/accounts.git"
   },
   "author": "Tim Perry <tim@httptoolkit.tech>",
   "license": "AGPL-3.0",
   "bugs": {
-    "url": "https://github.com/httptoolkit/internals/issues"
+    "url": "https://github.com/httptoolkit/accounts/issues"
   },
-  "homepage": "https://github.com/httptoolkit/internals#readme",
+  "homepage": "https://github.com/httptoolkit/accounts#readme",
   "devDependencies": {
     "@babel/plugin-transform-runtime": "^7.2.0",
     "@babel/preset-typescript": "^7.1.0",

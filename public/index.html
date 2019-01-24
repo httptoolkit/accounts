@@ -1,0 +1,122 @@
+<html>
+    <head>
+        <title>HTTP Toolkit | Accounts</title>
+        <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
+        <style>
+            body {
+                font-family: Lato, Arial, sans-serif;
+                color: #222;
+                background-color: #d8e2e6;
+                background-image: url('https://httptoolkit.tech/icon-600.png');
+                background-repeat: no-repeat;
+                background-position: top left;
+                background-size: 300px;
+
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            h1 {
+                font-size: 30pt;
+            }
+
+            h2 {
+                font-size: 18pt;
+            }
+
+            #name {
+                color: #e1421f;
+            }
+
+            #logged-in, #logged-out, #button-text-placeholder {
+                display: none;
+
+                text-align: center;
+                line-height: 1.45;
+            }
+
+            .netlify-identity-button {
+                font-family: Lato;
+                color: #222;
+                font-size: 50pt;
+                font-weight: bold;
+                text-decoration: none;
+
+                padding: 20px 40px;
+                border-radius: 4px;
+                background-color: #fff;
+                border: 1px solid rgba(0,0,0,0.4);
+                box-shadow: 0 2px 10px 0 rgba(0,0,0,0.4);
+            }
+        </style>
+        <script type="text/javascript" src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+    </head>
+    <body>
+        <div id="logged-in">
+            <h1>
+                You're logged in as <span id="name">?</span>.
+            </h1>
+            <h2>
+                You can close this page, and return to the HTTP Toolkit app
+            </h2>
+        </div>
+        <div data-netlify-identity-button id="logged-out">
+            <span id="button-text-placeholder">Log in to HTTP Toolkit</span>
+        </div>
+        <script>
+            const loggedInElement = document.querySelector('#logged-in');
+            const nameElement = document.querySelector('#name');
+            const loggedOutElement = document.querySelector('#logged-out');
+
+            function hideAll() {
+                loggedInElement.style.display = '';
+                loggedOutElement.style.display = '';
+            }
+
+            function showLoggedIn(name) {
+                nameElement.innerText = name;
+                loggedInElement.style.display = 'block';
+                loggedOutElement.style.display = '';
+            }
+
+            function showLoggedOut() {
+                loggedOutElement.style.display= 'block';
+                loggedInElement.style.display = '';
+            }
+
+            function updateUi() {
+                const user = netlifyIdentity.currentUser();
+
+                if (user) {
+                    showLoggedIn((user.user_metadata && user.user_metadata.full_name) || user.email);
+                } else {
+                    showLoggedOut();
+                }
+            }
+
+            netlifyIdentity.on('init', updateUi);
+            netlifyIdentity.on('login', updateUi);
+            netlifyIdentity.on('logout', updateUi);
+            netlifyIdentity.on('open', hideAll);
+            netlifyIdentity.on('close', function() {
+                updateUi(); // in case we can't close the window
+                window.close(); // works if the window was spawned (e.g. from an email link)
+            });
+
+            setTimeout(function () {
+                netlifyIdentity.open();
+
+                // Hide the netlify logo:
+                const netlifyIframe = document.querySelector('#netlify-identity-widget');
+                if (netlifyIframe) {
+                    const hideCalloutStyle = document.createElement('style');
+                    hideCalloutStyle.innerText = '.callOut { display: none; }';
+                    netlifyIframe.contentDocument.body.appendChild(hideCalloutStyle);
+                }
+            }, 100);
+        </script>
+    </body>
+</html>

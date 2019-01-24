@@ -1,7 +1,7 @@
-# HTTP Toolkit Internals
+# HTTP Toolkit Accounts
 
-This repo contains a selection of Netlify functions that power various internal httptoolkit.tech services.
+This repo contains a selection of Netlify functions that power HTTP Toolkit account management (purchases, password reset, etc).
 
-This isn't really relevant to users of HTTP Toolkit, and isn't part of the downloaded application. This repo contains back office logic, like subscription management.
+This isn't really relevant to most users of HTTP Toolkit, and runs separately to the downloaded application, it's effectively internal back office logic.
 
-It's open anyway, because it's always interesting to see how business's internals really work.
+It's open anyway, because it's always interesting to see how business's internals really work, enjoy.
