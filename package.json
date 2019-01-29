@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "start": "netlify-lambda serve --port 2021 src/",
-    "build": "netlify-lambda build src/",
+    "build": "netlify-lambda build src/ && mkdir -p public/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
