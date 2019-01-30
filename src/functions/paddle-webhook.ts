@@ -3,8 +3,8 @@ import * as moment from 'moment';
 import * as querystring from 'querystring';
 import { Handler, APIGatewayProxyEvent } from 'aws-lambda';
 
-import { mgmtClient } from './auth0';
-import { validateWebhook, WebhookData } from './paddle';
+import { mgmtClient } from '../auth0';
+import { validateWebhook, WebhookData } from '../paddle';
 
 interface SubscriptionData {
     subscription_id?: number,

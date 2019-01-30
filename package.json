@@ -5,8 +5,8 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "start": "netlify-lambda -c ./webpack.js serve src/ --port 2021",
-    "build": "netlify-lambda -c ./webpack.js build src/ && mkdir -p public/",
+    "start": "netlify-lambda -c ./webpack.js serve src/functions/ --port 2021",
+    "build": "netlify-lambda -c ./webpack.js build src/functions/ && mkdir -p public/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

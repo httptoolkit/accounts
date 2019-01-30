@@ -1,7 +1,7 @@
 import { Handler, APIGatewayProxyEvent } from 'aws-lambda';
 import * as jwt from 'jsonwebtoken';
 
-import { AUTH0_DATA_SIGNING_PRIVATE_KEY, authClient, mgmtClient } from './auth0';
+import { AUTH0_DATA_SIGNING_PRIVATE_KEY, authClient, mgmtClient } from '../auth0';
 
 const BearerRegex = /^Bearer (\S+)$/;
 
