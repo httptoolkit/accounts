@@ -74,7 +74,7 @@ export const handler: Handler = async (event: APIGatewayProxyEvent) => {
     const signedAppData = jwt.sign(appData, SIGNING_PRIVATE_KEY, {
         algorithm: 'RS256',
         expiresIn: '7d',
-        audience: 'https://httptoolkit.tech/app_metadata',
+        audience: 'https://httptoolkit.tech/app_data',
         issuer: 'https://httptoolkit.tech/'
     });
 
