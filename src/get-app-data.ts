@@ -28,6 +28,14 @@ const mgmtClient = new auth0.ManagementClient({
 
 const BearerRegex = /^Bearer (\S+)$/;
 
+/*
+This endpoint expects requests to be sent with a Bearer authorization,
+containing a valid access token for the Auth0 app.
+
+If the token is found and is usable, the user's app data (email &
+subscription status) are loaded and signed into a JWT, so the app can
+read that info, and confirm its validity.
+*/
 export const handler: Handler = async (event, context) => {
     const { authorization } = event.headers;
 
