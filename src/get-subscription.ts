@@ -32,7 +32,7 @@ export const handler: Handler = async (event, context) => {
     const { authorization } = event.headers;
 
     const tokenMatch = BearerRegex.exec(authorization);
-    if (!tokenMatch) return { status: 401 };
+    if (!tokenMatch) return { statusCode: 401, body: '' };
 
     const accessToken = tokenMatch[1];
 
