@@ -1,4 +1,4 @@
-import * as _ from 'lodash';
+
 import * as moment from 'moment';
 import * as querystring from 'querystring';
 import { Handler, APIGatewayProxyEvent } from 'aws-lambda';
@@ -56,11 +56,11 @@ export const handler: Handler = async (event: APIGatewayProxyEvent) => {
 
     validateWebhook(paddleData);
 
-    if (_.includes([
+    if ([
         'subscription_created',
         'subscription_updated',
         'subscription_cancelled'
-    ], paddleData.alert_name)) {
+    ].includes(paddleData.alert_name)) {
         const subscription = getSubscriptionFromHookData(paddleData);
 
         console.log(`Updating user ${paddleData.email} to ${JSON.stringify(subscription)}`);
