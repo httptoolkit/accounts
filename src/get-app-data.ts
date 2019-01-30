@@ -1,4 +1,4 @@
-import { Handler } from 'aws-lambda';
+import { Handler, APIGatewayProxyEvent } from 'aws-lambda';
 import * as jwt from 'jsonwebtoken';
 import * as auth0 from 'auth0';
 
@@ -36,11 +36,28 @@ If the token is found and is usable, the user's app data (email &
 subscription status) are loaded and signed into a JWT, so the app can
 read that info, and confirm its validity.
 */
-export const handler: Handler = async (event, context) => {
+export const handler: Handler = async (event: APIGatewayProxyEvent) => {
+    let headers = {
+        'Access-Control-Allow-Headers': 'Authorization',
+    };
+
+    // Check the origin, include CORS if it's *.httptoolkit.tech
+    const { origin } = event.headers;
+    let allowedOrigin = /^https?:\/\/(.*\.)httptoolkit.tech(:\d+)?$/.test(origin) ?
+        origin : undefined;
+
+    headers['Access-Control-Allow-Origin'] = allowedOrigin;
+
+    if (event.httpMethod === 'OPTIONS') {
+        return { statusCode: 200, headers, body: '' };
+    } else if (event.httpMethod !== 'GET') {
+        return { statusCode: 405, headers, body: '' };
+    }
+
     const { authorization } = event.headers;
 
     const tokenMatch = BearerRegex.exec(authorization);
-    if (!tokenMatch) return { statusCode: 401, body: '' };
+    if (!tokenMatch) return { statusCode: 401, headers, body: '' };
 
     const accessToken = tokenMatch[1];
 
@@ -59,11 +76,13 @@ export const handler: Handler = async (event, context) => {
         expiresIn: '7d',
         audience: 'https://httptoolkit.tech/app_metadata',
         issuer: 'https://httptoolkit.tech/'
-      });
+    });
+
+    headers['Content-Type'] = 'application/jwt';
 
     return {
         statusCode: 200,
-        headers: { 'content-type': 'application/jwt' },
+        headers,
         body: signedAppData
     };
 }
