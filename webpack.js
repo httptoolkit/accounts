@@ -8,6 +8,9 @@ module.exports = {
     },
     plugins: [
         // Required to correctly detect require in 'formidable'
-        new webpack.DefinePlugin({ "global.GENTLY": false })
+        new webpack.DefinePlugin({
+            "global.GENTLY": false,
+            "process.env.COMMIT_REF": JSON.stringify(process.env.COMMIT_REF) // Available in the build, but not at runtime
+        })
     ],
 }
