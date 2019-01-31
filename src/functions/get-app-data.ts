@@ -23,7 +23,7 @@ export const handler: Handler = async (event: APIGatewayProxyEvent) => {
     let allowedOrigin = /^https?:\/\/(.*\.)httptoolkit.tech(:\d+)?$/.test(origin) ?
         origin : undefined;
 
-    headers['Access-Control-Allow-Origin'] = allowedOrigin;
+    if (allowedOrigin) headers['Access-Control-Allow-Origin'] = allowedOrigin;
 
     if (event.httpMethod === 'OPTIONS') {
         return { statusCode: 200, headers, body: '' };
