@@ -1,11 +1,9 @@
 import * as crypto from 'crypto';
 import * as Serialize from 'php-serialize';
 
-const PADDLE_PUBLIC_KEY = `
------BEGIN RSA PUBLIC KEY-----
+const PADDLE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 ${process.env.PADDLE_PUBLIC_KEY}
------END RSA PUBLIC KEY-----
-`;
+-----END PUBLIC KEY-----`;
 
 export type PaddleAlertNames =
     | 'subscription_created'
