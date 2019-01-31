@@ -1,3 +1,5 @@
+import { initSentry } from '../errors';
+initSentry();
 
 import * as moment from 'moment';
 import * as querystring from 'querystring';

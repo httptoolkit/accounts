@@ -1,3 +1,6 @@
+import { initSentry } from '../errors';
+initSentry();
+
 import { Handler, APIGatewayProxyEvent } from 'aws-lambda';
 import * as jwt from 'jsonwebtoken';
 
