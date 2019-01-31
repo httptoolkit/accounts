@@ -1,9 +1,9 @@
-import { initSentry } from '../errors';
+import { initSentry, catchErrors } from '../errors';
 initSentry();
 
 import * as moment from 'moment';
 import * as querystring from 'querystring';
-import { Handler, APIGatewayProxyEvent } from 'aws-lambda';
+import { APIGatewayProxyEvent } from 'aws-lambda';
 
 import { mgmtClient } from '../auth0';
 import { validateWebhook, WebhookData } from '../paddle';
@@ -52,7 +52,7 @@ function getSubscriptionFromHookData(hookData: WebhookData): SubscriptionData {
     }
 }
 
-export const handler: Handler = async (event: APIGatewayProxyEvent) => {
+export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
     const paddleData = querystring.parse(event.body) as unknown as WebhookData;
     console.log('Received Paddle webhook', paddleData);
 
@@ -73,4 +73,4 @@ export const handler: Handler = async (event: APIGatewayProxyEvent) => {
 
     // All done
     return { statusCode: 200, body: '' };
-}
+});

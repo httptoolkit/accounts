@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/node';
+import { Handler } from 'aws-lambda';
 
 const { SENTRY_DSN, COMMIT_REF } = process.env;
 
@@ -19,4 +20,16 @@ export function reportError(error: Error | string) {
     } else {
         Sentry.captureException(error);
     }
+}
+
+export function catchErrors(handler: Handler): Handler {
+    return async function() {
+        try {
+            return await handler.call(this, ...arguments);
+        } catch(e) {
+            // Catches sync errors & promise rejections, because we're async
+            reportError(e);
+            throw e;
+        }
+    };
 }

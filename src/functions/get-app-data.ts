@@ -1,7 +1,7 @@
-import { initSentry } from '../errors';
+import { initSentry, catchErrors } from '../errors';
 initSentry();
 
-import { Handler, APIGatewayProxyEvent } from 'aws-lambda';
+import { APIGatewayProxyEvent } from 'aws-lambda';
 import * as jwt from 'jsonwebtoken';
 
 import { AUTH0_DATA_SIGNING_PRIVATE_KEY, authClient, mgmtClient } from '../auth0';
@@ -16,7 +16,7 @@ If the token is found and is usable, the user's app data (email &
 subscription status) are loaded and signed into a JWT, so the app can
 read that info, and confirm its validity.
 */
-export const handler: Handler = async (event: APIGatewayProxyEvent) => {
+export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
     let headers = {
         'Access-Control-Allow-Headers': 'Authorization',
     };
@@ -65,4 +65,4 @@ export const handler: Handler = async (event: APIGatewayProxyEvent) => {
         headers,
         body: signedAppData
     };
-}
+});
