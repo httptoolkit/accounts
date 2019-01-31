@@ -11,24 +11,31 @@ export function initSentry() {
     }
 }
 
-export function reportError(error: Error | string) {
+export async function reportError(error: Error | string) {
     console.warn(error);
     if (!sentryInitialized) return;
 
+    const scope = Sentry.getCurrentHub().getScope();
+
+    // We have to play some funky games here to make sure we can wait for the event
+    // see https://github.com/getsentry/sentry-javascript/issues/1449 for context.
     if (typeof error === 'string') {
-        Sentry.captureMessage(error);
+        await Sentry.getCurrentHub().getClient().captureMessage(error, scope);
     } else {
-        Sentry.captureException(error);
+        await Sentry.getCurrentHub().getClient().captureException(error, scope);
     }
 }
 
 export function catchErrors(handler: Handler): Handler {
-    return async function() {
+    return async function(event, context) {
+        // Make sure AWS doesn't wait for an empty event loop, as that can
+        // break things with Sentry
+        context.callbackWaitsForEmptyEventLoop = false;
         try {
             return await handler.call(this, ...arguments);
         } catch(e) {
             // Catches sync errors & promise rejections, because we're async
-            reportError(e);
+            await reportError(e);
             throw e;
         }
     };
