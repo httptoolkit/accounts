@@ -14,7 +14,7 @@
     "url": "git+https://github.com/httptoolkit/accounts.git"
   },
   "author": "Tim Perry <tim@httptoolkit.tech>",
-  "license": "AGPL-3.0",
+  "license": "AGPL-3.0-or-later",
   "bugs": {
     "url": "https://github.com/httptoolkit/accounts/issues"
   },
