@@ -26,7 +26,7 @@ async function saveUserData(email: string, subscription: SubscriptionData) {
 }
 
 function getSubscriptionFromHookData(hookData: WebhookData): SubscriptionData {
-    if (hookData.status === 'active') {
+    if (hookData.status === 'active' || hookData.alert_name === 'subscription_cancelled') {
         const endDate =
             hookData.alert_name === 'subscription_cancelled' ?
                 // Cancelled subscriptions end of the last day of the current plan
