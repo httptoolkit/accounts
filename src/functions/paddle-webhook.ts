@@ -13,6 +13,7 @@ interface SubscriptionData {
     subscription_id?: number,
     subscription_plan_id?: number,
     subscription_expiry?: number,
+    last_receipt_url?: string,
     update_url?: string,
     cancel_url?: string
 }
@@ -67,6 +68,7 @@ function getSubscriptionFromHookData(hookData: WebhookData): SubscriptionData {
             subscription_id: parseInt(hookData.subscription_id, 10),
             subscription_plan_id: parseInt(hookData.subscription_plan_id, 10),
             subscription_expiry: endDate,
+            last_receipt_url: hookData.receipt_url,
             update_url: hookData.update_url,
             cancel_url: hookData.cancel_url
         };
