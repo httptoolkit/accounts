@@ -41,7 +41,29 @@ export interface CancellationHookData extends BaseWebhookData {
     cancellation_effective_date: string; // YYYY-MM-DD
 }
 
-export type WebhookData = SubscribeHookData | CancellationHookData;
+export interface PaymentSuccessHookData extends BaseWebhookData {
+    alert_name: 'subscription_payment_succeeded';
+    next_bill_date: string; // YYYY-MM-DD
+    receipt_url: string;
+}
+
+export interface PaymentRefundedHookData extends BaseWebhookData {
+    alert_name: 'subscription_payment_refunded';
+    next_bill_date: string; // YYYY-MM-DD
+}
+
+export interface PaymentFailedHookData extends BaseWebhookData {
+    alert_name: 'subscription_payment_failed';
+    hard_failure: boolean;
+    next_retry_date: string; // YYYY-MM-DD
+}
+
+export type WebhookData =
+    | SubscribeHookData
+    | CancellationHookData
+    | PaymentSuccessHookData
+    | PaymentRefundedHookData
+    | PaymentFailedHookData;
 
 function ksort<T extends {}>(obj: T): T {
     let keys = Object.keys(obj).sort();

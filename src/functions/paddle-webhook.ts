@@ -6,9 +6,10 @@ import * as querystring from 'querystring';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 
 import { mgmtClient } from '../auth0';
-import { validateWebhook, WebhookData } from '../paddle';
+import { validateWebhook, WebhookData, SubscriptionStatus } from '../paddle';
 
 interface SubscriptionData {
+    subscription_status?: SubscriptionStatus,
     subscription_id?: number,
     subscription_plan_id?: number,
     subscription_expiry?: number,
@@ -26,30 +27,66 @@ async function saveUserData(email: string, subscription: SubscriptionData) {
 }
 
 function getSubscriptionFromHookData(hookData: WebhookData): SubscriptionData {
-    if (hookData.status === 'active' || hookData.alert_name === 'subscription_cancelled') {
-        const endDate =
-            hookData.alert_name === 'subscription_cancelled' ?
-                // Cancelled subscriptions end of the last day of the current plan
-                moment(hookData.cancellation_effective_date).valueOf() :
-                // 1 day of slack for ongoing renewals (we don't know what time they renew).
-                moment(hookData.next_bill_date).add(1, 'day').valueOf()
+    if (hookData.alert_name === 'subscription_created' || hookData.alert_name === 'subscription_updated') {
+        // New subscription: get & store the full data for this user
+
+        // 1 day of slack for ongoing renewals (we don't know what time they renew).
+        const endDate = moment(hookData.next_bill_date).add(1, 'day').valueOf()
 
         return {
+            subscription_status: hookData.status,
             subscription_id: parseInt(hookData.subscription_id, 10),
             subscription_plan_id: parseInt(hookData.subscription_plan_id, 10),
             subscription_expiry: endDate,
             update_url: hookData.update_url,
             cancel_url: hookData.cancel_url
         };
-    } else {
+    } else if (hookData.alert_name === 'subscription_cancelled') {
+        // Cancelled subscription - we'll never hear about this sub again. Mark is
+        // as finished, and save the current end date so we know when it really stops.
+
+        // Cancelled subscriptions end of the last day of the current plan
+        const endDate = moment(hookData.cancellation_effective_date).valueOf();
+
         return {
-            subscription_id: undefined,
-            subscription_plan_id: undefined,
-            subscription_expiry: undefined,
-            update_url: undefined,
-            cancel_url: undefined
+            subscription_status: 'deleted',
+            subscription_id: parseInt(hookData.subscription_id, 10),
+            subscription_plan_id: parseInt(hookData.subscription_plan_id, 10),
+            subscription_expiry: endDate,
+            update_url: hookData.update_url,
+            cancel_url: hookData.cancel_url
+        };
+    } else if (hookData.alert_name === 'subscription_payment_succeeded') {
+        // Subscription has renewed (or started for the first time), update the expiry date.
+
+        // 1 day of slack for ongoing renewals (we don't know what time they renew).
+        const endDate = moment(hookData.next_bill_date).add(1, 'day').valueOf();
+
+        return {
+            subscription_status: hookData.status,
+            subscription_id: parseInt(hookData.subscription_id, 10),
+            subscription_plan_id: parseInt(hookData.subscription_plan_id, 10),
+            subscription_expiry: endDate,
+            update_url: hookData.update_url,
+            cancel_url: hookData.cancel_url
+        };
+    } else if (hookData.alert_name === 'subscription_payment_failed') {
+        // We wait briefly, then try to charge again. If the next charge fails,
+        // their subscription will be cancelled automatically.
+        const endDate = moment(hookData.next_retry_date).valueOf();
+
+        return {
+            subscription_status: 'past_due',
+            subscription_id: parseInt(hookData.subscription_id, 10),
+            subscription_plan_id: parseInt(hookData.subscription_plan_id, 10),
+            subscription_expiry: endDate,
+            update_url: hookData.update_url,
+            cancel_url: hookData.cancel_url,
         };
     }
+
+    // Should never happen - effectively 'update nothing'
+    return {};
 }
 
 export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
@@ -61,7 +98,9 @@ export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
     if ([
         'subscription_created',
         'subscription_updated',
-        'subscription_cancelled'
+        'subscription_cancelled',
+        'subscription_payment_succeeded',
+        'subscription_payment_failed'
     ].includes(paddleData.alert_name)) {
         const subscription = getSubscriptionFromHookData(paddleData);
 
