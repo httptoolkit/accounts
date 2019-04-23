@@ -23,7 +23,7 @@ export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
 
     // Check the origin, include CORS if it's *.httptoolkit.tech
     const { origin } = event.headers;
-    let allowedOrigin = /^https?:\/\/(.*\.)httptoolkit.tech(:\d+)?$/.test(origin) ?
+    let allowedOrigin = /^https?:\/\/(.*\.)?httptoolkit.tech(:\d+)?$/.test(origin) ?
         origin : undefined;
 
     if (allowedOrigin) headers['Access-Control-Allow-Origin'] = allowedOrigin;
