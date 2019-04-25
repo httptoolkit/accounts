@@ -8,6 +8,8 @@ import { AUTH0_DATA_SIGNING_PRIVATE_KEY, authClient, mgmtClient } from '../auth0
 
 const BearerRegex = /^Bearer (\S+)$/;
 
+const ONE_DAY_IN_SECONDS = 60 * 60 * 24;
+
 /*
 This endpoint expects requests to be sent with a Bearer authorization,
 containing a valid access token for the Auth0 app.
@@ -19,7 +21,14 @@ read that info, and confirm its validity.
 export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
     let headers = {
         'Access-Control-Allow-Headers': 'Authorization',
-        'Access-Control-Max-Age': (60 * 60 * 24).toString() // 24 hours, but Chrome will cache for 10 mins max anyway
+        'Access-Control-Max-Age': ONE_DAY_IN_SECONDS.toString(), // Chrome will cache for 10 mins max anyway
+
+        // Cache OPTIONS responses for ages, cache others only briefly
+        'Cache-Control':
+            event.httpMethod === 'OPTIONS'
+                ? 'public, max-age=' + ONE_DAY_IN_SECONDS // The OPTIONS result is effectively constant - cache for 24h
+                : 'private, max-age=10', // Briefly cache, just to avoid completely unnecessary calls
+        'Vary': 'Authorization'
     };
 
     // Check the origin, include CORS if it's *.httptoolkit.tech
