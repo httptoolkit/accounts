@@ -19,7 +19,7 @@ read that info, and confirm its validity.
 export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
     let headers = {
         'Access-Control-Allow-Headers': 'Authorization',
-        'Access-Control-Max-Age': 60 * 60 * 24 // 24 hours, but Chrome will cache for 10 mins max anyway
+        'Access-Control-Max-Age': (60 * 60 * 24).toString() // 24 hours, but Chrome will cache for 10 mins max anyway
     };
 
     // Check the origin, include CORS if it's *.httptoolkit.tech
