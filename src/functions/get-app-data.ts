@@ -46,9 +46,9 @@ export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
 
     const accessToken = tokenMatch[1];
 
-    // getProfile is only minimal data, updated at last login
+    // getProfile is only minimal data, updated at last login (/userinfo - 5 req/minute/user)
     const user: { sub: string } = await authClient.getProfile(accessToken);
-    // getUser is full live data for the user
+    // getUser is full live data for the user (/users/{id} - 15 req/second)
     const userData = await mgmtClient.getUser({ id: user.sub });
 
     const appData = Object.assign(
