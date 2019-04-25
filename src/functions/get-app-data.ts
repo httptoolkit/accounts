@@ -28,10 +28,9 @@ export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
         origin : undefined;
 
     if (allowedOrigin) {
-        console.log('CORS request from allowed origin', origin);
         headers['Access-Control-Allow-Origin'] = allowedOrigin;
     } else if (origin) {
-        console.log('CORS request from invalid origin!', origin);
+        console.warn('CORS request from invalid origin!', origin);
     }
 
     if (event.httpMethod === 'OPTIONS') {
