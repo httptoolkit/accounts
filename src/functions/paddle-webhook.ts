@@ -95,6 +95,10 @@ export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
     const paddleData = querystring.parse(event.body) as unknown as WebhookData;
     console.log('Received Paddle webhook', paddleData);
 
+    // Paddle uses casing in emails, whilst it seems that auth0 does not:
+    // https://community.auth0.com/t/creating-a-user-converts-email-to-lowercase/6678/4
+    const email = paddleData.email.toLowerCase();
+
     validateWebhook(paddleData);
 
     if ([
@@ -106,8 +110,8 @@ export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
     ].includes(paddleData.alert_name)) {
         const subscription = getSubscriptionFromHookData(paddleData);
 
-        console.log(`Updating user ${paddleData.email} to ${JSON.stringify(subscription)}`);
-        await saveUserData(paddleData.email, subscription);
+        console.log(`Updating user ${email} to ${JSON.stringify(subscription)}`);
+        await saveUserData(email, subscription);
     } else {
         console.log(`Ignoring ${paddleData.alert_name} event`);
     }
