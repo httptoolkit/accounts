@@ -14,8 +14,8 @@ const ONE_DAY_IN_SECONDS = 60 * 60 * 24;
 This endpoint expects requests to be sent with a Bearer authorization,
 containing a valid access token for the Auth0 app.
 
-If the token is found and is usable, the user's app data (email &
-subscription status) are loaded and signed into a JWT, so the app can
+If the token is found and is usable, the user's app data (email, subscription
+status & feature flags) are loaded and signed into a JWT, so the app can
 read that info, and confirm its validity.
 */
 export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
