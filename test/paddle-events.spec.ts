@@ -2,6 +2,7 @@ import * as crypto from 'crypto';
 import * as net from 'net';
 import * as path from 'path';
 import fetch from 'node-fetch';
+import moment from 'moment';
 
 import { expect } from 'chai';
 import { getLocal } from 'mockttp';
@@ -76,6 +77,17 @@ const auth0Server = getLocal({
     }
 });
 
+function givenUser(userId: number, email: string) {
+    return auth0Server
+        .get('/api/v2/users-by-email')
+        .withQuery({ email })
+        .thenReply(200, JSON.stringify([
+            { email: email, user_id: userId }
+        ]), {
+            "content-type": 'application/json'
+        });
+}
+
 describe('Paddle webhook', () => {
 
     let functionServer: stoppable.StoppableServer;
@@ -97,19 +109,13 @@ describe('Paddle webhook', () => {
     it('successfully handles new Pro subscriptions', async () => {
         const userId = 123;
         const userEmail = 'user@example.com';
-
-        await auth0Server
-            .get('/api/v2/users-by-email')
-            .withQuery({ email: userEmail })
-            .thenReply(200, JSON.stringify([
-                { email: userEmail, user_id: userId }
-            ]), {
-                "content-type": 'application/json'
-            });
+        givenUser(userId, userEmail);
 
         const userUpdate = await auth0Server
             .patch('/api/v2/users/' + userId)
             .thenReply(200);
+
+        const nextRenewal = moment('2025-01-01');
 
         const response = await fetch(
             `${functionServerUrl}/.netlify/functions/paddle-webhook`,
@@ -118,7 +124,7 @@ describe('Paddle webhook', () => {
                 email: userEmail,
                 subscription_id: '456',
                 subscription_plan_id: '550382', // Pro-annual
-                next_bill_date: '2025-01-01'
+                next_bill_date: nextRenewal.format('YYYY-MM-DD')
             })
         );
 
@@ -130,7 +136,7 @@ describe('Paddle webhook', () => {
             app_metadata: {
                 subscription_id: 456,
                 subscription_plan_id: 550382,
-                subscription_expiry: 1735772400000
+                subscription_expiry: nextRenewal.add(1, 'days').valueOf()
             }
         });
     });
