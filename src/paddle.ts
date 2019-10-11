@@ -76,7 +76,7 @@ function ksort<T extends {}>(obj: T): T {
     return sortedObj as T;
 }
 
-function serializeWebhookData(webhookData: WebhookData) {
+export function serializeWebhookData(webhookData: WebhookData) {
     const sortedData: { [key: string]: any } = ksort(webhookData);
     for (let property in sortedData) {
         if (

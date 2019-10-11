@@ -4,12 +4,12 @@
         "module": "commonjs",
         "moduleResolution": "node",
         "esModuleInterop": true,
-        "allowSyntheticDefaultImports": true,
-        "sourceMap": true,
-        "strict": true
+        "strict": true,
+        "noEmit": true
     },
     "include": [
-        "custom-typings/*.d.ts",
-        "src/**/*.ts"
+        "../custom-typings/*.d.ts",
+        "../src/**/*.ts",
+        "**/*.ts"
     ]
 }
