@@ -19,7 +19,7 @@ status & feature flags) are loaded and signed into a JWT, so the app can
 read that info, and confirm its validity.
 */
 export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
-    let headers = {
+    let headers: { [key: string]: string } = {
         'Access-Control-Allow-Headers': 'Authorization',
         'Access-Control-Max-Age': ONE_DAY_IN_SECONDS.toString(), // Chrome will cache for 10 mins max anyway
 

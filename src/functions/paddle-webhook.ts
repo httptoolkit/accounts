@@ -1,7 +1,7 @@
 import { initSentry, catchErrors } from '../errors';
 initSentry();
 
-import * as moment from 'moment';
+import moment from 'moment';
 import * as querystring from 'querystring';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 

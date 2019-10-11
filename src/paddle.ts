@@ -1,5 +1,5 @@
 import * as crypto from 'crypto';
-import * as Serialize from 'php-serialize';
+import Serialize from 'php-serialize';
 
 const PADDLE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 ${process.env.PADDLE_PUBLIC_KEY}
@@ -66,9 +66,9 @@ export type WebhookData =
     | PaymentFailedHookData;
 
 function ksort<T extends {}>(obj: T): T {
-    let keys = Object.keys(obj).sort();
+    let keys = Object.keys(obj).sort() as Array<keyof T>;
 
-    let sortedObj = {};
+    let sortedObj: Partial<T> = {};
     for (let i in keys) {
         sortedObj[keys[i]] = obj[keys[i]];
     }
@@ -76,29 +76,34 @@ function ksort<T extends {}>(obj: T): T {
     return sortedObj as T;
 }
 
+function serializeWebhookData(webhookData: WebhookData) {
+    const sortedData: { [key: string]: any } = ksort(webhookData);
+    for (let property in sortedData) {
+        if (
+            sortedData.hasOwnProperty(property) &&
+            (typeof sortedData[property]) !== "string"
+        ) {
+            if (Array.isArray(sortedData[property])) {
+                sortedData[property] = sortedData[property].toString();
+            } else {
+                sortedData[property] = JSON.stringify(sortedData[property]);
+            }
+        }
+    }
+
+    return Serialize.serialize(sortedData);
+}
+
 // Closely based on code from https://paddle.com/docs/reference-verifying-webhooks
 export function validateWebhook(webhookData: WebhookData) {
     const mySig = Buffer.from(webhookData.p_signature, 'base64');
     delete webhookData.p_signature;
 
-    // Do some funky serializing to make this data match Paddle's signed form
-    webhookData = ksort(webhookData);
-    for (let property in webhookData) {
-        if (
-            webhookData.hasOwnProperty(property) &&
-            (typeof webhookData[property]) !== "string"
-        ) {
-            if (Array.isArray(webhookData[property])) {
-                webhookData[property] = webhookData[property].toString();
-            } else {
-                webhookData[property] = JSON.stringify(webhookData[property]);
-            }
-        }
-    }
-    const serialized = Serialize.serialize(webhookData);
+    // Do some normalization & serializing, to make this data match Paddle's signed form
+    const serializedData = serializeWebhookData(webhookData);
 
     const verifier = crypto.createVerify('sha1');
-    verifier.update(serialized);
+    verifier.update(serializedData);
     verifier.end();
 
     let verification = verifier.verify(PADDLE_PUBLIC_KEY, mySig);

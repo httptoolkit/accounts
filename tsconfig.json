@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+        "target": "es6",
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "sourceMap": true,
+        "strict": true
+    },
+    "include": [
+        "custom-typings/*.d.ts",
+        "src/**/*.ts"
+    ]
+}
