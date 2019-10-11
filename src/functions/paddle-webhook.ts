@@ -24,11 +24,19 @@ async function saveUserData(email: string, subscription: SubscriptionData) {
     if (users.length !== 1) throw new Error(`Found ${users.length} users for email ${email}`);
     const [ user ] = users;
 
+    // Drop any explicitly undefined fields
+    (Object.keys(subscription) as Array<keyof SubscriptionData>).forEach(key =>
+        subscription[key] === undefined ? delete subscription[key] : ''
+    );
+
     await mgmtClient.updateAppMetadata({ id: user.user_id }, subscription);
 }
 
 function getSubscriptionFromHookData(hookData: WebhookData): SubscriptionData {
-    if (hookData.alert_name === 'subscription_created' || hookData.alert_name === 'subscription_updated') {
+    if (
+        hookData.alert_name === 'subscription_created' ||
+        hookData.alert_name === 'subscription_updated'
+    ) {
         // New subscription: get & store the full data for this user
 
         // 1 day of slack for ongoing renewals (we don't know what time they renew).
@@ -73,12 +81,14 @@ function getSubscriptionFromHookData(hookData: WebhookData): SubscriptionData {
             cancel_url: hookData.cancel_url
         };
     } else if (hookData.alert_name === 'subscription_payment_failed') {
-        // We wait briefly, then try to charge again. If the next charge fails,
-        // their subscription will be cancelled automatically.
-        const endDate = moment(hookData.next_retry_date).valueOf();
+        // We wait briefly, then try to charge again, a couple of times. If the
+        // final charge fails, their subscription will be cancelled automatically.
+        const endDate = hookData.next_retry_date
+            ? moment(hookData.next_retry_date).add(1, 'day').valueOf()
+            : undefined;
 
         return {
-            subscription_status: 'past_due',
+            subscription_status: hookData.next_retry_date ? 'past_due' : 'deleted',
             subscription_id: parseInt(hookData.subscription_id, 10),
             subscription_plan_id: parseInt(hookData.subscription_plan_id, 10),
             subscription_expiry: endDate,

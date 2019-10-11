@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import * as net from 'net';
 import * as path from 'path';
-import fetch from 'node-fetch';
+import fetch, { Response } from 'node-fetch';
 import moment from 'moment';
 
 import { expect } from 'chai';
@@ -27,7 +27,7 @@ function generateKeyPair() {
 const { privateKey, publicKey } = generateKeyPair();
 process.env.PADDLE_PUBLIC_KEY = publicKey.split('\n').slice(1, -2).join('\n');
 
-import { serializeWebhookData, WebhookData } from '../src/paddle';
+import { serializeWebhookData, WebhookData, UnsignedWebhookData } from '../src/paddle';
 
 const startServer = (port = 0) => {
     return serveFunctions({
@@ -38,7 +38,7 @@ const startServer = (port = 0) => {
     });
 };
 
-const signBody = (body: WebhookData) => {
+const signBody = (body: UnsignedWebhookData) => {
     const serializedData = serializeWebhookData(body);
     const signer = crypto.createSign('sha1');
     signer.update(serializedData);
@@ -47,21 +47,31 @@ const signBody = (body: WebhookData) => {
     return signer.sign(privateKey, 'base64');
 }
 
-const paddleWebhook = (partialBody: { 'alert_name': string } & Partial<WebhookData>) => {
-    const body = Object.assign({ }, partialBody) as WebhookData;
-
-    body.p_signature = signBody(body);
+const getPaddleWebhookData = (unsignedBody: Partial<WebhookData>) => {
+    const body = Object.assign({
+        p_signature: signBody(unsignedBody as WebhookData)
+    }, unsignedBody) as WebhookData;
 
     return {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Connection': 'close'
+            'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: new URLSearchParams(
             body as unknown as { [key: string]: string }
         ).toString()
     };
+}
+
+const triggerWebhook = async (server: net.Server, unsignedBody: Partial<WebhookData>) => {
+    const functionServerUrl = `http://localhost:${(server.address() as net.AddressInfo).port}`;
+
+    const result = await fetch(
+        `${functionServerUrl}/.netlify/functions/paddle-webhook`,
+        getPaddleWebhookData(unsignedBody)
+    );
+
+    expect(result.status).to.equal(200);
 }
 
 const AUTH0_PORT = 9091;
@@ -91,13 +101,9 @@ function givenUser(userId: number, email: string) {
 describe('Paddle webhook', () => {
 
     let functionServer: stoppable.StoppableServer;
-    let functionServerUrl: string;
 
     beforeEach(async () => {
         functionServer = stoppable((await startServer()).server, 0);
-        functionServerUrl = `http://localhost:${
-           (functionServer.address() as net.AddressInfo).port
-        }`;
         await auth0Server.start(AUTH0_PORT);
         await auth0Server.post('/oauth/token').thenReply(200);
     });
@@ -117,23 +123,20 @@ describe('Paddle webhook', () => {
 
         const nextRenewal = moment('2025-01-01');
 
-        const response = await fetch(
-            `${functionServerUrl}/.netlify/functions/paddle-webhook`,
-            paddleWebhook({
-                alert_name: 'subscription_created',
-                email: userEmail,
-                subscription_id: '456',
-                subscription_plan_id: '550382', // Pro-annual
-                next_bill_date: nextRenewal.format('YYYY-MM-DD')
-            })
-        );
-
-        expect(response.status).to.equal(200);
+        await triggerWebhook(functionServer, {
+            alert_name: 'subscription_created',
+            status: 'active',
+            email: userEmail,
+            subscription_id: '456',
+            subscription_plan_id: '550382', // Pro-annual
+            next_bill_date: nextRenewal.format('YYYY-MM-DD')
+        });
 
         const updateRequests = await userUpdate.getSeenRequests();
         expect(updateRequests.length).to.equal(1);
         expect(updateRequests[0].body.json).to.deep.equal({
             app_metadata: {
+                subscription_status: 'active',
                 subscription_id: 456,
                 subscription_plan_id: 550382,
                 subscription_expiry: nextRenewal.add(1, 'days').valueOf()
@@ -152,26 +155,143 @@ describe('Paddle webhook', () => {
 
         const nextRenewal = moment('2025-01-01');
 
-        const response = await fetch(
-            `${functionServerUrl}/.netlify/functions/paddle-webhook`,
-            paddleWebhook({
-                alert_name: 'subscription_payment_succeeded',
-                email: userEmail,
-                subscription_id: '456',
-                subscription_plan_id: '550382', // Pro-annual
-                next_bill_date: nextRenewal.format('YYYY-MM-DD')
-            })
-        );
-
-        expect(response.status).to.equal(200);
+        await triggerWebhook(functionServer, {
+            alert_name: 'subscription_payment_succeeded',
+            status: 'active',
+            email: userEmail,
+            subscription_id: '456',
+            subscription_plan_id: '550382', // Pro-annual
+            next_bill_date: nextRenewal.format('YYYY-MM-DD')
+        });
 
         const updateRequests = await userUpdate.getSeenRequests();
         expect(updateRequests.length).to.equal(1);
         expect(updateRequests[0].body.json).to.deep.equal({
             app_metadata: {
+                subscription_status: 'active',
                 subscription_id: 456,
                 subscription_plan_id: 550382,
                 subscription_expiry: nextRenewal.add(1, 'days').valueOf()
+            }
+        });
+    });
+
+    it('successfully cancels Pro subscriptions on request', async () => {
+        const userId = 123;
+        const userEmail = 'user@example.com';
+        givenUser(userId, userEmail);
+
+        const userUpdate = await auth0Server
+            .patch('/api/v2/users/' + userId)
+            .thenReply(200);
+
+        const cancellationDate = moment('2025-01-01');
+
+        await triggerWebhook(functionServer, {
+            alert_name: 'subscription_cancelled',
+            email: userEmail,
+            subscription_id: '456',
+            subscription_plan_id: '550382', // Pro-annual
+            cancellation_effective_date: cancellationDate.format('YYYY-MM-DD')
+        });
+
+        const updateRequests = await userUpdate.getSeenRequests();
+        expect(updateRequests.length).to.equal(1);
+        expect(updateRequests[0].body.json).to.deep.equal({
+            app_metadata: {
+                subscription_status: 'deleted',
+                subscription_id: 456,
+                subscription_plan_id: 550382,
+                subscription_expiry: cancellationDate.valueOf()
+            }
+        });
+    });
+
+    it('successfully cancels Pro subscriptions after failed payments', async () => {
+        const userId = 123;
+        const userEmail = 'user@example.com';
+        givenUser(userId, userEmail);
+
+        const userUpdate = await auth0Server
+            .patch('/api/v2/users/' + userId)
+            .thenReply(200);
+
+        const currentDate = moment('2020-01-01');
+        const finalDate = moment('2020-01-07');
+
+        // Initial renewal failure:
+
+        await triggerWebhook(functionServer, {
+            alert_name: 'subscription_updated',
+            status: 'past_due',
+            email: userEmail,
+            subscription_id: '456',
+            subscription_plan_id: '550382', // Pro-annual
+            next_bill_date: currentDate.format('YYYY-MM-DD')
+        })
+
+        await triggerWebhook(functionServer, {
+            alert_name: 'subscription_payment_failed',
+            status: 'past_due',
+            email: userEmail,
+            subscription_id: '456',
+            subscription_plan_id: '550382', // Pro-annual
+            next_retry_date: finalDate.format('YYYY-MM-DD')
+        });
+
+        let updateRequests = await userUpdate.getSeenRequests();
+        expect(updateRequests.length).to.equal(2);
+        expect(updateRequests[0].body.json).to.deep.equal({
+            app_metadata: {
+                subscription_status: 'past_due',
+                subscription_id: 456,
+                subscription_plan_id: 550382,
+                subscription_expiry: currentDate.add(1, 'days').valueOf()
+            }
+        });
+        expect(updateRequests[1].body.json).to.deep.equal({
+            app_metadata: {
+                subscription_status: 'past_due',
+                subscription_id: 456,
+                subscription_plan_id: 550382,
+                subscription_expiry: finalDate.add(1, 'days').valueOf()
+            }
+        });
+
+        // Final renewal failure:
+
+        await triggerWebhook(functionServer, {
+            alert_name: 'subscription_payment_failed',
+            status: 'past_due',
+            email: userEmail,
+            subscription_id: '456',
+            subscription_plan_id: '550382', // Pro-annual
+            // N.B: no next_retry_date, we're done
+        });
+
+        await triggerWebhook(functionServer, {
+            alert_name: 'subscription_cancelled',
+            email: userEmail,
+            subscription_id: '456',
+            subscription_plan_id: '550382', // Pro-annual
+            cancellation_effective_date: finalDate.format('YYYY-MM-DD')
+        });
+
+        updateRequests = await userUpdate.getSeenRequests();
+        expect(updateRequests.length).to.equal(4);
+        expect(updateRequests[2].body.json).to.deep.equal({
+            app_metadata: {
+                subscription_status: 'deleted',
+                subscription_id: 456,
+                subscription_plan_id: 550382
+            }
+        });
+        expect(updateRequests[3].body.json).to.deep.equal({
+            app_metadata: {
+                subscription_status: 'deleted',
+                subscription_id: 456,
+                subscription_plan_id: 550382,
+                subscription_expiry: finalDate.valueOf()
             }
         });
     });

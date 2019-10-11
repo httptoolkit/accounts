@@ -55,7 +55,7 @@ export interface PaymentRefundedHookData extends BaseWebhookData {
 export interface PaymentFailedHookData extends BaseWebhookData {
     alert_name: 'subscription_payment_failed';
     hard_failure: boolean;
-    next_retry_date: string; // YYYY-MM-DD
+    next_retry_date?: string; // YYYY-MM-DD
 }
 
 export type WebhookData =
@@ -64,6 +64,8 @@ export type WebhookData =
     | PaymentSuccessHookData
     | PaymentRefundedHookData
     | PaymentFailedHookData;
+
+export type UnsignedWebhookData = Omit<WebhookData, 'p_signature'>;
 
 function ksort<T extends {}>(obj: T): T {
     let keys = Object.keys(obj).sort() as Array<keyof T>;
@@ -76,7 +78,7 @@ function ksort<T extends {}>(obj: T): T {
     return sortedObj as T;
 }
 
-export function serializeWebhookData(webhookData: WebhookData) {
+export function serializeWebhookData(webhookData: UnsignedWebhookData) {
     const sortedData: { [key: string]: any } = ksort(webhookData);
     for (let property in sortedData) {
         if (
