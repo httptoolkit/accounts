@@ -140,4 +140,39 @@ describe('Paddle webhook', () => {
             }
         });
     });
+
+    it('successfully renews Pro subscriptions', async () => {
+        const userId = 123;
+        const userEmail = 'user@example.com';
+        givenUser(userId, userEmail);
+
+        const userUpdate = await auth0Server
+            .patch('/api/v2/users/' + userId)
+            .thenReply(200);
+
+        const nextRenewal = moment('2025-01-01');
+
+        const response = await fetch(
+            `${functionServerUrl}/.netlify/functions/paddle-webhook`,
+            paddleWebhook({
+                alert_name: 'subscription_payment_succeeded',
+                email: userEmail,
+                subscription_id: '456',
+                subscription_plan_id: '550382', // Pro-annual
+                next_bill_date: nextRenewal.format('YYYY-MM-DD')
+            })
+        );
+
+        expect(response.status).to.equal(200);
+
+        const updateRequests = await userUpdate.getSeenRequests();
+        expect(updateRequests.length).to.equal(1);
+        expect(updateRequests[0].body.json).to.deep.equal({
+            app_metadata: {
+                subscription_id: 456,
+                subscription_plan_id: 550382,
+                subscription_expiry: nextRenewal.add(1, 'days').valueOf()
+            }
+        });
+    });
 });
