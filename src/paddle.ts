@@ -31,8 +31,15 @@ export interface BaseWebhookData {
     cancel_url: string;
 }
 
-export interface SubscribeHookData extends BaseWebhookData {
-    alert_name: 'subscription_created' | 'subscription_updated';
+export interface NewSubscriptionHookData extends BaseWebhookData {
+    alert_name: 'subscription_created';
+    quantity: string; // \d+
+    next_bill_date: string; // YYYY-MM-DD
+}
+
+export interface UpdatedSubscriptionHookData extends BaseWebhookData {
+    alert_name: 'subscription_updated';
+    new_quantity: string; // \d+
     next_bill_date: string; // YYYY-MM-DD
 }
 
@@ -45,6 +52,7 @@ export interface PaymentSuccessHookData extends BaseWebhookData {
     alert_name: 'subscription_payment_succeeded';
     next_bill_date: string; // YYYY-MM-DD
     receipt_url: string;
+    quantity: string; // \d+
 }
 
 export interface PaymentRefundedHookData extends BaseWebhookData {
@@ -59,7 +67,8 @@ export interface PaymentFailedHookData extends BaseWebhookData {
 }
 
 export type WebhookData =
-    | SubscribeHookData
+    | NewSubscriptionHookData
+    | UpdatedSubscriptionHookData
     | CancellationHookData
     | PaymentSuccessHookData
     | PaymentRefundedHookData

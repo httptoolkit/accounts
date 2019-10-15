@@ -23,3 +23,5 @@ export const mgmtClient = new auth0.ManagementClient({
     clientId: AUTH0_MGMT_CLIENT_ID,
     clientSecret: AUTH0_MGMT_CLIENT_SECRET
 });
+
+export type User = auth0.User;

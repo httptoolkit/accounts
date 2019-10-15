@@ -1,11 +1,11 @@
-import { initSentry, catchErrors } from '../errors';
+import { initSentry, catchErrors, reportError } from '../errors';
 initSentry();
 
 import moment from 'moment';
 import * as querystring from 'querystring';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 
-import { mgmtClient } from '../auth0';
+import { mgmtClient, User } from '../auth0';
 import { validateWebhook, WebhookData, SubscriptionStatus } from '../paddle';
 
 interface SubscriptionData {
@@ -13,23 +13,36 @@ interface SubscriptionData {
     subscription_id?: number,
     subscription_plan_id?: number,
     subscription_expiry?: number,
+    subscription_quantity?: number,
     last_receipt_url?: string,
     update_url?: string,
     cancel_url?: string
 }
 
-async function saveUserData(email: string, subscription: SubscriptionData) {
+interface TeamUserData extends SubscriptionData {
+    team_member_ids?: string[];
+    subscription_owner_id?: string;
+}
+
+async function getUserData(email: string): Promise<User | undefined> {
     const users = await mgmtClient.getUsersByEmail(email);
+    if (users.length > 1) reportError(`More than one user found for ${email}`);
+    return users[0];
+}
 
-    if (users.length !== 1) throw new Error(`Found ${users.length} users for email ${email}`);
-    const [ user ] = users;
+function dropUndefinedValues(obj: { [key: string]: any }) {
+    Object.keys(obj).forEach((key: any) => {
+        if (obj[key] === undefined) delete obj[key];
+    });
+}
 
-    // Drop any explicitly undefined fields
-    (Object.keys(subscription) as Array<keyof SubscriptionData>).forEach(key =>
-        subscription[key] === undefined ? delete subscription[key] : ''
-    );
+async function updateProUserData(email: string, subscription: SubscriptionData) {
+    const user = await getUserData(email);
 
-    await mgmtClient.updateAppMetadata({ id: user.user_id }, subscription);
+    if (!user) throw new Error(`No user found for email ${email}`);
+
+    dropUndefinedValues(subscription);
+    await mgmtClient.updateAppMetadata({ id: user.user_id! }, subscription);
 }
 
 function getSubscriptionFromHookData(hookData: WebhookData): SubscriptionData {
@@ -40,12 +53,16 @@ function getSubscriptionFromHookData(hookData: WebhookData): SubscriptionData {
         // New subscription: get & store the full data for this user
 
         // 1 day of slack for ongoing renewals (we don't know what time they renew).
-        const endDate = moment(hookData.next_bill_date).add(1, 'day').valueOf()
+        const endDate = moment(hookData.next_bill_date).add(1, 'day').valueOf();
+        const quantity = 'quantity' in hookData
+            ? hookData.quantity
+            : hookData.new_quantity;
 
         return {
             subscription_status: hookData.status,
             subscription_id: parseInt(hookData.subscription_id, 10),
             subscription_plan_id: parseInt(hookData.subscription_plan_id, 10),
+            subscription_quantity: parseInt(quantity, 10),
             subscription_expiry: endDate,
             update_url: hookData.update_url,
             cancel_url: hookData.cancel_url
@@ -76,6 +93,7 @@ function getSubscriptionFromHookData(hookData: WebhookData): SubscriptionData {
             subscription_id: parseInt(hookData.subscription_id, 10),
             subscription_plan_id: parseInt(hookData.subscription_plan_id, 10),
             subscription_expiry: endDate,
+            subscription_quantity: parseInt(hookData.quantity, 10),
             last_receipt_url: hookData.receipt_url,
             update_url: hookData.update_url,
             cancel_url: hookData.cancel_url
@@ -101,8 +119,37 @@ function getSubscriptionFromHookData(hookData: WebhookData): SubscriptionData {
     return {};
 }
 
+async function updateTeamData(email: string, subscription: SubscriptionData) {
+    const currentUserData = await getUserData(email);
+    const currentMetadata: TeamUserData = (currentUserData && currentUserData.app_metadata) || {};
+    const newMetadata = subscription as TeamUserData;
+
+    if (!currentMetadata || !currentMetadata.team_member_ids) {
+        // If the user is not currently a team owner: give them an empty team
+        newMetadata.team_member_ids = [];
+    }
+
+    dropUndefinedValues(newMetadata);
+
+    if (!currentUserData) {
+        // For Team users we allow user creation before the user even exists, since it's
+        // often sold by directly emailing a checkout link.
+        return mgmtClient.createUser({
+            email,
+            connection: 'email',
+            email_verified: true, // This ensures users don't receive an email code or verification
+            app_metadata: newMetadata
+        });
+    } else {
+        await mgmtClient.updateAppMetadata({ id: currentUserData.user_id! }, newMetadata);
+    }
+}
+
+export const PRO_SUBSCRIPTION_IDS = [550380, 550382];
+export const TEAM_SUBSCRIPTION_IDS = [550788, 550789];
+
 export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
-    const paddleData = querystring.parse(event.body) as unknown as WebhookData;
+    const paddleData = querystring.parse(event.body || '') as unknown as WebhookData;
     console.log('Received Paddle webhook', paddleData);
 
     validateWebhook(paddleData);
@@ -117,10 +164,16 @@ export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
         // Paddle uses casing in emails, whilst it seems that auth0 does not:
         // https://community.auth0.com/t/creating-a-user-converts-email-to-lowercase/6678/4
         const email = paddleData.email.toLowerCase();
-        const subscription = getSubscriptionFromHookData(paddleData);
 
-        console.log(`Updating user ${email} to ${JSON.stringify(subscription)}`);
-        await saveUserData(email, subscription);
+        let userData = getSubscriptionFromHookData(paddleData);
+
+        if (TEAM_SUBSCRIPTION_IDS.includes(userData.subscription_plan_id!)) {
+            console.log(`Updating team user ${email}`);
+            await updateTeamData(email, userData);
+        } else {
+            console.log(`Updating Pro user ${email} to ${JSON.stringify(userData)}`);
+            await updateProUserData(email, userData);
+        }
     } else {
         console.log(`Ignoring ${paddleData.alert_name} event`);
     }
