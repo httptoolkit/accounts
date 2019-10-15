@@ -1,42 +1,20 @@
 import * as crypto from 'crypto';
 import * as net from 'net';
-import * as path from 'path';
-import fetch, { Response } from 'node-fetch';
+import fetch from 'node-fetch';
 import moment from 'moment';
 
 import { expect } from 'chai';
-import { getLocal } from 'mockttp';
-import stoppable from 'stoppable';
 
-import { serveFunctions } from 'netlify-cli/src/utils/serve-functions';
-
-function generateKeyPair() {
-    return crypto.generateKeyPairSync('rsa', {
-        modulusLength: 512,
-        privateKeyEncoding: {
-            type: "pkcs1",
-            format: 'pem'
-        } as any,
-        publicKeyEncoding: {
-            type: "spki",
-            format: 'pem'
-        }
-    });
-}
-
-const { privateKey, publicKey } = generateKeyPair();
-process.env.PADDLE_PUBLIC_KEY = publicKey.split('\n').slice(1, -2).join('\n');
-
+import {
+    startServer,
+    paddlePrivateKey,
+    auth0Server,
+    AUTH0_PORT,
+    givenUser,
+    givenNoUsers
+} from './test-util';
 import { serializeWebhookData, WebhookData, UnsignedWebhookData } from '../src/paddle';
-
-const startServer = (port = 0) => {
-    return serveFunctions({
-        functionsDir: process.env.FUNCTIONS_DIR || path.join(__dirname, '..', 'functions'),
-        quiet: true,
-        watch: false,
-        port
-    });
-};
+import stoppable from 'stoppable';
 
 const signBody = (body: UnsignedWebhookData) => {
     const serializedData = serializeWebhookData(body);
@@ -44,7 +22,7 @@ const signBody = (body: UnsignedWebhookData) => {
     signer.update(serializedData);
     signer.end();
 
-    return signer.sign(privateKey, 'base64');
+    return signer.sign(paddlePrivateKey, 'base64');
 }
 
 const getPaddleWebhookData = (unsignedBody: Partial<WebhookData>) => {
@@ -73,49 +51,12 @@ const triggerWebhook = async (server: net.Server, unsignedBody: Partial<WebhookD
 
     expect(result.status).to.equal(200);
 }
-
-const AUTH0_PORT = 9091;
-process.env.AUTH0_DOMAIN = `localhost:${AUTH0_PORT}`;
-process.env.AUTH0_APP_CLIENT_ID = 'auth0-id';
-process.env.AUTH0_MGMT_CLIENT_ID = 'auth0-mgmt-id';
-process.env.AUTH0_MGMT_CLIENT_SECRET = 'auth0-mgmt-secret';
-
-const auth0Server = getLocal({
-    https: {
-        keyPath: path.join(__dirname, 'fixtures', 'test-ca.key'),
-        certPath: path.join(__dirname, 'fixtures', 'test-ca.pem'),
-    }
-});
-
-function givenUser(userId: number, email: string, appMetadata = {}) {
-    return auth0Server
-        .get('/api/v2/users-by-email')
-        .withQuery({ email })
-        .thenReply(200, JSON.stringify([
-            {
-                email: email,
-                user_id: userId,
-                app_metadata: appMetadata
-            }
-        ]), {
-            "content-type": 'application/json'
-        });
-}
-
-function givenNoUsers() {
-    return auth0Server
-        .get('/api/v2/users-by-email')
-        .thenReply(200, JSON.stringify([]), {
-            "content-type": 'application/json'
-        });
-}
-
 describe('Paddle webhooks', () => {
 
     let functionServer: stoppable.StoppableServer;
 
     beforeEach(async () => {
-        functionServer = stoppable((await startServer()).server, 0);
+        functionServer = await startServer();
         await auth0Server.start(AUTH0_PORT);
         await auth0Server.post('/oauth/token').thenReply(200);
     });
