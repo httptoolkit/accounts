@@ -69,7 +69,7 @@ describe('Paddle webhooks', () => {
     describe("for Pro subscriptions", () => {
 
         it('successfully handle new subscriptions', async () => {
-            const userId = 123;
+            const userId = "abc";
             const userEmail = 'user@example.com';
             givenUser(userId, userEmail);
 
@@ -103,7 +103,7 @@ describe('Paddle webhooks', () => {
         });
 
         it('successfully renew subscriptions', async () => {
-            const userId = 123;
+            const userId = "abc";
             const userEmail = 'user@example.com';
             const nextRenewal = moment('2025-01-01');
 
@@ -142,7 +142,7 @@ describe('Paddle webhooks', () => {
         });
 
         it('successfully cancel subscriptions on request', async () => {
-            const userId = 123;
+            const userId = "abc";
             const userEmail = 'user@example.com';
             const cancellationDate = moment('2025-01-01');
 
@@ -178,7 +178,7 @@ describe('Paddle webhooks', () => {
         });
 
         it('successfully cancel subscriptions after failed payments', async () => {
-            const userId = 123;
+            const userId = "abc";
             const userEmail = 'user@example.com';
 
             const currentDate = moment('2020-01-01');
@@ -278,7 +278,7 @@ describe('Paddle webhooks', () => {
     describe("for Team subscriptions", () => {
 
         it('successfully handle new subscriptions for an existing user', async () => {
-            const userId = 123;
+            const userId = "abc";
             const userEmail = 'user@example.com';
             givenUser(userId, userEmail);
 
@@ -350,7 +350,7 @@ describe('Paddle webhooks', () => {
         });
 
         it('successfully handle subscriptions renewals', async () => {
-            const userId = 123;
+            const userId = "abc";
             const userEmail = 'user@example.com';
             givenUser(userId, userEmail, {
                 team_member_ids: ['teamMemberId']

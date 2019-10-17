@@ -1,4 +1,4 @@
-import { initSentry, catchErrors } from '../errors';
+import { initSentry, catchErrors, reportError } from '../errors';
 initSentry();
 
 import { APIGatewayProxyEvent } from 'aws-lambda';
@@ -17,10 +17,43 @@ async function getUserData(accessToken: string) {
     // getUser is full live data for the user (/users/{id} - 15 req/second)
     const userData = await mgmtClient.getUser({ id: user.sub });
 
-    return Object.assign(
-        { email: userData.email },
-        userData.app_metadata // undefined, for new users
-    );
+    if (userData.app_metadata && userData.app_metadata.subscription_owner_id) {
+        // If there's a subscription owner for this user (e.g. member of a team)
+        // copy the basic subscription details from the owner to this user.
+        const subOwnerData = await mgmtClient.getUser({
+            id: userData.app_metadata.subscription_owner_id
+        }).catch((e) => {
+            reportError(e);
+            return { app_metadata: undefined };
+        });
+
+        const userMetadata = userData.app_metadata;
+        const subOwnerMetadata = subOwnerData.app_metadata;
+
+        if (subOwnerMetadata) {
+            const subTeamMembers = subOwnerMetadata.team_member_ids || [];
+
+            if (subTeamMembers.includes(user.sub)) {
+                [
+                    'subscription_status',
+                    'subscription_expiry',
+                    'subscription_id',
+                    'subscription_plan_id'
+                ]
+                .forEach((field) => {
+                    userMetadata[field] = subOwnerMetadata[field];
+                });
+            } else {
+                reportError(`Inconsistent team membership for ${user.sub}`);
+                delete userMetadata.subscription_owner_id;
+            }
+        }
+    }
+
+    return {
+        email: userData.email,
+        ...userData.app_metadata // undefined, for new users
+    };
 }
 
 /*

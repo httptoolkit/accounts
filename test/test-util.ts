@@ -44,7 +44,7 @@ export const auth0Server = getLocal({
     }
 });
 
-export function givenUser(userId: number, email: string, appMetadata = {}) {
+export function givenUser(userId: string, email: string, appMetadata = {}) {
     return auth0Server
         .get('/api/v2/users-by-email')
         .withQuery({ email })
