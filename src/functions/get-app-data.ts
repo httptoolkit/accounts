@@ -10,6 +10,19 @@ const BearerRegex = /^Bearer (\S+)$/;
 
 const ONE_DAY_IN_SECONDS = 60 * 60 * 24;
 
+async function getUserData(accessToken: string) {
+    // getProfile is only minimal data, updated at last login (/userinfo - 5 req/minute/user)
+    const user: { sub: string } = await authClient.getProfile(accessToken);
+
+    // getUser is full live data for the user (/users/{id} - 15 req/second)
+    const userData = await mgmtClient.getUser({ id: user.sub });
+
+    return Object.assign(
+        { email: userData.email },
+        userData.app_metadata // undefined, for new users
+    );
+}
+
 /*
 This endpoint expects requests to be sent with a Bearer authorization,
 containing a valid access token for the Auth0 app.
@@ -54,18 +67,9 @@ export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
     if (!tokenMatch) return { statusCode: 401, headers, body: '' };
 
     const accessToken = tokenMatch[1];
+    const userData = await getUserData(accessToken);
 
-    // getProfile is only minimal data, updated at last login (/userinfo - 5 req/minute/user)
-    const user: { sub: string } = await authClient.getProfile(accessToken);
-    // getUser is full live data for the user (/users/{id} - 15 req/second)
-    const userData = await mgmtClient.getUser({ id: user.sub });
-
-    const appData = Object.assign(
-        { email: userData.email },
-        userData.app_metadata // undefined, for new users
-    );
-
-    const signedAppData = jwt.sign(appData, AUTH0_DATA_SIGNING_PRIVATE_KEY, {
+    const signedAppData = jwt.sign(userData, AUTH0_DATA_SIGNING_PRIVATE_KEY, {
         algorithm: 'RS256',
         expiresIn: '7d',
         audience: 'https://httptoolkit.tech/app_data',

@@ -20,10 +20,16 @@ function generateKeyPair() {
 }
 
 export const {
-    privateKey: paddlePrivateKey,
-    publicKey: paddlePublicKey
+    privateKey,
+    publicKey
 } = generateKeyPair();
-process.env.PADDLE_PUBLIC_KEY = paddlePublicKey.split('\n').slice(1, -2).join('\n');
+
+const keyWithoutHeaders = (key: string) => key.split('\n').slice(1, -2).join('\n');
+
+// We generate one key, then use it for both paddle webhook signing and our own
+// /get-app-data data signing, because we're lazy like that. It's good enough though.
+process.env.PADDLE_PUBLIC_KEY = keyWithoutHeaders(publicKey);
+process.env.SIGNING_PRIVATE_KEY = keyWithoutHeaders(privateKey);
 
 export const AUTH0_PORT = 9091;
 process.env.AUTH0_DOMAIN = `localhost:${AUTH0_PORT}`;
@@ -42,23 +48,19 @@ export function givenUser(userId: number, email: string, appMetadata = {}) {
     return auth0Server
         .get('/api/v2/users-by-email')
         .withQuery({ email })
-        .thenReply(200, JSON.stringify([
+        .thenJson(200, [
             {
                 email: email,
                 user_id: userId,
                 app_metadata: appMetadata
             }
-        ]), {
-            "content-type": 'application/json'
-        });
+        ]);
 }
 
 export function givenNoUsers() {
     return auth0Server
         .get('/api/v2/users-by-email')
-        .thenReply(200, JSON.stringify([]), {
-            "content-type": 'application/json'
-        });
+        .thenJson(200, []);
 }
 
 export const startServer = async (port = 0) => {

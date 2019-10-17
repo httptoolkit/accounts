@@ -7,7 +7,7 @@ import { expect } from 'chai';
 
 import {
     startServer,
-    paddlePrivateKey,
+    privateKey,
     auth0Server,
     AUTH0_PORT,
     givenUser,
@@ -22,7 +22,7 @@ const signBody = (body: UnsignedWebhookData) => {
     signer.update(serializedData);
     signer.end();
 
-    return signer.sign(paddlePrivateKey, 'base64');
+    return signer.sign(privateKey, 'base64');
 }
 
 const getPaddleWebhookData = (unsignedBody: Partial<WebhookData>) => {
