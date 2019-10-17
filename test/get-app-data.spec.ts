@@ -136,12 +136,13 @@ describe('/get-app-data', () => {
             await auth0Server.get('/api/v2/users/' + billingUserId).thenJson(200, {
                 email: billingUserEmail,
                 app_metadata: {
-                    team_member_ids: ['abc', 'def', teamUserId],
+                    team_member_ids: ['123', '456', teamUserId],
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
+                    subscription_quantity: 3,
                     subscription_plan_id: 550789,
                     subscription_status: "active",
-                    last_reciept_url: 'lru',
+                    last_receipt_url: 'lru',
                     cancel_url: 'cu',
                     update_url: 'uu',
                 }
@@ -161,7 +162,146 @@ describe('/get-app-data', () => {
             });
         });
 
-        it("returns signed but empty data for invalid team members", async () => {
+        it("returns separated team subscription data for team owners", async () => {
+            const authToken = 'abcdef';
+            const billingUserId = "abc";
+            const billingUserEmail = 'billinguser@example.com';
+            const subExpiry = Date.now();
+
+            await auth0Server.get('/userinfo')
+                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
+                .thenJson(200, { sub: billingUserId });
+            await auth0Server.get('/api/v2/users/' + billingUserId).thenJson(200, {
+                email: billingUserEmail,
+                app_metadata: {
+                    feature_flags: ['a flag'],
+                    team_member_ids: ['123', '456'],
+                    subscription_expiry: subExpiry,
+                    subscription_id: 2,
+                    subscription_quantity: 1,
+                    subscription_plan_id: 550789,
+                    subscription_status: "active",
+                    last_receipt_url: 'lru',
+                    cancel_url: 'cu',
+                    update_url: 'uu',
+                }
+            });
+
+            const response = await getAppData(functionServer, authToken);
+            expect(response.status).to.equal(200);
+
+            const data = getJwtData(await response.text());
+            expect(data).to.deep.equal({
+                email: billingUserEmail,
+                feature_flags: ['a flag'],
+                team_subscription: {
+                    team_member_ids: ['123', '456'],
+                    subscription_expiry: subExpiry,
+                    subscription_id: 2,
+                    subscription_quantity: 1,
+                    subscription_plan_id: 550789,
+                    subscription_status: "active",
+                    last_receipt_url: 'lru',
+                    cancel_url: 'cu',
+                    update_url: 'uu'
+                }
+            });
+        });
+
+        it("returns real+separated subscription data for owners who are in their team", async () => {
+            const authToken = 'abcdef';
+            const billingUserId = "abc";
+            const billingUserEmail = 'billinguser@example.com';
+            const subExpiry = Date.now();
+
+            await auth0Server.get('/userinfo')
+                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
+                .thenJson(200, { sub: billingUserId });
+            await auth0Server.get('/api/v2/users/' + billingUserId).thenJson(200, {
+                email: billingUserEmail,
+                app_metadata: {
+                    subscription_owner_id: billingUserId, // Points to their own id
+                    feature_flags: ['a flag'],
+                    team_member_ids: [billingUserId], // Includes their own id
+                    subscription_expiry: subExpiry,
+                    subscription_id: 2,
+                    subscription_quantity: 2,
+                    subscription_plan_id: 550789,
+                    subscription_status: "active",
+                    last_receipt_url: 'lru',
+                    cancel_url: 'cu',
+                    update_url: 'uu',
+                }
+            });
+
+            const response = await getAppData(functionServer, authToken);
+            expect(response.status).to.equal(200);
+
+            const data = getJwtData(await response.text());
+            expect(data).to.deep.equal({
+                email: billingUserEmail,
+                subscription_owner_id: billingUserId,
+                feature_flags: ['a flag'],
+
+                subscription_expiry: subExpiry,
+                subscription_id: 2,
+                subscription_plan_id: 550789,
+                subscription_status: "active",
+
+                team_subscription: {
+                    team_member_ids: [billingUserId],
+                    subscription_expiry: subExpiry,
+                    subscription_id: 2,
+                    subscription_quantity: 2,
+                    subscription_plan_id: 550789,
+                    subscription_status: "active",
+                    last_receipt_url: 'lru',
+                    cancel_url: 'cu',
+                    update_url: 'uu'
+                }
+            });
+        });
+
+        it("returns empty data for team members beyond the subscribed quantity", async () => {
+            const authToken = 'abcdef';
+            const billingUserId = "abc";
+            const billingUserEmail = 'billinguser@example.com';
+            const teamUserId = "def";
+            const teamUserEmail = 'teamuser@example.com';
+            const subExpiry = Date.now();
+
+            await auth0Server.get('/userinfo')
+                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
+                .thenJson(200, { sub: teamUserId });
+            await auth0Server.get('/api/v2/users/' + teamUserId).thenJson(200, {
+                email: teamUserEmail,
+                app_metadata: { subscription_owner_id: billingUserId }
+            });
+            await auth0Server.get('/api/v2/users/' + billingUserId).thenJson(200, {
+                email: billingUserEmail,
+                app_metadata: {
+                    team_member_ids: ['123', '456', teamUserId],
+                    subscription_quantity: 2, // <-- 2 allowed, but we're 3rd in the ids above
+                    subscription_expiry: subExpiry,
+                    subscription_id: 2,
+                    subscription_plan_id: 550789,
+                    subscription_status: "active",
+                    last_receipt_url: 'lru',
+                    cancel_url: 'cu',
+                    update_url: 'uu',
+                }
+            });
+
+            const response = await getAppData(functionServer, authToken);
+            expect(response.status).to.equal(200);
+
+            const data = getJwtData(await response.text());
+            expect(data).to.deep.equal({
+                email: teamUserEmail
+            });
+        });
+
+        it("returns empty data for team members with inconsistent membership data", async () => {
             const authToken = 'abcdef';
             const billingUserId = "abc";
             const billingUserEmail = 'billinguser@example.com';
@@ -184,7 +324,7 @@ describe('/get-app-data', () => {
                     subscription_id: 2,
                     subscription_plan_id: 550789,
                     subscription_status: "active",
-                    last_reciept_url: 'lru',
+                    last_receipt_url: 'lru',
                     cancel_url: 'cu',
                     update_url: 'uu',
                 }

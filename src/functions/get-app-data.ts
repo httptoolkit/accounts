@@ -5,6 +5,7 @@ import { APIGatewayProxyEvent } from 'aws-lambda';
 import * as jwt from 'jsonwebtoken';
 
 import { AUTH0_DATA_SIGNING_PRIVATE_KEY, authClient, mgmtClient } from '../auth0';
+import { TEAM_SUBSCRIPTION_IDS } from '../paddle';
 
 const BearerRegex = /^Bearer (\S+)$/;
 
@@ -13,35 +14,59 @@ const ONE_DAY_IN_SECONDS = 60 * 60 * 24;
 async function getUserData(accessToken: string) {
     // getProfile is only minimal data, updated at last login (/userinfo - 5 req/minute/user)
     const user: { sub: string } = await authClient.getProfile(accessToken);
+    const userId = user.sub;
 
     // getUser is full live data for the user (/users/{id} - 15 req/second)
-    const userData = await mgmtClient.getUser({ id: user.sub });
+    const userData = await mgmtClient.getUser({ id: userId });
 
-    if (userData.app_metadata && userData.app_metadata.subscription_owner_id) {
-        // If there's a subscription owner for this user (e.g. member of a team)
-        // copy the basic subscription details from the owner to this user.
+    let userMetadata = userData.app_metadata;
+
+    if (userMetadata && TEAM_SUBSCRIPTION_IDS.includes(userMetadata.subscription_plan_id)) {
+        // If you have a team subscription, you're the *owner* of a team, not a member.
+        // That means your subscription data isn't actually for *you*, it's for
+        // the actual team members. Move it into a separate team_subscription to make that clear.
+        userMetadata.team_subscription = {};
+        [
+            "subscription_status",
+            "subscription_id",
+            "subscription_plan_id",
+            "subscription_expiry",
+            "subscription_quantity",
+            "last_receipt_url",
+            "update_url",
+            "cancel_url",
+            "team_member_ids"
+        ].forEach((key: string) => {
+            userMetadata!.team_subscription[key] = userMetadata![key];
+            delete userMetadata![key];
+        }, {});
+    }
+
+    if (userMetadata && userMetadata.subscription_owner_id) {
+        // If there's a subscription owner for this user (e.g. they're a member of a team)
+        // copy the basic subscription details from the real owner across to this user.
         const subOwnerData = await mgmtClient.getUser({
-            id: userData.app_metadata.subscription_owner_id
+            id: userMetadata.subscription_owner_id
         }).catch((e) => {
             reportError(e);
             return { app_metadata: undefined };
         });
 
-        const userMetadata = userData.app_metadata;
         const subOwnerMetadata = subOwnerData.app_metadata;
 
         if (subOwnerMetadata) {
-            const subTeamMembers = subOwnerMetadata.team_member_ids || [];
+            const subTeamMembers = (
+                subOwnerMetadata.team_member_ids || []
+            ).slice(0, subOwnerMetadata.subscription_quantity || 0);
 
             if (subTeamMembers.includes(user.sub)) {
                 [
+                    'subscription_id',
                     'subscription_status',
                     'subscription_expiry',
-                    'subscription_id',
                     'subscription_plan_id'
-                ]
-                .forEach((field) => {
-                    userMetadata[field] = subOwnerMetadata[field];
+                ].forEach((field) => {
+                    userMetadata![field] = subOwnerMetadata[field];
                 });
             } else {
                 reportError(`Inconsistent team membership for ${user.sub}`);

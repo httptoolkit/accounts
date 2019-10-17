@@ -6,7 +6,7 @@ import * as querystring from 'querystring';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 
 import { mgmtClient, User } from '../auth0';
-import { validateWebhook, WebhookData, SubscriptionStatus } from '../paddle';
+import { validateWebhook, WebhookData, SubscriptionStatus, TEAM_SUBSCRIPTION_IDS } from '../paddle';
 
 interface SubscriptionData {
     subscription_status?: SubscriptionStatus,
@@ -144,9 +144,6 @@ async function updateTeamData(email: string, subscription: SubscriptionData) {
         await mgmtClient.updateAppMetadata({ id: currentUserData.user_id! }, newMetadata);
     }
 }
-
-export const PRO_SUBSCRIPTION_IDS = [550380, 550382];
-export const TEAM_SUBSCRIPTION_IDS = [550788, 550789];
 
 export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
     const paddleData = querystring.parse(event.body || '') as unknown as WebhookData;
