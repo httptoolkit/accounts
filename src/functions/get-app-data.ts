@@ -54,7 +54,7 @@ async function getUserData(accessToken: string) {
 
         const subOwnerMetadata = subOwnerData.app_metadata;
 
-        if (subOwnerMetadata) {
+        if (subOwnerMetadata && TEAM_SUBSCRIPTION_IDS.includes(subOwnerMetadata.subscription_plan_id)) {
             const subTeamMembers = (
                 subOwnerMetadata.team_member_ids || []
             ).slice(0, subOwnerMetadata.subscription_quantity || 0);
