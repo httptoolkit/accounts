@@ -1,4 +1,4 @@
-declare module 'netlify-cli/src/utils/serve-functions' {
+declare module '@httptoolkit/netlify-cli/src/utils/serve-functions' {
     import * as http from 'http';
 
     export function serveFunctions(options: {

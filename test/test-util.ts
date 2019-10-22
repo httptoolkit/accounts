@@ -3,7 +3,7 @@ import * as crypto from 'crypto';
 import { getLocal } from 'mockttp';
 import stoppable from 'stoppable';
 
-import { serveFunctions } from 'netlify-cli/src/utils/serve-functions';
+import { serveFunctions } from '@httptoolkit/netlify-cli/src/utils/serve-functions';
 
 function generateKeyPair() {
     return crypto.generateKeyPairSync('rsa', {
