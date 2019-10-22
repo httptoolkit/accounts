@@ -34,8 +34,10 @@ process.env.SIGNING_PRIVATE_KEY = keyWithoutHeaders(privateKey);
 export const AUTH0_PORT = 9091;
 process.env.AUTH0_DOMAIN = `localhost:${AUTH0_PORT}`;
 process.env.AUTH0_APP_CLIENT_ID = 'auth0-id';
+process.env.AUTH0_APP_CLIENT_SECRET = undefined;
 process.env.AUTH0_MGMT_CLIENT_ID = 'auth0-mgmt-id';
 process.env.AUTH0_MGMT_CLIENT_SECRET = 'auth0-mgmt-secret';
+process.env.SENTRY_DSN = '';
 
 export const auth0Server = getLocal({
     https: {
