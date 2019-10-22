@@ -59,7 +59,7 @@ async function getUserData(accessToken: string) {
                 subOwnerMetadata.team_member_ids || []
             ).slice(0, subOwnerMetadata.subscription_quantity || 0);
 
-            if (subTeamMembers.includes(user.sub)) {
+            if (subTeamMembers.includes(userId)) {
                 [
                     'subscription_id',
                     'subscription_status',
@@ -69,7 +69,7 @@ async function getUserData(accessToken: string) {
                     userMetadata![field] = subOwnerMetadata[field];
                 });
             } else {
-                reportError(`Inconsistent team membership for ${user.sub}`);
+                reportError(`Inconsistent team membership for ${userId}`);
                 delete userMetadata.subscription_owner_id;
             }
         }
@@ -77,7 +77,7 @@ async function getUserData(accessToken: string) {
 
     return {
         email: userData.email,
-        ...userData.app_metadata // undefined, for new users
+        ...userMetadata
     };
 }
 
