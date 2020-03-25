@@ -6,6 +6,7 @@ import * as jwt from 'jsonwebtoken';
 
 import { AUTH0_DATA_SIGNING_PRIVATE_KEY, authClient, mgmtClient } from '../auth0';
 import { TEAM_SUBSCRIPTION_IDS } from '../paddle';
+import { getCorsResponseHeaders } from '../cors';
 
 const BearerRegex = /^Bearer (\S+)$/;
 
@@ -90,27 +91,11 @@ status & feature flags) are loaded and signed into a JWT, so the app can
 read that info, and confirm its validity.
 */
 export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
-    let headers: { [key: string]: string } = {
-        'Access-Control-Allow-Headers': 'Authorization',
-        'Access-Control-Max-Age': ONE_DAY_IN_SECONDS.toString(), // Chrome will cache for 10 mins max anyway
+    let headers = getCorsResponseHeaders(event);
 
-        // Cache OPTIONS responses for ages, cache others only briefly
-        'Cache-Control':
-            event.httpMethod === 'OPTIONS'
-                ? 'public, max-age=' + ONE_DAY_IN_SECONDS // The OPTIONS result is effectively constant - cache for 24h
-                : 'private, max-age=10', // Briefly cache, just to avoid completely unnecessary calls
-        'Vary': 'Authorization'
-    };
-
-    // Check the origin, include CORS if it's *.httptoolkit.tech
-    const { origin } = event.headers;
-    let allowedOrigin = /^https?:\/\/(.*\.)?httptoolkit.tech(:\d+)?$/.test(origin) ?
-        origin : undefined;
-
-    if (allowedOrigin) {
-        headers['Access-Control-Allow-Origin'] = allowedOrigin;
-    } else if (origin) {
-        console.warn('CORS request from invalid origin!', origin);
+    if (event.httpMethod !== 'OPTIONS') {
+        // Very briefly cache results, to avoid completely unnecessary calls
+        headers['Cache-Control'] = 'private, max-age=10';
     }
 
     if (event.httpMethod === 'OPTIONS') {
