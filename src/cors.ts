@@ -11,7 +11,12 @@ export function getCorsResponseHeaders(event: APIGatewayProxyEvent) {
     if (event.httpMethod === 'OPTIONS') {
         // The OPTIONS result is effectively constant - cache for 24h:
         corsHeaders['Cache-Control'] = 'public, max-age=' + ONE_DAY_IN_SECONDS
-        corsHeaders['Vary'] = 'Authorization';
+        corsHeaders['Vary'] = 'Authorization, Origin';
+    } else {
+        // Be explicit that CORS responses vary on origin. Authorization may be
+        // unnecessary here (as long as cache-control public isn't set later),
+        // but there's no real downside.
+        corsHeaders['Vary'] = 'Authorization, Origin';
     }
 
     // Check the origin, include CORS if it's *.httptoolkit.tech
