@@ -10,12 +10,21 @@ import { getCorsResponseHeaders } from '../cors';
 
 const BearerRegex = /^Bearer (\S+)$/;
 
-const ONE_DAY_IN_SECONDS = 60 * 60 * 24;
+// A cache to avoid hitting userinfo unnecessarily.
+const tokenIdCache: { [accessToken: string]: string } = {};
 
 async function getUserData(accessToken: string) {
-    // getProfile is only minimal data, updated at last login (/userinfo - 5 req/minute/user)
-    const user: { sub: string } = await authClient.getProfile(accessToken);
-    const userId = user.sub;
+    let userId = tokenIdCache[accessToken];
+
+    if (userId) {
+        console.log(`Matched token to user id ${userId} from cache`);
+    } else {
+        // getProfile is only minimal data, updated at last login (/userinfo - 5 req/minute/user)
+        const user: { sub: string } = await authClient.getProfile(accessToken);
+        userId = tokenIdCache[accessToken] = user.sub;
+
+        console.log(`Looked up user id ${userId} from token`);
+    }
 
     // getUser is full live data for the user (/users/{id} - 15 req/second)
     const userData = await mgmtClient.getUser({ id: userId });

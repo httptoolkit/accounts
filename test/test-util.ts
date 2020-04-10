@@ -65,6 +65,10 @@ export function givenNoUsers() {
         .thenJson(200, []);
 }
 
+export function freshAuthToken() {
+    return crypto.randomBytes(20).toString('hex');
+}
+
 export const startServer = async (port = 0) => {
     const { server } = await serveFunctions({
         functionsDir: process.env.FUNCTIONS_DIR || path.join(__dirname, '..', 'functions'),
