@@ -20,7 +20,15 @@ async function getUserData(accessToken: string) {
         console.log(`Matched token to user id ${userId} from cache`);
     } else {
         // getProfile is only minimal data, updated at last login (/userinfo - 5 req/minute/user)
-        const user: { sub: string } = await authClient.getProfile(accessToken);
+        const user: { sub: string } | undefined = await authClient.getProfile(accessToken);
+
+        if (!user) {
+            throw new Error("User could not be found in get-app-data");
+        } else if (typeof user.sub !== 'string') {
+            console.log(JSON.stringify(user));
+            throw new Error(`Unexpected getProfile result: ${user}`);
+        }
+
         userId = tokenIdCache[accessToken] = user.sub;
 
         console.log(`Looked up user id ${userId} from token`);
