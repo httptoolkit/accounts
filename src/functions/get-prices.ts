@@ -23,6 +23,7 @@ export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
     if (!response.ok) {
         return {
             statusCode: response.status,
+            headers: Object.assign(headers, { 'Cache-Control': 'no-store' }), // Drop our caching headers
             body: response.body
         };
     }
