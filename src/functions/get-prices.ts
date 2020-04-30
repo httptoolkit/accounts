@@ -33,8 +33,18 @@ export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
 
     const data = await response.json();
 
+    if (!data.success) {
+        // Forward the error on to the client, but report it - something is funky here.
+        console.log(JSON.stringify(data));
+        reportError("Unsuccessful response from Paddle pricing API");
+    }
+
+    // Set a 404 response code if any of the product ids couldn't be found. The client can
+    // still use the other prices, but this is likely a problematic failure somewhere.
+    const foundAllProducts = data.response.products.length === product_ids.split(',').length;
+
     return {
-        statusCode: 200,
+        statusCode: foundAllProducts ? 200 : 404,
         headers: Object.assign(headers, { 'content-type': 'application/json' }),
         body: JSON.stringify(data)
     };
