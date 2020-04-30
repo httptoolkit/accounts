@@ -1,4 +1,4 @@
-import { initSentry, catchErrors } from '../errors';
+import { initSentry, catchErrors, reportError } from '../errors';
 initSentry();
 
 import fetch from 'node-fetch';
@@ -21,6 +21,9 @@ export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
     const response = await fetch(`https://checkout.paddle.com/api/2.0/prices?product_ids=${product_ids}&quantity=1&customer_ip=${sourceIp}`);
 
     if (!response.ok) {
+        console.log(`${response.status} ${response.statusText}`, response.headers, await response.text());
+        reportError(`${response.status} error response from Paddle pricing API`);
+
         return {
             statusCode: response.status,
             headers: Object.assign(headers, { 'Cache-Control': 'no-store' }), // Drop our caching headers
