@@ -21,7 +21,7 @@ export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
     const response = await fetch(`https://checkout.paddle.com/api/2.0/prices?product_ids=${product_ids}&quantity=1&customer_ip=${sourceIp}`);
 
     if (!response.ok) {
-        console.log(`${response.status} ${response.statusText}`, response.headers, await response.text());
+        console.log(`${response.status} ${response.statusText}`, response.headers, await response.text().catch(() => ''));
         reportError(`${response.status} error response from Paddle pricing API`);
 
         return {
