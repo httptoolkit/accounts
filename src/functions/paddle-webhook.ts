@@ -6,7 +6,7 @@ import * as querystring from 'querystring';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 
 import { mgmtClient, User } from '../auth0';
-import { validateWebhook, WebhookData, SubscriptionStatus, TEAM_SUBSCRIPTION_IDS } from '../paddle';
+import { validateWebhook, WebhookData, SubscriptionStatus, TEAM_SUBSCRIPTION_IDS, PRO_SUBSCRIPTION_IDS } from '../paddle';
 
 interface SubscriptionData {
     subscription_status?: SubscriptionStatus,
@@ -167,9 +167,13 @@ export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
         if (TEAM_SUBSCRIPTION_IDS.includes(userData.subscription_plan_id!)) {
             console.log(`Updating team user ${email}`);
             await updateTeamData(email, userData);
-        } else {
+        } else if (PRO_SUBSCRIPTION_IDS.includes(userData.subscription_plan_id!)) {
             console.log(`Updating Pro user ${email} to ${JSON.stringify(userData)}`);
             await updateProUserData(email, userData);
+        } else {
+            throw new Error(`Webhook received for unknown subscription: ${
+                userData.subscription_plan_id
+            }`);
         }
     } else {
         console.log(`Ignoring ${paddleData.alert_name} event`);

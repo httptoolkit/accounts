@@ -5,7 +5,7 @@ const PADDLE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 ${process.env.PADDLE_PUBLIC_KEY}
 -----END PUBLIC KEY-----`;
 
-export const PRO_SUBSCRIPTION_IDS = [550380, 550382];
+export const PRO_SUBSCRIPTION_IDS = [550380, 550382, 599788];
 export const TEAM_SUBSCRIPTION_IDS = [550788, 550789];
 
 export type PaddleAlertNames =
