@@ -68,7 +68,7 @@ describe('Paddle webhooks', () => {
 
     describe("for Pro subscriptions", () => {
 
-        it('successfully handle new subscriptions', async () => {
+        it('successfully handle new subscriptions for an existing user', async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
             givenUser(userId, userEmail);
@@ -87,6 +87,56 @@ describe('Paddle webhooks', () => {
                 subscription_plan_id: '550382', // Pro-annual
                 next_bill_date: nextRenewal.format('YYYY-MM-DD'),
                 quantity: '1'
+            });
+
+            const updateRequests = await userUpdate.getSeenRequests();
+            expect(updateRequests.length).to.equal(1);
+            expect(updateRequests[0].body.json).to.deep.equal({
+                app_metadata: {
+                    subscription_status: 'active',
+                    subscription_id: 456,
+                    subscription_plan_id: 550382,
+                    subscription_quantity: 1,
+                    subscription_expiry: nextRenewal.add(1, 'days').valueOf()
+                }
+            });
+        });
+
+        it('successfully handle new subscriptions for an new user', async () => {
+            const userEmail = 'user@example.com';
+            givenNoUsers();
+
+            const userId = "qwe";
+            const userCreate = await auth0Server
+                .post('/api/v2/users')
+                .thenJSON(201, {
+                    user_id: userId,
+                    app_metadata: {}
+                });
+
+            const userUpdate = await auth0Server
+                .patch('/api/v2/users/' + userId)
+                .thenReply(200);
+
+            const nextRenewal = moment('2025-01-01');
+
+            await triggerWebhook(functionServer, {
+                alert_name: 'subscription_created',
+                status: 'active',
+                email: userEmail,
+                subscription_id: '456',
+                subscription_plan_id: '550382', // Pro-annual
+                next_bill_date: nextRenewal.format('YYYY-MM-DD'),
+                quantity: '1'
+            });
+
+            const createRequests = await userCreate.getSeenRequests();
+            expect(createRequests.length).to.equal(1);
+            expect(createRequests[0].body.json).to.deep.equal({
+                email: userEmail,
+                connection: 'email',
+                email_verified: true,
+                app_metadata: {}
             });
 
             const updateRequests = await userUpdate.getSeenRequests();
@@ -316,8 +366,16 @@ describe('Paddle webhooks', () => {
             const userEmail = 'user@example.com';
             givenNoUsers();
 
+            const userId = "qwe";
             const userCreate = await auth0Server
                 .post('/api/v2/users')
+                .thenJSON(201, {
+                    user_id: userId,
+                    app_metadata: {}
+                });
+
+            const userUpdate = await auth0Server
+                .patch('/api/v2/users/' + userId)
                 .thenReply(200);
 
             const nextRenewal = moment('2025-01-01');
@@ -338,6 +396,12 @@ describe('Paddle webhooks', () => {
                 email: userEmail,
                 connection: 'email',
                 email_verified: true,
+                app_metadata: {}
+            });
+
+            const updateRequests = await userUpdate.getSeenRequests();
+            expect(updateRequests.length).to.equal(1);
+            expect(updateRequests[0].body.json).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
                     subscription_id: 456,

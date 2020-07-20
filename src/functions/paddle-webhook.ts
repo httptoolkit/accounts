@@ -24,10 +24,21 @@ interface TeamUserData extends SubscriptionData {
     subscription_owner_id?: string;
 }
 
-async function getUserData(email: string): Promise<User | undefined> {
+async function getOrCreateUserData(email: string): Promise<User> {
     const users = await mgmtClient.getUsersByEmail(email);
-    if (users.length > 1) reportError(`More than one user found for ${email}`);
-    return users[0];
+    if (users.length > 1) {
+        throw new Error(`More than one user found for ${email}`);
+    } else if (users.length === 1) {
+        return users[0];
+    } else {
+        // Create the user, if they don't already exist:
+        return mgmtClient.createUser({
+            email,
+            connection: 'email',
+            email_verified: true, // This ensures users don't receive an email code or verification
+            app_metadata: {}
+        });
+    }
 }
 
 function dropUndefinedValues(obj: { [key: string]: any }) {
@@ -37,9 +48,7 @@ function dropUndefinedValues(obj: { [key: string]: any }) {
 }
 
 async function updateProUserData(email: string, subscription: SubscriptionData) {
-    const user = await getUserData(email);
-
-    if (!user) throw new Error(`No user found for email ${email}`);
+    const user = await getOrCreateUserData(email);
 
     dropUndefinedValues(subscription);
     await mgmtClient.updateAppMetadata({ id: user.user_id! }, subscription);
@@ -120,29 +129,18 @@ function getSubscriptionFromHookData(hookData: WebhookData): SubscriptionData {
 }
 
 async function updateTeamData(email: string, subscription: SubscriptionData) {
-    const currentUserData = await getUserData(email);
-    const currentMetadata: TeamUserData = (currentUserData && currentUserData.app_metadata) || {};
+    const currentUserData = await getOrCreateUserData(email);
+    const currentMetadata: TeamUserData = currentUserData.app_metadata || {};
     const newMetadata = subscription as TeamUserData;
 
-    if (!currentMetadata || !currentMetadata.team_member_ids) {
+    if (!currentMetadata.team_member_ids) {
         // If the user is not currently a team owner: give them an empty team
         newMetadata.team_member_ids = [];
     }
 
     dropUndefinedValues(newMetadata);
 
-    if (!currentUserData) {
-        // For Team users we allow user creation before the user even exists, since it's
-        // often sold by directly emailing a checkout link.
-        return mgmtClient.createUser({
-            email,
-            connection: 'email',
-            email_verified: true, // This ensures users don't receive an email code or verification
-            app_metadata: newMetadata
-        });
-    } else {
-        await mgmtClient.updateAppMetadata({ id: currentUserData.user_id! }, newMetadata);
-    }
+    await mgmtClient.updateAppMetadata({ id: currentUserData.user_id! }, newMetadata);
 }
 
 export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
