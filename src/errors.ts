@@ -11,8 +11,26 @@ export function initSentry() {
     }
 }
 
-export async function reportError(error: Error | string, eventContext?: APIGatewayProxyEvent) {
-    console.warn(error);
+interface Auth0RequestError extends Error {
+    // See https://github.com/auth0/node-auth0/blob/master/src/errors.js
+    statusCode: number | string | undefined,
+    requestInfo: { method?: string, url?: string },
+    originalError: Error
+};
+
+export async function reportError(error: Error | Auth0RequestError | string, eventContext?: APIGatewayProxyEvent) {
+    if (error instanceof Error && 'requestInfo' in error) {
+        console.warn(`${
+            error.requestInfo.method
+        } request to ${
+            error.requestInfo.url
+        } failed with status ${error.statusCode}: ${error.message}`);
+
+        console.warn(error.originalError);
+    } else {
+        console.warn(error);
+    }
+
     if (!sentryInitialized) return;
 
     Sentry.withScope((scope) => {
@@ -23,6 +41,14 @@ export async function reportError(error: Error | string, eventContext?: APIGatew
                 request.url = request.url || eventContext.path;
                 request.headers = request.headers || eventContext.headers;
                 event.request = request;
+            }
+
+            if (error instanceof Error && 'originalError' in error) {
+                event.extra = Object.assign(event.extra || {}, {
+                    originalName: error.originalError.name,
+                    originalMessage: error.originalError.message,
+                    originalStack: error.originalError.stack
+                });
             }
 
             return event;
