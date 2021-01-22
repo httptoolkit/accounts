@@ -15,22 +15,11 @@ jobs:
           node-version: 14
 
       - run: npm ci
-      - run: npm test
 
-      # Build with all secrets, on master only:
-      - name: Rebuild with env vars for production release
-        run: npm run build
-        if: github.ref == 'refs/heads/master'
+      # Build & test
+      - run: npm test
         env:
           COMMIT_REF: ${{ github.sha }}
-          AUTH0_APP_CLIENT_ID: ${{ secrets.AUTH0_APP_CLIENT_ID }}
-          AUTH0_APP_CLIENT_SECRET: ${{ secrets.AUTH0_APP_CLIENT_SECRET }}
-          AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
-          AUTH0_MGMT_CLIENT_ID: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
-          AUTH0_MGMT_CLIENT_SECRET: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
-          PADDLE_PUBLIC_KEY: ${{ secrets.PADDLE_PUBLIC_KEY }}
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          SIGNING_PRIVATE_KEY: ${{ secrets.SIGNING_PRIVATE_KEY }}
 
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v1.1
