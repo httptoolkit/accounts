@@ -43,6 +43,7 @@ export const auth0Server = getLocal({
     https: {
         keyPath: path.join(__dirname, 'fixtures', 'test-ca.key'),
         certPath: path.join(__dirname, 'fixtures', 'test-ca.pem'),
+        keyLength: 2048
     }
 });
 

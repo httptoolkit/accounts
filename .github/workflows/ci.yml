@@ -1,0 +1,51 @@
+name: CI
+on: push
+jobs:
+  build:
+    name: Build & test
+    runs-on: ubuntu-latest
+    container: httptoolkit/act-build-base
+    steps:
+      - uses: actions/checkout@v2
+      - run: apt update && apt install vim
+
+      # Install Node 14
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 14
+
+      - run: npm ci
+      - run: npm test
+
+      # Build with all secrets, on master only:
+      - name: Rebuild with env vars for production release
+        run: npm run build
+        if: github.ref == 'refs/heads/master'
+        env:
+          COMMIT_REF: ${{ github.sha }}
+          AUTH0_APP_CLIENT_ID: ${{ secrets.AUTH0_APP_CLIENT_ID }}
+          AUTH0_APP_CLIENT_SECRET: ${{ secrets.AUTH0_APP_CLIENT_SECRET }}
+          AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
+          AUTH0_MGMT_CLIENT_ID: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
+          AUTH0_MGMT_CLIENT_SECRET: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
+          PADDLE_PUBLIC_KEY: ${{ secrets.PADDLE_PUBLIC_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SIGNING_PRIVATE_KEY: ${{ secrets.SIGNING_PRIVATE_KEY }}
+
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v1.1
+        if: github.ref == 'refs/heads/master' # Only master gets deployed
+        with:
+          publish-dir: '.'
+          production-branch: master
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: GHA Deploy - ${{ github.event.head_commit.message }}
+          enable-commit-status: true
+          enable-pull-request-comment: false
+          enable-commit-comment: false
+          netlify-config-path: ./netlify.toml
+          alias: ${{ github.sha }}
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        timeout-minutes: 1
