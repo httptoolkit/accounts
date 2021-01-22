@@ -1,7 +1,4 @@
+# Duplicates deploy settings in ci.yml - only used by netlify-lambda for testing
 [build]
-  command = "npm test"
   functions = "functions"
   publish = "public"
-
-[build.environment]
-  NODE_VERSION = "12"
