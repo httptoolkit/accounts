@@ -1,6 +1,9 @@
 const webpack = require('webpack');
 
 module.exports = {
+    optimization: {
+        "minimize": false
+    },
     resolve: {
         // Required because of https://github.com/webpack/webpack/issues/6584
         // which breaks deepmerge -> rest-facade -> auth0
