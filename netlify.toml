@@ -1,0 +1,4 @@
+# Duplicates deploy settings in ci.yml
+[build]
+  functions = "dist/functions"
+  publish = "dist/public"
