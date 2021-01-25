@@ -1,0 +1,5 @@
+# Duplicates deploy settings in ci.yml. Required for some reason, or the Netlify deploys
+# time out and/or hit 500 errors.
+[build]
+  functions = "dist/functions"
+  publish = "dist/public"

@@ -24,6 +24,7 @@ jobs:
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v1.1
         with:
+          netlify-config-path: ./netlify.toml
           publish-dir: 'dist/public'
           functions-dir: 'dist/functions'
           github-token: ${{ secrets.GITHUB_TOKEN }}
