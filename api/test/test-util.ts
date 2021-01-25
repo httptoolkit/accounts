@@ -70,9 +70,11 @@ export function freshAuthToken() {
     return crypto.randomBytes(20).toString('hex');
 }
 
+const BUILT_FUNCTIONS_DIR = path.join(__dirname, '..', '..', 'dist', 'functions');
+
 export const startServer = async (port = 0) => {
     const { server } = await serveFunctions({
-        functionsDir: process.env.FUNCTIONS_DIR || path.join(__dirname, '..', 'functions'),
+        functionsDir: process.env.FUNCTIONS_DIR || BUILT_FUNCTIONS_DIR,
         quiet: true,
         watch: false,
         port

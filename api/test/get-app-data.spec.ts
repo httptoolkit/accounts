@@ -50,7 +50,7 @@ describe('/get-app-data', () => {
 
     afterEach(async () => {
         await new Promise((resolve) => functionServer.stop(resolve));
-        await auth0Server.stop()
+        await auth0Server.stop();
     });
 
     describe("for unauthed users", () => {

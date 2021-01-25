@@ -1,4 +1,0 @@
-# Duplicates deploy settings in ci.yml - only used by netlify-lambda for testing
-[build]
-  functions = "functions"
-  publish = "public"

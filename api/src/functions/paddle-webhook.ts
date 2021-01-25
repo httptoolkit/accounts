@@ -1,4 +1,4 @@
-import { initSentry, catchErrors, reportError } from '../errors';
+import { initSentry, catchErrors } from '../errors';
 initSentry();
 
 import moment from 'moment';

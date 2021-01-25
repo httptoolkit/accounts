@@ -1,24 +1,34 @@
 const path = require('path');
 
 module.exports = (wallaby) => {
-  process.env.FUNCTIONS_DIR = './src/functions/';
+  process.env.FUNCTIONS_DIR = './api/src/functions/';
 
   return {
     files: [
       'netlify.toml',
       'package.json',
-      'src/**/*.ts',
-      'test/tsconfig.json',
-      'test/**/*.ts',
-      'test/fixtures/**/*',
-      '!test/**/*.spec.ts'
-    ],
-    tests: [
-      'test/**/*.spec.ts'
+      'api/src/**/*.ts',
+      'api/test/tsconfig.json',
+      'api/test/**/*.ts',
+      'api/test/fixtures/**/*',
+      '!api/test/**/*.spec.ts'
     ],
 
+    tests: [
+      'api/test/**/*.spec.ts'
+    ],
+
+    compilers: {
+      '**/*.ts?(x)': wallaby.compilers.typeScript({
+        esModuleInterop: true,
+        target: 'es2016',
+        module: 'commonjs',
+        moduleResolution: "node"
+      })
+    },
+
     workers: {
-      initial: 4,
+      initial: 1,
       regular: 1,
       restart: true
     },
@@ -27,7 +37,7 @@ module.exports = (wallaby) => {
     env: {
       type: 'node',
       params: {
-        env: `NODE_EXTRA_CA_CERTS=${path.join(__dirname, 'test', 'fixtures', 'test-ca.pem')}`
+        env: `NODE_EXTRA_CA_CERTS=${path.join(__dirname, 'api', 'test', 'fixtures', 'test-ca.pem')}`
       }
     },
     debug: true

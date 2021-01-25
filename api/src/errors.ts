@@ -67,12 +67,12 @@ export async function reportError(error: Error | Auth0RequestError | string, eve
 }
 
 export function catchErrors(handler: Handler): Handler {
-    return async function (event, context) {
+    return async function (this: any, event, context) {
         // Make sure AWS doesn't wait for an empty event loop, as that
         // can break things with Sentry
         context.callbackWaitsForEmptyEventLoop = false;
         try {
-            return await handler.call(this, ...arguments);
+            return await (handler.call as any)(this, ...arguments);
         } catch (e) {
             // Catches sync errors & promise rejections, because we're async
             await reportError(e, event);
