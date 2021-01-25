@@ -23,16 +23,16 @@ jobs:
 
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v1.1
-        if: github.ref == 'refs/heads/master' # Only master gets deployed
         with:
           publish-dir: 'dist/public'
           functions-dir: 'dist/functions'
-          production-branch: master
           github-token: ${{ secrets.GITHUB_TOKEN }}
           deploy-message: GHA Deploy - ${{ github.event.head_commit.message }}
           enable-commit-status: true
           enable-pull-request-comment: false
           enable-commit-comment: false
+          production-branch: master
+          alias: ${{ github.sha }}
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
