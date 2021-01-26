@@ -51,7 +51,7 @@ module.exports = {
             // Required to correctly detect require in 'formidable'
             "global.GENTLY": false,
             // Available in the build, but not at runtime:
-            "process.env.COMMIT_REF": JSON.stringify(process.env.COMMIT_REF || 'dev')
+            "process.env.VERSION": JSON.stringify(process.env.VERSION || 'dev')
         })
     ],
 }

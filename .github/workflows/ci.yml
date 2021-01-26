@@ -19,7 +19,8 @@ jobs:
       # Build & test
       - run: npm test
         env:
-          COMMIT_REF: ${{ github.sha }}
+          VERSION: ${{ github.sha }}
+          NODE_ENV: production
 
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v1.1

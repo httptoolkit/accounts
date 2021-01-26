@@ -1,12 +1,12 @@
 import * as Sentry from '@sentry/node';
 import { APIGatewayProxyEvent, Handler } from 'aws-lambda';
 
-const { SENTRY_DSN, COMMIT_REF } = process.env;
+const { SENTRY_DSN, VERSION } = process.env;
 
 let sentryInitialized = false;
 export function initSentry() {
     if (SENTRY_DSN) {
-        Sentry.init({ dsn: SENTRY_DSN, release: COMMIT_REF });
+        Sentry.init({ dsn: SENTRY_DSN, release: VERSION });
         sentryInitialized = true;
     }
 }
