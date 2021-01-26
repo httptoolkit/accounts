@@ -3,3 +3,9 @@
 [build]
   functions = "dist/functions"
   publish = "dist/public"
+
+# Host all functions under /api:
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
