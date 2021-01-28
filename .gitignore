@@ -61,4 +61,5 @@ typings/
 .next
 
 # Build output
-/dist
+/dist/
+/module/dist/

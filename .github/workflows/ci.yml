@@ -1,13 +1,32 @@
 name: CI
 on: push
 jobs:
-  build:
-    name: Build & test
+  build-module:
+    name: Build & test npm module
+    runs-on: ubuntu-latest
+    container: httptoolkit/act-build-base
+    defaults:
+      run:
+        working-directory: module
+    steps:
+      - uses: actions/checkout@v2
+
+      # Install Node 14
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 14
+
+      - run: npm ci
+
+      # Just check the code compiles
+      - run: npm run build
+
+  build-app:
+    name: Build & test app
     runs-on: ubuntu-latest
     container: httptoolkit/act-build-base
     steps:
       - uses: actions/checkout@v2
-      - run: apt update && apt install vim
 
       # Install Node 14
       - uses: actions/setup-node@v1

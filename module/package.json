@@ -1,0 +1,31 @@
+{
+  "name": "@httptoolkit/accounts",
+  "version": "0.1.0",
+  "description": "Account management & subscription logic for HTTP Toolkit",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc -p ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/httptoolkit/accounts.git"
+  },
+  "author": "",
+  "license": "AGPL-3.0-or-later",
+  "devDependencies": {
+    "@httptoolkit/auth0-lock": "^11.26.3",
+    "@types/auth0-lock": "^11.27.0",
+    "@types/dedent": "^0.7.0",
+    "@types/jsonwebtoken": "^8.5.0",
+    "@types/lodash": "^4.14.168",
+    "typescript": "^4.1.3"
+  },
+  "dependencies": {
+    "@types/node": "^14.14.22",
+    "async-mutex": "^0.2.6",
+    "dedent": "^0.7.0",
+    "jsonwebtoken": "^8.5.1",
+    "lodash": "^4.17.20",
+    "typed-error": "^3.2.1"
+  }
+}
