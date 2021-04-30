@@ -13,7 +13,8 @@ export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
         headers['Cache-Control'] = 'private, max-age=3600';
     }
 
-    const sourceIp = event.headers['client-ip'];
+    const sourceIp = event.headers['x-nf-client-connection-ip'];
+
     const { product_ids } = event.queryStringParameters as { product_ids?: string };
 
     if (!product_ids) throw new Error("Product ids required");
