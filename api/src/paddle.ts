@@ -111,7 +111,7 @@ export function serializeWebhookData(webhookData: UnsignedWebhookData) {
 // Closely based on code from https://paddle.com/docs/reference-verifying-webhooks
 export function validateWebhook(webhookData: WebhookData) {
     const mySig = Buffer.from(webhookData.p_signature, 'base64');
-    delete webhookData.p_signature;
+    delete (webhookData as Partial<WebhookData>).p_signature;
 
     // Do some normalization & serializing, to make this data match Paddle's signed form
     const serializedData = serializeWebhookData(webhookData);
