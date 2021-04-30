@@ -4,14 +4,22 @@ import {
     formatDistanceStrict, format
 } from 'date-fns';
 
-import { styled } from './styles';
+import { styled, media } from './styles';
 
 import { AccountStore } from './account-store';
 
 const PageContainer = styled.main`
-    max-width: 800px;
     padding-top: 40px;
-    margin: 0 auto;
+
+    ${media.desktop`
+        margin: 0 auto;
+        width: 800px;
+    `}
+
+    ${media.mobileOrTablet`
+        width: auto;
+        margin: 0 20px;
+    `}
 `;
 
 const PageHeading = styled.h1`

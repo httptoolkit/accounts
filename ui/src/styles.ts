@@ -83,8 +83,7 @@ export const GlobalStyles = createGlobalStyle`
     ${reset};
 
     body {
-        height: 100%;
-        overflow: hidden;
+        min-height: 100%;
         margin: 0;
         padding: 0;
 
@@ -132,3 +131,33 @@ export const GlobalStyles = createGlobalStyle`
         }
     }
 `;
+
+export const media = {
+    desktop: (...args: Parameters<typeof css>) => css`
+        @media (min-width: 1084px) {
+            ${ css(...args) }
+        }
+    `,
+    tablet: (...args: Parameters<typeof css>) => css`
+        @media (min-width: 600px) and (max-width: 1083px) {
+            ${ css(...args) }
+        }
+    `,
+    mobile: (...args: Parameters<typeof css>) => css`
+        @media (max-width: 599px) {
+            ${ css(...args) }
+        }
+    `,
+
+    // Combos:
+    desktopOrTablet: (...args: Parameters<typeof css>) => css`
+        @media (min-width: 600px) {
+            ${ css(...args) }
+        }
+    `,
+    mobileOrTablet: (...args: Parameters<typeof css>) => css`
+        @media (max-width: 1083px) {
+            ${ css(...args) }
+        }
+    `,
+}
