@@ -1,9 +1,13 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 
-const App = () => <h1>Hello world</h1>;
+import { AccountStore } from './account-store';
+
+import { App } from './app';
+
+const accountStore = new AccountStore();
 
 ReactDOM.render(
-    <App />,
+    <App accountStore={accountStore} />,
     document.querySelector('#app')
 );

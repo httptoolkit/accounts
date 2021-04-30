@@ -28,7 +28,9 @@ module.exports = {
         : "source-map",
 
     devServer: {
-        port: 9000
+        port: 8765,
+        historyApiFallback: true,
+        public: 'local.httptoolkit.tech:8765'
     },
 
     module: {

@@ -39,7 +39,8 @@ let auth0Lock: typeof Auth0LockPasswordless | undefined;
 export const loginEvents = new EventEmitter();
 
 export const initializeAuthUi = (options: {
-    refreshToken?: boolean
+    refreshToken?: boolean,
+    closeable?: boolean
 } = {}) => {
     auth0Lock = new Auth0LockPasswordless(AUTH0_CLIENT_ID, AUTH0_DOMAIN, {
         configurationBaseUrl: 'https://cdn.eu.auth0.com',
@@ -70,6 +71,7 @@ export const initializeAuthUi = (options: {
         // UI config
         autofocus: true,
         allowAutocomplete: true,
+        closable: options.closeable ?? true,
         theme: {
             primaryColor: '#e1421f',
             logo: 'https://httptoolkit.tech/icon-600.png'
