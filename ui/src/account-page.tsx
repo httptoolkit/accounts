@@ -8,7 +8,10 @@ import { styled, media } from './styles';
 
 import { AccountStore } from './account-store';
 
+import { Button, ButtonLink } from './inputs';
+
 const PageContainer = styled.main`
+    position: relative;
     padding-top: 40px;
 
     ${media.desktop`
@@ -25,6 +28,18 @@ const PageContainer = styled.main`
 const PageHeading = styled.h1`
     font-size: ${p => p.theme.loudHeadingSize};
     font-weight: bold;
+`;
+
+const LogOutButton = styled(Button)`
+    ${media.desktop`
+        position: absolute;
+        top: 40px;
+        right: 0;
+    `}
+
+    ${media.mobileOrTablet`
+        margin-top: 20px;
+    `}
 `;
 
 const AccountSection = styled.section`
@@ -59,6 +74,16 @@ const Explanation = styled.p`
     margin-top: 10px;
 `;
 
+const AccountControls = styled.div`
+    margin-top: 20px;
+    display: flex;
+    flex-direction: row;
+
+    > :not(:last-child) {
+        margin-right: 10px;
+    }
+`;
+
 export const AccountPage = (props: {
     accountStore: AccountStore
 }) => {
@@ -66,11 +91,18 @@ export const AccountPage = (props: {
 
     const {
         userEmail,
-        userSubscription
+        userSubscription,
+        logOut
     } = accountStore;
+
+    const sub = userSubscription!;
 
     return <PageContainer>
         <PageHeading>Your Account</PageHeading>
+
+        <LogOutButton onClick={logOut}>
+            Log out
+        </LogOutButton>
 
         <AccountSection>
             <SectionHeading>Subscription</SectionHeading>
@@ -83,7 +115,7 @@ export const AccountPage = (props: {
                     Plan
                 </ContentLabel>
                 <ContentValue>
-                    { accountStore.getPlanByCode(userSubscription!.plan)?.name ?? 'Unknown' }
+                    { accountStore.getPlanByCode(sub.plan)?.name ?? 'Unknown' }
                 </ContentValue>
 
                 <ContentLabel>
@@ -96,7 +128,7 @@ export const AccountPage = (props: {
                             'trialing': 'Active (trial)',
                             'past_due': 'Past due',
                             'deleted': 'Cancelled'
-                        }[userSubscription!.status]) || 'Unknown'
+                        }[sub.status]) || 'Unknown'
                     }
                 </ContentValue>
 
@@ -107,27 +139,50 @@ export const AccountPage = (props: {
                             'trialing': 'Trial ends',
                             'past_due': 'Next payment attempt',
                             'deleted': 'Ends',
-                        }[userSubscription!.status]) || 'Current period ends'
+                        }[sub.status]) || 'Current period ends'
                     }
                 </ContentLabel>
                 <ContentValue>
                     {
-                        formatDistanceStrict(userSubscription!.expiry, new Date(), {
+                        formatDistanceStrict(sub.expiry, new Date(), {
                             addSuffix: true
                         })
                     } ({
-                        format(userSubscription!.expiry, "do 'of' MMMM yyyy")
+                        format(sub.expiry, "do 'of' MMMM yyyy")
                     })
                 </ContentValue>
             </ContentGrid>
 
             {
-                userSubscription!.status === 'past_due' && <Explanation>
+                sub.status === 'past_due' && <Explanation>
                     Your subscription payment failed, and will be reattempted shortly.
                     If retried payments continue to fail then your subscription will be
                     cancelled automatically.
                 </Explanation>
             }
+
+            <AccountControls>
+                { sub.status !== 'deleted' &&
+                    sub.updateBillingDetailsUrl &&
+                    <ButtonLink
+                        href={ sub.updateBillingDetailsUrl }
+                        target='_blank'
+                        rel='noreferrer noopener'
+                    >
+                        Update billing details
+                    </ButtonLink>
+                }
+                { sub.status !== 'deleted' &&
+                    sub.cancelSubscriptionUrl &&
+                    <ButtonLink
+                        href={ sub.cancelSubscriptionUrl }
+                        target='_blank'
+                        rel='noreferrer noopener'
+                    >
+                        Cancel subscription
+                    </ButtonLink>
+                }
+            </AccountControls>
         </AccountSection>
     </PageContainer>;
 };

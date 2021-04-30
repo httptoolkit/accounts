@@ -18,7 +18,8 @@ import {
 const isSSR = typeof window === 'undefined';
 
 initializeAuthUi({
-    closeable: false
+    closeable: false,
+    rememberLastLogin: false
 });
 
 export class AccountStore {

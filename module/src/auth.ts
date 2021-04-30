@@ -40,6 +40,7 @@ export const loginEvents = new EventEmitter();
 
 export const initializeAuthUi = (options: {
     refreshToken?: boolean,
+    rememberLastLogin?: boolean,
     closeable?: boolean
 } = {}) => {
     auth0Lock = new Auth0LockPasswordless(AUTH0_CLIENT_ID, AUTH0_DOMAIN, {
@@ -71,6 +72,7 @@ export const initializeAuthUi = (options: {
         // UI config
         autofocus: true,
         allowAutocomplete: true,
+        rememberLastLogin: options.rememberLastLogin ?? true,
         closable: options.closeable ?? true,
         theme: {
             primaryColor: '#e1421f',
