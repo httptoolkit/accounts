@@ -33,7 +33,12 @@ jobs:
         with:
           node-version: 14
 
-      - run: npm ci
+      - name: App NPM CI
+        run: npm ci
+
+      - name: Module NPM CI
+        run: npm ci
+        working-directory: module
 
       # Build & test
       - run: npm test
