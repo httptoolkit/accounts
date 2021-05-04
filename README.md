@@ -9,3 +9,4 @@ The components defined here are:
 * An API, defined as Netlify serverless functions to load user data, subscription plan details & handle Paddle webhooks.
 * A tiny SPA site, to which users can log in to manage their subscriptions.
 * A JS module used to handle authentication logic common to the accounts SPA, the main website, and HTTP Toolkit itself.
+* A selection of scripts, for manual user & subscription administration.
