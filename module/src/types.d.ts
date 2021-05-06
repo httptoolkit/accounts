@@ -1,0 +1,52 @@
+import type { SubscriptionPlans } from "./plans";
+
+// Valid subscription state values:
+export type SubscriptionPlanCode = keyof typeof SubscriptionPlans;
+export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'deleted';
+
+// User app data as returned by the API
+export type UserData = {
+    email: string;
+    feature_flags?: string[];
+
+    // If you're the owner of a team, you'll have team subscription data.
+    // This data defines the team's subscription, but doesn't affect you
+    // (i.e. you're not necessarily a member of the team)
+    team_subscription?: SubscriptionData;
+} & SubscriptionData; // <-- Real sub data lives on the root
+
+// User subscription data as returned by the API
+export type SubscriptionData = {
+    subscription_status?: SubscriptionStatus;
+    subscription_id?: number;
+    subscription_plan_id?: number;
+    subscription_expiry?: number;
+    update_url?: string;
+    cancel_url?: string;
+    last_receipt_url?: string;
+
+    // Team subs only:
+    subscription_quantity?: number;
+    team_member_ids?: string[];
+
+    // Team members only:
+    subscription_owner_id?: string;
+};
+
+// User model in JS
+export type User = {
+    email?: string;
+    subscription?: Subscription;
+    featureFlags: string[];
+};
+
+// Subscription data model in JS
+export type Subscription = {
+    id: number;
+    status: SubscriptionStatus;
+    plan: SubscriptionPlanCode;
+    expiry: Date;
+    updateBillingDetailsUrl?: string;
+    cancelSubscriptionUrl?: string;
+    lastReceiptUrl?: string;
+};

@@ -1,4 +1,5 @@
-import { SubscriptionPlanCode, SubscriptionPlans } from "./plans";
+import { SubscriptionPlanCode } from "./types";
+import { SubscriptionPlans } from "./plans";
 
 export const openCheckout = async (
     email: string,

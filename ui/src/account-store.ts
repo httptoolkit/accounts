@@ -8,10 +8,12 @@ import {
     showLoginDialog,
     logOut
 } from '../../module/dist/auth';
+import type {
+    SubscriptionPlanCode,
+} from "../../module/src/types";
 import {
     getSubscriptionPlanCode,
     SubscriptionPlan,
-    SubscriptionPlanCode,
     SubscriptionPlans
 } from '../../module/dist/plans';
 

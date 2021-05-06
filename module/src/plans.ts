@@ -1,5 +1,7 @@
 import * as _ from 'lodash';
 
+import type { SubscriptionPlanCode } from './types';
+
 export interface SubscriptionPlan {
     id: number;
     name: string;
@@ -89,8 +91,6 @@ function formatPrice(currency: string, price: number) {
         maximumFractionDigits: 2
     })
 }
-
-export type SubscriptionPlanCode = keyof typeof SubscriptionPlans;
 
 export const getSubscriptionPlanCode = (id: number | undefined) =>
     _.findKey(SubscriptionPlans, { id: id }) as SubscriptionPlanCode | undefined;
