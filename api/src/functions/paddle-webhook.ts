@@ -9,6 +9,7 @@ import { mgmtClient, User } from '../auth0';
 import { validateWebhook, WebhookData, SubscriptionStatus, TEAM_SUBSCRIPTION_IDS, PRO_SUBSCRIPTION_IDS } from '../paddle';
 
 interface SubscriptionData {
+    paddle_user_id?: number,
     subscription_status?: SubscriptionStatus,
     subscription_id?: number,
     subscription_plan_id?: number,
@@ -69,6 +70,7 @@ function getSubscriptionFromHookData(hookData: WebhookData): SubscriptionData {
 
         return {
             subscription_status: hookData.status,
+            paddle_user_id: parseInt(hookData.user_id, 10),
             subscription_id: parseInt(hookData.subscription_id, 10),
             subscription_plan_id: parseInt(hookData.subscription_plan_id, 10),
             subscription_quantity: parseInt(quantity, 10),
@@ -85,6 +87,7 @@ function getSubscriptionFromHookData(hookData: WebhookData): SubscriptionData {
 
         return {
             subscription_status: 'deleted',
+            paddle_user_id: parseInt(hookData.user_id, 10),
             subscription_id: parseInt(hookData.subscription_id, 10),
             subscription_plan_id: parseInt(hookData.subscription_plan_id, 10),
             subscription_expiry: endDate,
@@ -99,6 +102,7 @@ function getSubscriptionFromHookData(hookData: WebhookData): SubscriptionData {
 
         return {
             subscription_status: hookData.status,
+            paddle_user_id: parseInt(hookData.user_id, 10),
             subscription_id: parseInt(hookData.subscription_id, 10),
             subscription_plan_id: parseInt(hookData.subscription_plan_id, 10),
             subscription_expiry: endDate,
@@ -116,6 +120,7 @@ function getSubscriptionFromHookData(hookData: WebhookData): SubscriptionData {
 
         return {
             subscription_status: hookData.next_retry_date ? 'past_due' : 'deleted',
+            paddle_user_id: parseInt(hookData.user_id, 10),
             subscription_id: parseInt(hookData.subscription_id, 10),
             subscription_plan_id: parseInt(hookData.subscription_plan_id, 10),
             subscription_expiry: endDate,
@@ -124,7 +129,7 @@ function getSubscriptionFromHookData(hookData: WebhookData): SubscriptionData {
         };
     }
 
-    // Should never happen - effectively 'update nothing'
+    // Should never happen - we effectively return 'update nothing'
     return {};
 }
 

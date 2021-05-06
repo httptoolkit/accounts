@@ -26,8 +26,9 @@ export interface BaseWebhookData {
     email: string;
     checkout_id: string;
 
-    subscription_id: string;
-    subscription_plan_id: string;
+    user_id: string; // \d+
+    subscription_id: string; // \d+
+    subscription_plan_id: string; // \d+
     status: SubscriptionStatus;
 
     update_url: string;

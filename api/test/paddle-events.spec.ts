@@ -83,6 +83,7 @@ describe('Paddle webhooks', () => {
                 alert_name: 'subscription_created',
                 status: 'active',
                 email: userEmail,
+                user_id: '123',
                 subscription_id: '456',
                 subscription_plan_id: '550382', // Pro-annual
                 next_bill_date: nextRenewal.format('YYYY-MM-DD'),
@@ -94,6 +95,7 @@ describe('Paddle webhooks', () => {
             expect(updateRequests[0].body.json).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
+                    paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_plan_id: 550382,
                     subscription_quantity: 1,
@@ -124,6 +126,7 @@ describe('Paddle webhooks', () => {
                 alert_name: 'subscription_created',
                 status: 'active',
                 email: userEmail,
+                user_id: '123',
                 subscription_id: '456',
                 subscription_plan_id: '550382', // Pro-annual
                 next_bill_date: nextRenewal.format('YYYY-MM-DD'),
@@ -144,6 +147,7 @@ describe('Paddle webhooks', () => {
             expect(updateRequests[0].body.json).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
+                    paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_plan_id: 550382,
                     subscription_quantity: 1,
@@ -159,6 +163,7 @@ describe('Paddle webhooks', () => {
 
             givenUser(userId, userEmail, {
                 subscription_status: 'active',
+                paddle_user_id: 123,
                 subscription_id: 456,
                 subscription_plan_id: 550382,
                 subscription_expiry: nextRenewal.subtract(30, 'days').valueOf()
@@ -172,6 +177,7 @@ describe('Paddle webhooks', () => {
                 alert_name: 'subscription_payment_succeeded',
                 status: 'active',
                 email: userEmail,
+                user_id: '123',
                 subscription_id: '456',
                 subscription_plan_id: '550382', // Pro-annual
                 next_bill_date: nextRenewal.format('YYYY-MM-DD'),
@@ -183,6 +189,7 @@ describe('Paddle webhooks', () => {
             expect(updateRequests[0].body.json).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
+                    paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_plan_id: 550382,
                     subscription_quantity: 1,
@@ -198,6 +205,7 @@ describe('Paddle webhooks', () => {
 
             givenUser(userId, userEmail, {
                 subscription_status: 'active',
+                paddle_user_id: 123,
                 subscription_id: 456,
                 subscription_plan_id: 550382,
                 subscription_expiry: cancellationDate.add(30, 'days').valueOf()
@@ -210,6 +218,7 @@ describe('Paddle webhooks', () => {
             await triggerWebhook(functionServer, {
                 alert_name: 'subscription_cancelled',
                 email: userEmail,
+                user_id: '123',
                 subscription_id: '456',
                 subscription_plan_id: '550382', // Pro-annual
                 cancellation_effective_date: cancellationDate.format('YYYY-MM-DD')
@@ -220,6 +229,7 @@ describe('Paddle webhooks', () => {
             expect(updateRequests[0].body.json).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'deleted',
+                    paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_plan_id: 550382,
                     subscription_expiry: cancellationDate.valueOf()
@@ -236,6 +246,7 @@ describe('Paddle webhooks', () => {
 
             givenUser(userId, userEmail, {
                 subscription_status: 'active',
+                paddle_user_id: 123,
                 subscription_id: 456,
                 subscription_plan_id: 550382,
                 subscription_expiry: currentDate.valueOf()
@@ -251,6 +262,7 @@ describe('Paddle webhooks', () => {
                 alert_name: 'subscription_updated',
                 status: 'past_due',
                 email: userEmail,
+                user_id: '123',
                 subscription_id: '456',
                 subscription_plan_id: '550382', // Pro-annual
                 next_bill_date: currentDate.format('YYYY-MM-DD'),
@@ -261,6 +273,7 @@ describe('Paddle webhooks', () => {
                 alert_name: 'subscription_payment_failed',
                 status: 'past_due',
                 email: userEmail,
+                user_id: '123',
                 subscription_id: '456',
                 subscription_plan_id: '550382', // Pro-annual
                 next_retry_date: finalDate.format('YYYY-MM-DD')
@@ -271,6 +284,7 @@ describe('Paddle webhooks', () => {
             expect(updateRequests[0].body.json).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'past_due',
+                    paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_plan_id: 550382,
                     subscription_quantity: 1,
@@ -280,6 +294,7 @@ describe('Paddle webhooks', () => {
             expect(updateRequests[1].body.json).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'past_due',
+                    paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_plan_id: 550382,
                     subscription_expiry: finalDate.add(1, 'days').valueOf()
@@ -292,6 +307,7 @@ describe('Paddle webhooks', () => {
                 alert_name: 'subscription_payment_failed',
                 status: 'past_due',
                 email: userEmail,
+                user_id: '123',
                 subscription_id: '456',
                 subscription_plan_id: '550382', // Pro-annual
                 // N.B: no next_retry_date, we're done
@@ -300,6 +316,7 @@ describe('Paddle webhooks', () => {
             await triggerWebhook(functionServer, {
                 alert_name: 'subscription_cancelled',
                 email: userEmail,
+                user_id: '123',
                 subscription_id: '456',
                 subscription_plan_id: '550382', // Pro-annual
                 cancellation_effective_date: finalDate.format('YYYY-MM-DD')
@@ -310,6 +327,7 @@ describe('Paddle webhooks', () => {
             expect(updateRequests[2].body.json).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'deleted',
+                    paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_plan_id: 550382
                 }
@@ -317,6 +335,7 @@ describe('Paddle webhooks', () => {
             expect(updateRequests[3].body.json).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'deleted',
+                    paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_plan_id: 550382,
                     subscription_expiry: finalDate.valueOf()
@@ -342,6 +361,7 @@ describe('Paddle webhooks', () => {
                 alert_name: 'subscription_created',
                 status: 'active',
                 email: userEmail,
+                user_id: '123',
                 subscription_id: '456',
                 subscription_plan_id: '550789', // Team-annual
                 next_bill_date: nextRenewal.format('YYYY-MM-DD'),
@@ -353,6 +373,7 @@ describe('Paddle webhooks', () => {
             expect(updateRequests[0].body.json).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
+                    paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_plan_id: 550789,
                     subscription_quantity: 5,
@@ -384,6 +405,7 @@ describe('Paddle webhooks', () => {
                 alert_name: 'subscription_created',
                 status: 'active',
                 email: userEmail,
+                user_id: '123',
                 subscription_id: '456',
                 subscription_plan_id: '550789', // Team-annual
                 next_bill_date: nextRenewal.format('YYYY-MM-DD'),
@@ -404,6 +426,7 @@ describe('Paddle webhooks', () => {
             expect(updateRequests[0].body.json).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
+                    paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_plan_id: 550789,
                     subscription_quantity: 5,
@@ -430,6 +453,7 @@ describe('Paddle webhooks', () => {
                 alert_name: 'subscription_payment_succeeded',
                 status: 'active',
                 email: userEmail,
+                user_id: '123',
                 subscription_id: '456',
                 quantity: '5',
                 subscription_plan_id: '550789', // Team-annual
@@ -441,6 +465,7 @@ describe('Paddle webhooks', () => {
             expect(updateRequests[0].body.json).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
+                    paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_plan_id: 550789,
                     subscription_quantity: 5,
