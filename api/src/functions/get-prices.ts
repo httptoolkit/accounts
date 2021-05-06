@@ -1,9 +1,9 @@
 import { initSentry, catchErrors, reportError } from '../errors';
 initSentry();
 
-import fetch from 'node-fetch';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 import { getCorsResponseHeaders } from '../cors';
+import { getPrices } from '../paddle';
 
 export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
     let headers = getCorsResponseHeaders(event);
@@ -19,34 +19,33 @@ export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
 
     if (!product_ids) throw new Error("Product ids required");
 
-    const response = await fetch(`https://checkout.paddle.com/api/2.0/prices?product_ids=${product_ids}&quantity=1&customer_ip=${sourceIp}`);
+    const productIds = product_ids.split(',');
 
-    if (!response.ok) {
-        console.log(`${response.status} ${response.statusText}`, response.headers, await response.text().catch(() => ''));
-        reportError(`${response.status} error response from Paddle pricing API`);
+    try {
+        const prices = await getPrices(productIds, sourceIp);
 
         return {
-            statusCode: response.status,
-            headers: Object.assign(headers, { 'Cache-Control': 'no-store' }), // Drop our caching headers
-            body: response.body
+            statusCode: 200,
+            headers: { ...headers,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                success: true,
+                response: { products: prices }
+            })
+        };
+    } catch (e) {
+        reportError(e);
+        return {
+            statusCode: e.statusCode ?? 502,
+            headers: { ...headers,
+                'Cache-Control': 'no-store',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                success: false,
+                error: e.message
+            })
         };
     }
-
-    const data = await response.json();
-
-    if (!data.success) {
-        // Forward the error on to the client, but report it - something is funky here.
-        console.log(JSON.stringify(data));
-        reportError("Unsuccessful response from Paddle pricing API");
-    }
-
-    // Set a 404 response code if any of the product ids couldn't be found. The client can
-    // still use the other prices, but this is likely a problematic failure somewhere.
-    const foundAllProducts = data.response.products.length === product_ids.split(',').length;
-
-    return {
-        statusCode: foundAllProducts ? 200 : 404,
-        headers: Object.assign(headers, { 'content-type': 'application/json' }),
-        body: JSON.stringify(data)
-    };
 });

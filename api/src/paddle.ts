@@ -1,5 +1,7 @@
 import * as crypto from 'crypto';
+import fetch from 'node-fetch';
 import Serialize from 'php-serialize';
+import { StatusError } from './errors';
 
 const PADDLE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 ${process.env.PADDLE_PUBLIC_KEY}
@@ -123,4 +125,49 @@ export function validateWebhook(webhookData: WebhookData) {
 
     let verification = verifier.verify(PADDLE_PUBLIC_KEY, mySig);
     if (!verification) throw new Error('Webhook signature was invalid');
+}
+
+async function makePaddleApiRequest(url: string) {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        console.log(`${response.status} ${response.statusText}`,
+            response.headers,
+            await response.text().catch(() => '')
+        );
+        throw new Error(`${response.status} error response from Paddle API`);
+    }
+
+    const data = await response.json();
+
+    if (!data.success) {
+        console.log(`Unsuccessful Paddle response: `, JSON.stringify(data));
+        throw new Error("Unsuccessful response from Paddle API");
+    }
+
+    return data.response;
+}
+
+export async function getPrices(productIds: string[], sourceIp: string): Promise<any[]> {
+    const response = await makePaddleApiRequest(`https://checkout.paddle.com/api/2.0/prices?product_ids=${
+        productIds.join(',')
+    }&quantity=1&customer_ip=${
+        sourceIp
+    }`);
+
+    const { products } = response;
+
+    // Paddle API returns success even if some ids aren't recognized or returned, so
+    // we need an extra error case to check that:
+    const foundAllProducts = products.length === productIds.length;
+    if (!foundAllProducts) {
+        console.log(`Missing products. Expected ${productIds.join(',')}, found ${
+            products.map((p: any) => p.product_id)
+        }`);
+        throw new StatusError(404,
+            "Paddle pricing API did not return all requested products"
+        );
+    }
+
+    return response.products;
 }

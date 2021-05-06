@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/node';
 import { APIGatewayProxyEvent, Handler } from 'aws-lambda';
+import { TypedError } from 'typed-error';
 
 const { SENTRY_DSN, VERSION } = process.env;
 
@@ -17,6 +18,15 @@ interface Auth0RequestError extends Error {
     requestInfo: { method?: string, url?: string },
     originalError: Error
 };
+
+export class StatusError extends TypedError {
+    constructor(
+        public readonly statusCode: number,
+        message: string
+    ) {
+        super(message);
+    }
+}
 
 export async function reportError(error: Error | Auth0RequestError | string, eventContext?: APIGatewayProxyEvent) {
     if (error instanceof Error && 'requestInfo' in error) {
