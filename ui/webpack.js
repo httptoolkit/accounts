@@ -60,7 +60,8 @@ module.exports = {
             filename: 'fonts.css'
         }),
         new Webpack.EnvironmentPlugin({
-            'VERSION': null
+            'VERSION': null,
+            'API_BASE': null
         })
     ],
 };

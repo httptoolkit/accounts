@@ -5,7 +5,7 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "start": "npm run start:api & npm run start:ui",
+    "start": "npm run start:api & API_BASE=http://localhost:2021 npm run start:ui",
     "start:api": "netlify-lambda -c api/webpack.js serve api/src/functions/ --port 2021",
     "start:ui": "webpack serve --config ui/webpack.js",
     "build": "rimraf dist/ && npm run build:module && npm run build:api && npm run build:ui",

@@ -39,11 +39,16 @@ export class RefreshRejectedError extends TypedError {
 let auth0Lock: typeof Auth0LockPasswordless | undefined;
 export const loginEvents = new EventEmitter();
 
+let apiBase: string;
+
 export const initializeAuthUi = (options: {
+    apiBase?: string,
     refreshToken?: boolean,
     rememberLastLogin?: boolean,
     closeable?: boolean
 } = {}) => {
+    apiBase = options.apiBase ?? "https://accounts.httptoolkit.tech/api";
+
     auth0Lock = new Auth0LockPasswordless(AUTH0_CLIENT_ID, AUTH0_DOMAIN, {
         configurationBaseUrl: 'https://cdn.eu.auth0.com',
 
@@ -351,7 +356,7 @@ async function requestUserData(): Promise<string> {
     const token = await getToken();
     if (!token) return '';
 
-    const appDataResponse = await fetch('https://accounts.httptoolkit.tech/api/get-app-data', {
+    const appDataResponse = await fetch(`${apiBase}/get-app-data`, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${token}`

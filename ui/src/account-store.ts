@@ -20,6 +20,7 @@ import {
 const isSSR = typeof window === 'undefined';
 
 initializeAuthUi({
+    apiBase: process.env.API_BASE,
     closeable: false,
     rememberLastLogin: false
 });
