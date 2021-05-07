@@ -33,6 +33,17 @@ export type SubscriptionData = {
     subscription_owner_id?: string;
 };
 
+export interface TransactionData {
+    order_id: string;
+    receipt_url: string;
+    product_id: number;
+    created_at: string;
+    status: string;
+
+    currency: string;
+    amount: string;
+}
+
 // User model in JS
 export type User = {
     email?: string;

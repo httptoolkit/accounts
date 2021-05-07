@@ -1,11 +1,19 @@
+import _ from 'lodash';
 import * as crypto from 'crypto';
-import fetch from 'node-fetch';
+import { URLSearchParams } from 'url';
+
+import fetch, { RequestInit } from 'node-fetch';
 import Serialize from 'php-serialize';
+
 import { StatusError } from './errors';
+import { TransactionData } from '../../module/src/types';
 
 const PADDLE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 ${process.env.PADDLE_PUBLIC_KEY}
 -----END PUBLIC KEY-----`;
+
+const PADDLE_VENDOR_ID = process.env.PADDLE_ID;
+const PADDLE_KEY = process.env.PADDLE_KEY;
 
 export const PRO_SUBSCRIPTION_IDS = [550380, 550382, 599788];
 export const TEAM_SUBSCRIPTION_IDS = [550788, 550789];
@@ -127,8 +135,8 @@ export function validateWebhook(webhookData: WebhookData) {
     if (!verification) throw new Error('Webhook signature was invalid');
 }
 
-async function makePaddleApiRequest(url: string) {
-    const response = await fetch(url);
+async function makePaddleApiRequest(url: string, options: RequestInit = {}) {
+    const response = await fetch(url, options);
 
     if (!response.ok) {
         console.log(`${response.status} ${response.statusText}`,
@@ -170,4 +178,55 @@ export async function getPrices(productIds: string[], sourceIp: string): Promise
     }
 
     return response.products;
+}
+
+export async function getPaddleUserIdFromSubscription(
+    subscriptionId: number | undefined
+): Promise<number | undefined> {
+    if (!subscriptionId) return undefined;
+
+    const response = await makePaddleApiRequest(
+        `https://vendors.paddle.com/api/2.0/subscription/users`, {
+            method: 'POST',
+            body: new URLSearchParams({
+                vendor_id: PADDLE_VENDOR_ID,
+                vendor_auth_code: PADDLE_KEY,
+                subscription_id: subscriptionId.toString()
+            })
+        }
+    );
+
+    if (response.length === 0) {
+        throw new Error(`Unrecognized subscription id ${subscriptionId}`);
+    } else if (response.length > 1) {
+        throw new Error(`Multiple users for subscription id ${subscriptionId}`);
+    } else {
+        // Exactly one matching user:
+        return response[0].user_id as number;
+    }
+}
+
+export async function getPaddleUserTransactions(
+    userId: number
+): Promise<TransactionData[]> {
+    const response = await makePaddleApiRequest(
+        `https://vendors.paddle.com/api/2.0/user/${userId}/transactions`, {
+            method: 'POST',
+            body: new URLSearchParams({
+                vendor_id: PADDLE_VENDOR_ID,
+                vendor_auth_code: PADDLE_KEY
+            })
+        }
+    );
+
+    // Expose this data as objects with only the minimal set of relevant keys for now:
+    return response.map((transaction: TransactionData) => _.pick(transaction, [
+        'order_id',
+        'receipt_url',
+        'product_id',
+        'created_at',
+        'status',
+        'currency',
+        'amount'
+    ]));
 }
