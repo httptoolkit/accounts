@@ -4,6 +4,7 @@ import { getLocal } from 'mockttp';
 import stoppable from 'stoppable';
 
 import { serveFunctions } from '@httptoolkit/netlify-cli/src/utils/serve-functions';
+import { TransactionData } from '../../module/src/types';
 
 function generateKeyPair() {
     return crypto.generateKeyPairSync('rsa', {
@@ -47,6 +48,17 @@ export const auth0Server = getLocal({
     }
 });
 
+export const PADDLE_PORT = 9092;
+process.env.PADDLE_BASE_URL = `http://localhost:${PADDLE_PORT}`;
+
+export const paddleServer = getLocal({
+    https: {
+        keyPath: path.join(__dirname, 'fixtures', 'test-ca.key'),
+        certPath: path.join(__dirname, 'fixtures', 'test-ca.pem'),
+        keyLength: 2048
+    }
+});
+
 export function givenUser(userId: string, email: string, appMetadata = {}) {
     return auth0Server
         .get('/api/v2/users-by-email')
@@ -64,6 +76,27 @@ export function givenNoUsers() {
     return auth0Server
         .get('/api/v2/users-by-email')
         .thenJson(200, []);
+}
+
+export function givenSubscription(subId: number, userId: number) {
+    return paddleServer
+        .post(`/api/2.0/subscription/users`)
+        .withForm({
+            subscription_id: subId.toString()
+        })
+        .thenJson(200, {
+            success: true,
+            response: [{ user_id: userId.toString() }]
+        });
+}
+
+export function givenTransactions(userId: number, transactions: TransactionData[]) {
+    return paddleServer
+        .post(`/api/2.0/user/${userId}/transactions`)
+        .thenJson(200, {
+            success: true,
+            response: transactions
+        });
 }
 
 export function freshAuthToken() {

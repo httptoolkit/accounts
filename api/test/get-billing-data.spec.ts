@@ -9,12 +9,17 @@ import {
     publicKey,
     auth0Server,
     AUTH0_PORT,
-    freshAuthToken
+    freshAuthToken,
+    paddleServer,
+    PADDLE_PORT,
+    givenSubscription,
+    givenTransactions
 } from './test-util';
 import stoppable from 'stoppable';
+import { TransactionData } from '../../module/src/types';
 
-const getAppData = (server: net.Server, authToken?: string) => fetch(
-    `http://localhost:${(server.address() as net.AddressInfo).port}/get-app-data`,
+const getBillingData = (server: net.Server, authToken?: string) => fetch(
+    `http://localhost:${(server.address() as net.AddressInfo).port}/get-billing-data`,
     {
         headers: authToken
             ? { Authorization: `Bearer ${authToken}` }
@@ -25,7 +30,7 @@ const getAppData = (server: net.Server, authToken?: string) => fetch(
 const getJwtData = (jwtString: string): any => {
     const decoded: any = jwt.verify(jwtString, publicKey, {
         algorithms: ['RS256'],
-        audience: 'https://httptoolkit.tech/app_data',
+        audience: 'https://httptoolkit.tech/billing_data',
         issuer: 'https://httptoolkit.tech/'
     });
 
@@ -38,24 +43,28 @@ const getJwtData = (jwtString: string): any => {
     return decoded;
 }
 
-describe('/get-app-data', () => {
+describe('/get-billing-data', () => {
 
     let functionServer: stoppable.StoppableServer;
 
     beforeEach(async () => {
         functionServer = await startServer();
+
         await auth0Server.start(AUTH0_PORT);
         await auth0Server.post('/oauth/token').thenReply(200);
+
+        await paddleServer.start(PADDLE_PORT);
     });
 
     afterEach(async () => {
         await new Promise((resolve) => functionServer.stop(resolve));
         await auth0Server.stop();
+        await paddleServer.stop();
     });
 
     describe("for unauthed users", () => {
         it("returns 401", async () => {
-            const response = await getAppData(functionServer);
+            const response = await getBillingData(functionServer);
             expect(response.status).to.equal(401);
         });
     });
@@ -74,11 +83,14 @@ describe('/get-app-data', () => {
                 app_metadata: { }
             });
 
-            const response = await getAppData(functionServer, authToken);
+            const response = await getBillingData(functionServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
-            expect(data).to.deep.equal({ email: userEmail });
+            expect(data).to.deep.equal({
+                email: userEmail,
+                transactions: []
+            });
         });
     });
 
@@ -103,7 +115,19 @@ describe('/get-app-data', () => {
                     }
                 });
 
-            const response = await getAppData(functionServer, authToken);
+            await givenSubscription(2, 123);
+            const transaction: TransactionData = {
+                amount: "1.00",
+                currency: "USD",
+                created_at: new Date().toISOString(),
+                order_id: "order-456",
+                product_id: 550380,
+                receipt_url: "receipt.example",
+                status: "completed"
+            };
+            await givenTransactions(123, [transaction]);
+
+            const response = await getBillingData(functionServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -112,7 +136,8 @@ describe('/get-app-data', () => {
                 subscription_expiry: subExpiry,
                 subscription_id: 2,
                 subscription_plan_id: 550380,
-                subscription_status: "active"
+                subscription_status: "active",
+                transactions: [transaction]
             });
         });
 
@@ -137,11 +162,14 @@ describe('/get-app-data', () => {
                     }
                 });
 
-            const response1 = await getAppData(functionServer, authToken);
+            await givenSubscription(2, 123);
+            await givenTransactions(123, []);
+
+            const response1 = await getBillingData(functionServer, authToken);
             expect(response1.status).to.equal(200);
             expect(getJwtData((await response1.text())).subscription_status).to.equal('active');
 
-            const response2 = await getAppData(functionServer, authToken);
+            const response2 = await getBillingData(functionServer, authToken);
             expect(response1.status).to.equal(200);
             expect(getJwtData((await response2.text())).subscription_status).to.equal('active');
 
@@ -156,7 +184,7 @@ describe('/get-app-data', () => {
     });
 
     describe("for Team users", () => {
-        it("returns signed subscription data for team members", async () => {
+        it("returns signed team membership data for team members", async () => {
             const authToken = freshAuthToken();
             const billingUserId = "abc";
             const billingUserEmail = 'billinguser@example.com';
@@ -186,24 +214,28 @@ describe('/get-app-data', () => {
                 }
             });
 
-            const response = await getAppData(functionServer, authToken);
+            const response = await getBillingData(functionServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
                 email: teamUserEmail,
-                subscription_owner_id: billingUserId,
-                subscription_expiry: subExpiry,
-                subscription_id: 2,
-                subscription_plan_id: 550789,
-                subscription_status: "active"
+                team_owner: {
+                    id: billingUserId,
+                    name: billingUserEmail
+                },
+                transactions: []
             });
         });
 
-        it("returns separated team subscription data for team owners", async () => {
+        it("returns signed subscription & member data for team owners", async () => {
             const authToken = freshAuthToken();
             const billingUserId = "abc";
             const billingUserEmail = 'billinguser@example.com';
+            const teamMemberEmails = [
+                "teammember1@example.com",
+                "teammember2@example.com"
+            ];
             const subExpiry = Date.now();
 
             await auth0Server.get('/userinfo')
@@ -213,7 +245,7 @@ describe('/get-app-data', () => {
                 email: billingUserEmail,
                 app_metadata: {
                     feature_flags: ['a flag'],
-                    team_member_ids: ['123', '456'],
+                    team_member_ids: ['1', '2'],
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
                     subscription_quantity: 2,
@@ -224,29 +256,58 @@ describe('/get-app-data', () => {
                     update_url: 'uu',
                 }
             });
+            await auth0Server.get('/api/v2/users')
+                .withQuery({ q: `app_metadata.subscription_owner_id:${billingUserId}` })
+                .thenJson(200, [ // N.b: out of order - API order should match team_member_ids
+                    {
+                        user_id: '2',
+                        email: teamMemberEmails[1],
+                        app_metadata: { subscription_owner_id: billingUserId }
+                    },
+                    {
+                        user_id: '1',
+                        email: teamMemberEmails[0],
+                        app_metadata: { subscription_owner_id: billingUserId }
+                    }
+                ]);
 
-            const response = await getAppData(functionServer, authToken);
+            await givenSubscription(2, 123);
+            const transaction: TransactionData = {
+                amount: "1.00",
+                currency: "USD",
+                created_at: new Date().toISOString(),
+                order_id: "order-456",
+                product_id: 550789,
+                receipt_url: "receipt.example",
+                status: "completed"
+            };
+            await givenTransactions(123, [transaction]);
+
+            const response = await getBillingData(functionServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
                 email: billingUserEmail,
-                feature_flags: ['a flag'],
-                team_subscription: {
-                    team_member_ids: ['123', '456'],
-                    subscription_expiry: subExpiry,
-                    subscription_id: 2,
-                    subscription_quantity: 2,
-                    subscription_plan_id: 550789,
-                    subscription_status: "active",
-                    last_receipt_url: 'lru',
-                    cancel_url: 'cu',
-                    update_url: 'uu'
-                }
+
+                subscription_expiry: subExpiry,
+                subscription_id: 2,
+                subscription_quantity: 2,
+                subscription_plan_id: 550789,
+                subscription_status: "active",
+                last_receipt_url: 'lru',
+                cancel_url: 'cu',
+                update_url: 'uu',
+
+                transactions: [transaction],
+                team_members: [
+                    { id: '1', name: teamMemberEmails[0] },
+                    { id: '2', name: teamMemberEmails[1] }
+                ]
             });
         });
 
-        it("returns real+separated subscription data for owners who are in their team", async () => {
+        it("returns subscription & member data for owners who are in their team", async () => {
             const authToken = freshAuthToken();
             const billingUserId = "abc";
             const billingUserEmail = 'billinguser@example.com';
@@ -263,7 +324,7 @@ describe('/get-app-data', () => {
                     team_member_ids: [billingUserId], // Includes their own id
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
-                    subscription_quantity: 2,
+                    subscription_quantity: 1,
                     subscription_plan_id: 550789,
                     subscription_status: "active",
                     last_receipt_url: 'lru',
@@ -271,36 +332,53 @@ describe('/get-app-data', () => {
                     update_url: 'uu',
                 }
             });
+            await auth0Server.get('/api/v2/users')
+                .withQuery({ q: `app_metadata.subscription_owner_id:${billingUserId}` })
+                .thenJson(200, [
+                    {
+                        user_id: billingUserId,
+                        email: billingUserEmail,
+                        app_metadata: { subscription_owner_id: billingUserId }
+                    },
+                ]);
 
-            const response = await getAppData(functionServer, authToken);
+            await givenSubscription(2, 123);
+            const transaction: TransactionData = {
+                amount: "1.00",
+                currency: "USD",
+                created_at: new Date().toISOString(),
+                order_id: "order-456",
+                product_id: 550789,
+                receipt_url: "receipt.example",
+                status: "completed"
+            };
+            await givenTransactions(123, [transaction]);
+
+            const response = await getBillingData(functionServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
                 email: billingUserEmail,
-                subscription_owner_id: billingUserId,
-                feature_flags: ['a flag'],
 
                 subscription_expiry: subExpiry,
                 subscription_id: 2,
+                subscription_quantity: 1,
                 subscription_plan_id: 550789,
                 subscription_status: "active",
+                last_receipt_url: 'lru',
+                cancel_url: 'cu',
+                update_url: 'uu',
 
-                team_subscription: {
-                    team_member_ids: [billingUserId],
-                    subscription_expiry: subExpiry,
-                    subscription_id: 2,
-                    subscription_quantity: 2,
-                    subscription_plan_id: 550789,
-                    subscription_status: "active",
-                    last_receipt_url: 'lru',
-                    cancel_url: 'cu',
-                    update_url: 'uu'
-                }
+                transactions: [transaction],
+                team_owner: { id: billingUserId, name: billingUserEmail },
+                team_members: [
+                    { id: billingUserId, name: billingUserEmail }
+                ]
             });
         });
 
-        it("returns empty data for team members beyond the subscribed quantity", async () => {
+        it("returns owner with error for team members beyond the subscribed quantity", async () => {
             const authToken = freshAuthToken();
             const billingUserId = "abc";
             const billingUserEmail = 'billinguser@example.com';
@@ -330,16 +408,22 @@ describe('/get-app-data', () => {
                 }
             });
 
-            const response = await getAppData(functionServer, authToken);
+            const response = await getBillingData(functionServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
-                email: teamUserEmail
+                email: teamUserEmail,
+                transactions: [],
+                team_owner: {
+                    id: billingUserId,
+                    name: billingUserEmail,
+                    error: 'member-beyond-owner-limit'
+                }
             });
         });
 
-        it("returns empty data for team members with inconsistent membership data", async () => {
+        it("returns owner with error for team members with inconsistent membership data", async () => {
             const authToken = freshAuthToken();
             const billingUserId = "abc";
             const billingUserEmail = 'billinguser@example.com';
@@ -368,12 +452,18 @@ describe('/get-app-data', () => {
                 }
             });
 
-            const response = await getAppData(functionServer, authToken);
+            const response = await getBillingData(functionServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
-                email: teamUserEmail
+                email: teamUserEmail,
+                transactions: [],
+                team_owner: {
+                    id: billingUserId,
+                    name: billingUserEmail,
+                    error: 'inconsistent-owner-data'
+                }
             });
         });
     });

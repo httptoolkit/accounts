@@ -4,8 +4,8 @@ import type { SubscriptionPlans } from "./plans";
 export type SubscriptionPlanCode = keyof typeof SubscriptionPlans;
 export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'deleted';
 
-// User app data as returned by the API
-export type UserData = {
+// User app data, as returned by the API
+export type UserAppData = {
     email: string;
     feature_flags?: string[];
 
@@ -15,9 +15,32 @@ export type UserData = {
     team_subscription?: SubscriptionData;
 } & SubscriptionData; // <-- Real sub data lives on the root
 
-// User subscription data as returned by the API
-export type SubscriptionData = {
+
+// User billing data, as returned by the API
+export type UserBillingData = {
+    email: string;
+
+    // Team members only:
+    team_owner?: {
+        id: string;
+        name?: string;
+        error?: string;
+    };
+
+    // Team owner only - undefined for Pro.
+    team_members?: Array<{
+        id: string;
+        name: string;
+        error?: string;
+    }>;
+
+    transactions: TransactionData[];
+} & SubscriptionData; // <-- Real sub data lives on the root
+
+// Subscription data as returned by the API
+export interface SubscriptionData {
     subscription_status?: SubscriptionStatus;
+    paddle_user_id?: number;
     subscription_id?: number;
     subscription_plan_id?: number;
     subscription_expiry?: number;
@@ -31,7 +54,7 @@ export type SubscriptionData = {
 
     // Team members only:
     subscription_owner_id?: string;
-};
+}
 
 export interface TransactionData {
     order_id: string;

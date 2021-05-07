@@ -1,14 +1,32 @@
+import * as _ from 'lodash';
+
 import { reportError } from './errors';
 
-import type { UserData } from '../../module/src/types';
+import type { UserAppData, UserBillingData } from '../../module/src/types';
 
-import { TEAM_SUBSCRIPTION_IDS } from './paddle';
-import { authClient, mgmtClient } from './auth0';
+import {
+    getPaddleUserIdFromSubscription,
+    getPaddleUserTransactions,
+    TEAM_SUBSCRIPTION_IDS
+} from './paddle';
+import { AppMetadata, authClient, mgmtClient } from './auth0';
 
-export async function getUserAppData(accessToken: string) {
+// User app data is the effective subscription of the user. For Pro that's easy,
+// for teams: team members have the subscription of the team owner. Team owners
+// have no effective subscription (unless they are owner + member).
+export async function getUserAppData(accessToken: string): Promise<UserAppData> {
     const userId = await getUserId(accessToken);
     const rawUserData = await getRawUserData(userId);
-    return getUserSubscriptionData(userId, rawUserData);
+    return await buildUserAppData(userId, rawUserData) as UserAppData;
+}
+
+// User billing data is the actual subscription of the user. For Pro that's
+// easy, for teams: team members have no subscription, just a membership,
+// while owners have all their normal subscription state + a list of members.
+export async function getUserBillingData(accessToken: string) {
+    const userId = await getUserId(accessToken);
+    const rawUserData = await getRawUserData(userId);
+    return getBillingData(userId, rawUserData);
 }
 
 // A cache to avoid hitting userinfo unnecessarily.
@@ -37,13 +55,15 @@ async function getUserId(accessToken: string): Promise<string> {
     }
 }
 
-async function getRawUserData(userId: string): Promise<Partial<UserData>> {
+async function getRawUserData(userId: string): Promise<Partial<UserAppData>> {
     // getUser is full live data for the user (/users/{id} - 15 req/second)
     const userData = await mgmtClient.getUser({ id: userId });
 
+    const metadata = userData.app_metadata as AppMetadata;
+
     return {
         email: userData.email!,
-        ...userData.app_metadata
+        ...metadata
     };
 }
 
@@ -66,8 +86,8 @@ const DELEGATED_TEAM_SUBSCRIPTION_PROPERTIES = [
     'subscription_plan_id'
 ] as const;
 
-async function getUserSubscriptionData(userId: string, userMetadata: Partial<UserData>) {
-    if (userMetadata && TEAM_SUBSCRIPTION_IDS.includes(userMetadata.subscription_plan_id!)) {
+async function buildUserAppData(userId: string, userMetadata: Partial<UserAppData>) {
+    if (TEAM_SUBSCRIPTION_IDS.includes(userMetadata.subscription_plan_id!)) {
         // If you have a team subscription, you're the *owner* of a team, not a member.
         // That means your subscription data isn't actually for *you*, it's for
         // the actual team members. Move it into a separate team_subscription to make that clear.
@@ -79,7 +99,7 @@ async function getUserSubscriptionData(userId: string, userMetadata: Partial<Use
         }, {});
     }
 
-    if (userMetadata?.subscription_owner_id) {
+    if (userMetadata.subscription_owner_id) {
         // If there's a subscription owner for this user (e.g. they're a member of a team)
         // read the basic subscription details from the real owner across to this user.
         const subOwnerData = await mgmtClient.getUser({
@@ -108,4 +128,110 @@ async function getUserSubscriptionData(userId: string, userMetadata: Partial<Use
     }
 
     return userMetadata;
+}
+
+async function getBillingData(
+    userId: string,
+    userMetadata: Partial<UserAppData>
+): Promise<UserBillingData> {
+    // Load transactions, team members and team owner in parallel:
+    const [transactions, teamMembers, owner] = await Promise.all([
+        getTransactions(userMetadata),
+        getTeamMembers(userId, userMetadata),
+        getTeamOwner(userId, userMetadata)
+    ]);
+
+    return {
+        ..._.omit(userMetadata, [
+            // Filter to just billing related non-duplicated data
+            'feature_flags',
+            'subscription_owner_id',
+            'team_member_ids'
+        ]),
+        email: userMetadata.email!,
+        transactions,
+        team_members: teamMembers,
+        team_owner: owner
+    };
+}
+
+async function getTransactions(userMetadata: Partial<UserAppData>) {
+    const paddleUserId = userMetadata.paddle_user_id
+    // Older user metadata doesn't include the user id:
+    ?? await getPaddleUserIdFromSubscription(userMetadata.subscription_id);
+
+    // If you have ever had a subscription, we want to include your invoices in this response:
+    return paddleUserId
+        ? getPaddleUserTransactions(paddleUserId)
+        : [];
+}
+
+async function getTeamMembers(userId: string, userMetadata: Partial<UserAppData>) {
+    if (!TEAM_SUBSCRIPTION_IDS.includes(userMetadata.subscription_plan_id!)) {
+        return undefined;
+    }
+
+    // If you currently have a team subscription, we need the basic data about your team
+    // members included here too, so can you see and manage them:
+    const teamMembers = (await getTeamMemberData(userId)).map((member) => ({
+        id: member.user_id!,
+        name: member.email!
+    }));
+
+    // Sort to match their configured id order (so that if the quantities change, we
+    // can consistently see who is now past the end of the list).
+    return _.sortBy(teamMembers, m =>
+        userMetadata.team_member_ids?.indexOf(m.id)
+    );
+}
+
+async function getTeamMemberData(teamOwnerId: string) {
+    return mgmtClient.getUsers({
+        q: `app_metadata.subscription_owner_id:${teamOwnerId}`,
+        // 100 is the max value. If we have a team of >100 users, we'll need some paging
+        // on our end in the UI anyway, so this'll do for now.
+        per_page: 100
+    });
+}
+
+async function getTeamOwner(userId: string, userMetadata: Partial<UserAppData>) {
+    if (!userMetadata.subscription_owner_id) return undefined;
+
+    const ownerId = userMetadata.subscription_owner_id;
+
+    // We're a member of somebody else's team: get the owner
+    try {
+        const ownerData = userMetadata.subscription_owner_id === userId
+            ? userMetadata // If we're in our own team, use that data directly:
+            : await getRawUserData(ownerId);
+
+        const teamMemberIds = ownerData.team_member_ids ?? [];
+        const maxTeamSize = ownerData.subscription_quantity || 0;
+        const teamMemberIndex = teamMemberIds.indexOf(userId)
+
+        const isInTeam = teamMemberIndex !== -1;
+        const isWithinQuantity = isInTeam && teamMemberIndex < maxTeamSize;
+
+        const error = !isInTeam
+                ? 'inconsistent-owner-data'
+            : !isWithinQuantity
+                ? 'member-beyond-owner-limit'
+            : undefined;
+
+        if (error) {
+            reportError(`Billing data issue for ${userId}: ${error}`);
+        }
+
+        return {
+            id: ownerId,
+            name: ownerData.email,
+            error
+        };
+    } catch (e) {
+        reportError(e);
+        return {
+            id: ownerId,
+            error: 'owner-unavailable'
+        };
+    }
 }

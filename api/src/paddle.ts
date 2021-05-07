@@ -15,6 +15,8 @@ ${process.env.PADDLE_PUBLIC_KEY}
 const PADDLE_VENDOR_ID = process.env.PADDLE_ID;
 const PADDLE_KEY = process.env.PADDLE_KEY;
 
+const PADDLE_BASE_URL = process.env.PADDLE_BASE_URL || "https://vendors.paddle.com";
+
 export const PRO_SUBSCRIPTION_IDS = [550380, 550382, 599788];
 export const TEAM_SUBSCRIPTION_IDS = [550788, 550789];
 
@@ -134,6 +136,10 @@ export function validateWebhook(webhookData: WebhookData) {
 }
 
 async function makePaddleApiRequest(url: string, options: RequestInit = {}) {
+    url = url.startsWith('/')
+        ? PADDLE_BASE_URL + url
+        : url;
+
     const response = await fetch(url, options);
 
     if (!response.ok) {
@@ -184,7 +190,7 @@ export async function getPaddleUserIdFromSubscription(
     if (!subscriptionId) return undefined;
 
     const response = await makePaddleApiRequest(
-        `https://vendors.paddle.com/api/2.0/subscription/users`, {
+        `/api/2.0/subscription/users`, {
             method: 'POST',
             body: new URLSearchParams({
                 vendor_id: PADDLE_VENDOR_ID,
@@ -208,7 +214,7 @@ export async function getPaddleUserTransactions(
     userId: number
 ): Promise<TransactionData[]> {
     const response = await makePaddleApiRequest(
-        `https://vendors.paddle.com/api/2.0/user/${userId}/transactions`, {
+        `/api/2.0/user/${userId}/transactions`, {
             method: 'POST',
             body: new URLSearchParams({
                 vendor_id: PADDLE_VENDOR_ID,
