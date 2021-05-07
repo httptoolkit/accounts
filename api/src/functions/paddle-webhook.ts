@@ -5,25 +5,13 @@ import moment from 'moment';
 import * as querystring from 'querystring';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 
-import { mgmtClient, User } from '../auth0';
-import { validateWebhook, WebhookData, SubscriptionStatus, TEAM_SUBSCRIPTION_IDS, PRO_SUBSCRIPTION_IDS } from '../paddle';
-
-interface SubscriptionData {
-    paddle_user_id?: number,
-    subscription_status?: SubscriptionStatus,
-    subscription_id?: number,
-    subscription_plan_id?: number,
-    subscription_expiry?: number,
-    subscription_quantity?: number,
-    last_receipt_url?: string,
-    update_url?: string,
-    cancel_url?: string
-}
-
-interface TeamUserData extends SubscriptionData {
-    team_member_ids?: string[];
-    subscription_owner_id?: string;
-}
+import { AppMetadata, mgmtClient, PayingUserMetadata, TeamOwnerMetadata, User } from '../auth0';
+import {
+    validateWebhook,
+    WebhookData,
+    TEAM_SUBSCRIPTION_IDS,
+    PRO_SUBSCRIPTION_IDS
+} from '../paddle';
 
 async function getOrCreateUserData(email: string): Promise<User> {
     const users = await mgmtClient.getUsersByEmail(email);
@@ -48,14 +36,14 @@ function dropUndefinedValues(obj: { [key: string]: any }) {
     });
 }
 
-async function updateProUserData(email: string, subscription: SubscriptionData) {
+async function updateProUserData(email: string, subscription: Partial<PayingUserMetadata>) {
     const user = await getOrCreateUserData(email);
 
     dropUndefinedValues(subscription);
     await mgmtClient.updateAppMetadata({ id: user.user_id! }, subscription);
 }
 
-function getSubscriptionFromHookData(hookData: WebhookData): SubscriptionData {
+function getSubscriptionFromHookData(hookData: WebhookData): Partial<PayingUserMetadata> {
     if (
         hookData.alert_name === 'subscription_created' ||
         hookData.alert_name === 'subscription_updated'
@@ -133,12 +121,12 @@ function getSubscriptionFromHookData(hookData: WebhookData): SubscriptionData {
     return {};
 }
 
-async function updateTeamData(email: string, subscription: SubscriptionData) {
+async function updateTeamData(email: string, subscription: Partial<PayingUserMetadata>) {
     const currentUserData = await getOrCreateUserData(email);
-    const currentMetadata: TeamUserData = currentUserData.app_metadata || {};
-    const newMetadata = subscription as TeamUserData;
+    const currentMetadata = (currentUserData.app_metadata ?? {}) as AppMetadata;
+    const newMetadata: Partial<TeamOwnerMetadata> = subscription;
 
-    if (!currentMetadata.team_member_ids) {
+    if (!('team_member_ids' in currentMetadata)) {
         // If the user is not currently a team owner: give them an empty team
         newMetadata.team_member_ids = [];
     }

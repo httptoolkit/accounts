@@ -6,7 +6,7 @@ import fetch, { RequestInit } from 'node-fetch';
 import Serialize from 'php-serialize';
 
 import { StatusError } from './errors';
-import { TransactionData } from '../../module/src/types';
+import { SubscriptionStatus, TransactionData } from '../../module/src/types';
 
 const PADDLE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 ${process.env.PADDLE_PUBLIC_KEY}
@@ -25,8 +25,6 @@ export type PaddleAlertNames =
     | 'subscription_payment_succeeded'
     | 'subscription_payment_failed'
     | 'subscription_payment_refunded'
-
-export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'deleted';
 
 export interface BaseWebhookData {
     alert_name: PaddleAlertNames;

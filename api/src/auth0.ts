@@ -1,4 +1,5 @@
 import * as auth0 from 'auth0';
+import { SubscriptionStatus } from '../../module/src/types';
 
 const {
     AUTH0_DOMAIN,
@@ -25,3 +26,39 @@ export const mgmtClient = new auth0.ManagementClient({
 });
 
 export type User = auth0.User;
+
+// The AppMetadata schema for the data we store in Auth0:
+export type AppMetadata =
+    | BaseMetadata
+    | TrialUserMetadata
+    | PayingUserMetadata
+    | TeamOwnerMetadata
+    | TeamMemberMetadata;
+
+interface BaseMetadata {
+    feature_flags: string[];
+}
+
+export interface TrialUserMetadata extends BaseMetadata {
+    subscription_status: SubscriptionStatus;
+    subscription_plan_id: number;
+    subscription_expiry: number;
+}
+
+export interface PayingUserMetadata extends TrialUserMetadata {
+    paddle_user_id?: number, // Optional just because it's new
+    subscription_id: number;
+    subscription_quantity: number,
+    last_receipt_url?: string, // Set after first successful payment
+    update_url: string,
+    cancel_url: string
+}
+
+export interface TeamOwnerMetadata extends PayingUserMetadata {
+    team_member_ids: string[];
+    subscription_owner_id?: string; // Owners can be members of their own team
+}
+
+export interface TeamMemberMetadata extends BaseMetadata {
+    subscription_owner_id: string;
+}
