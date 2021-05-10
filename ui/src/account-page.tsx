@@ -4,11 +4,14 @@ import {
     formatDistanceStrict, format
 } from 'date-fns';
 
+import { getPlanByCode } from '../../module/src/plans';
+
 import { styled, media } from './styles';
 
 import { AccountStore } from './account-store';
 
 import { Button, ButtonLink } from './inputs';
+import { Transactions } from './account-transactions';
 
 const PageContainer = styled.main`
     position: relative;
@@ -90,12 +93,13 @@ export const AccountPage = (props: {
     const { accountStore } = props;
 
     const {
-        userEmail,
+        user,
         userSubscription,
         logOut
     } = accountStore;
 
     const sub = userSubscription!;
+    if (!user) throw new Error("Account page with no user data");
 
     return <PageContainer>
         <PageHeading>Your Account</PageHeading>
@@ -109,13 +113,13 @@ export const AccountPage = (props: {
 
             <ContentGrid>
                 <ContentLabel>Email</ContentLabel>
-                <ContentValue>{ userEmail }</ContentValue>
+                <ContentValue>{ user.email }</ContentValue>
 
                 <ContentLabel>
                     Plan
                 </ContentLabel>
                 <ContentValue>
-                    { accountStore.getPlanByCode(sub.plan)?.name ?? 'Unknown' }
+                    { getPlanByCode(sub.plan)?.name ?? 'Unknown' }
                 </ContentValue>
 
                 <ContentLabel>
@@ -183,6 +187,11 @@ export const AccountPage = (props: {
                     </ButtonLink>
                 }
             </AccountControls>
+        </AccountSection>
+
+        <AccountSection>
+            <SectionHeading>Invoices</SectionHeading>
+            <Transactions transactions={user.transactions} />
         </AccountSection>
     </PageContainer>;
 };

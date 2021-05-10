@@ -21,6 +21,7 @@
       "src/index.tsx"
     ],
     "include": [
-      "custom-typings/**/*.d.ts"
+      "custom-typings/**/*.d.ts",
+      "../module/custom-typings/**/*.d.ts"
     ]
 }

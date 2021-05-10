@@ -9,7 +9,7 @@ import { Auth0LockPasswordless } from '@httptoolkit/auth0-lock';
 const auth0Dictionary = require('@httptoolkit/auth0-lock/lib/i18n/en').default;
 import * as dedent from 'dedent';
 
-import { SubscriptionPlanCode } from "./types";
+import { SubscriptionData, SubscriptionPlanCode, UserAppData, UserBillingData } from "./types";
 import { getSubscriptionPlanCode } from './plans';
 
 const AUTH0_CLIENT_ID = 'KAJyF1Pq9nfBrv5l3LHjT9CrSQIleujj';
@@ -244,35 +244,62 @@ function getToken() {
 
 export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'deleted';
 
-type AppData = {
-    email: string;
-    subscription_status?: SubscriptionStatus;
-    subscription_id?: number;
-    subscription_plan_id?: number;
-    subscription_expiry?: number;
-    update_url?: string;
-    cancel_url?: string;
-    last_receipt_url?: string;
-    feature_flags?: string[];
-}
-
-type SubscriptionData = {
+interface Subscription {
     id: number;
     status: SubscriptionStatus;
     plan: SubscriptionPlanCode;
+    quantity: number;
     expiry: Date;
     updateBillingDetailsUrl?: string;
     cancelSubscriptionUrl?: string;
     lastReceiptUrl?: string;
 };
 
-export type User = {
+interface BaseAccountData {
     email?: string;
-    subscription?: SubscriptionData;
+    subscription?: Subscription;
+}
+
+export interface User extends BaseAccountData {
     featureFlags: string[];
-};
+}
 
 const anonUser = (): User => ({ featureFlags: [] });
+
+export interface Transaction {
+    orderId: string;
+    receiptUrl: string;
+    productId: number;
+    createdAt: string;
+    status: string;
+
+    currency: string;
+    amount: string;
+}
+
+export interface TeamMember {
+    id: string;
+    name: string;
+    error?: string;
+}
+
+export interface TeamOwner {
+    id: string;
+    name?: string;
+    error?: string;
+}
+
+export interface BillingAccount extends BaseAccountData {
+    transactions: Transaction[];
+
+    // Only define if you are a member of a team:
+    teamOwner?: TeamOwner;
+
+    // Only defined if you are the owner of a team:
+    teamMembers?: TeamMember[];
+}
+
+const anonBillingAccount = (): BillingAccount => ({ transactions: [] });
 
 /*
  * Synchronously gets the last received user data, _without_
@@ -300,7 +327,7 @@ export async function getLatestUserData(): Promise<User> {
     const lastUserData = getLastUserData();
 
     try {
-        const userJwt = await requestUserData();
+        const userJwt = await requestUserData('app');
         const userData = parseUserData(userJwt);
         localStorage.setItem('last_jwt', userJwt);
         return userData;
@@ -311,29 +338,72 @@ export async function getLatestUserData(): Promise<User> {
     }
 }
 
+export async function getBillingData(): Promise<BillingAccount> {
+    const userJwt = await requestUserData('billing');
+    return parseBillingData(userJwt);
+}
+
 function parseUserData(userJwt: string | null): User {
     if (!userJwt) return anonUser();
 
-    const appData = <AppData>jwt.verify(userJwt, AUTH0_DATA_PUBLIC_KEY, {
+    const appData = <UserAppData>jwt.verify(userJwt, AUTH0_DATA_PUBLIC_KEY, {
         algorithms: ['RS256'],
         audience: 'https://httptoolkit.tech/app_data',
         issuer: 'https://httptoolkit.tech/'
     });
 
+    return {
+        email: appData.email,
+        subscription: parseSubscriptionData(appData),
+        featureFlags: appData.feature_flags || []
+    };
+}
+
+function parseBillingData(userJwt: string | null): BillingAccount {
+    if (!userJwt) return anonBillingAccount();
+
+    const billingData = <UserBillingData>jwt.verify(userJwt, AUTH0_DATA_PUBLIC_KEY, {
+        algorithms: ['RS256'],
+        audience: 'https://httptoolkit.tech/billing_data',
+        issuer: 'https://httptoolkit.tech/'
+    });
+
+    const transactions = billingData.transactions.map((transaction) => ({
+        orderId: transaction.order_id,
+        receiptUrl: transaction.receipt_url,
+        productId: transaction.product_id,
+        createdAt: transaction.created_at,
+        status: transaction.status,
+
+        amount: transaction.amount,
+        currency: transaction.currency
+    }));
+
+    return {
+        email: billingData.email,
+        subscription: parseSubscriptionData(billingData),
+        transactions,
+        teamMembers: billingData.team_members,
+        teamOwner: billingData.team_owner
+    };
+}
+
+function parseSubscriptionData(rawData: SubscriptionData) {
     const subscription = {
-        id: appData.subscription_id,
-        status: appData.subscription_status,
-        plan: getSubscriptionPlanCode(appData.subscription_plan_id),
-        expiry: appData.subscription_expiry ? new Date(appData.subscription_expiry) : undefined,
-        updateBillingDetailsUrl: appData.update_url,
-        cancelSubscriptionUrl: appData.cancel_url,
-        lastReceiptUrl: appData.last_receipt_url
+        id: rawData.subscription_id,
+        status: rawData.subscription_status,
+        plan: getSubscriptionPlanCode(rawData.subscription_plan_id),
+        quantity: rawData.subscription_quantity,
+        expiry: rawData.subscription_expiry ? new Date(rawData.subscription_expiry) : undefined,
+        updateBillingDetailsUrl: rawData.update_url,
+        cancelSubscriptionUrl: rawData.cancel_url,
+        lastReceiptUrl: rawData.last_receipt_url
     };
 
     if (_.some(subscription) && !subscription.plan) {
         // No plan means no recognized plan, i.e. an unknown id. This should never happen,
         // but error reports suggest it's happened at least once.
-        loginEvents.emit('app_error', 'Invalid subscription data', appData);
+        loginEvents.emit('app_error', 'Invalid subscription data', rawData);
     }
 
     const optionalFields = [
@@ -342,21 +412,17 @@ function parseUserData(userJwt: string | null): User {
         'cancelSubscriptionUrl'
     ];
 
-    return {
-        email: appData.email,
-        // Use undefined rather than {} when there's any missing required sub fields
-        subscription: _.every(_.omit(subscription, ...optionalFields))
-            ? subscription as SubscriptionData
-            : undefined,
-        featureFlags: appData.feature_flags || []
-    };
+    // Use undefined rather than {} or partial data when there's any missing required sub fields
+    return _.every(_.omit(subscription, ...optionalFields))
+        ? subscription as Subscription
+        : undefined
 }
 
-async function requestUserData(): Promise<string> {
+async function requestUserData(type: 'app' | 'billing'): Promise<string> {
     const token = await getToken();
     if (!token) return '';
 
-    const appDataResponse = await fetch(`${apiBase}/get-app-data`, {
+    const appDataResponse = await fetch(`${apiBase}/get-${type}-data`, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${token}`

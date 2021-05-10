@@ -1,0 +1,109 @@
+import * as _ from 'lodash';
+import * as React from 'react';
+
+import { styled } from './styles';
+
+import type {
+    Transaction
+} from '../../module/src/auth';
+
+import {
+    getPlanById
+} from '../../module/src/plans';
+
+export const Transactions = (p: {
+    transactions: Transaction[],
+}) => <TransactionsContainer>
+    { p.transactions.map((transaction) => <li key={transaction.orderId}>
+        <TransactionRow
+            href={transaction.receiptUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+        >
+            <TransactionDescription>
+                {
+                    getPlanById(transaction.productId)?.name
+                    ?? 'Unknown'
+                }
+            </TransactionDescription>
+
+            <TransactionDate>
+                { new Date(transaction.createdAt).toLocaleDateString() }
+            </TransactionDate>
+
+            <TransactionResultWrapper>
+                <TransactionResult status={transaction.status}>
+                    { _.startCase(transaction.status) }
+                </TransactionResult>
+            </TransactionResultWrapper>
+
+            <TransactionCost>
+                { new Intl.NumberFormat(undefined, {
+                    style: 'currency',
+                    currency: transaction.currency
+                }).format(parseFloat(transaction.amount)) }
+            </TransactionCost>
+        </TransactionRow>
+    </li>) }
+</TransactionsContainer>;
+
+const TransactionsContainer = styled.ol`
+    list-style: none;
+    margin-top: 10px;
+`;
+
+const TransactionRow = styled.a`
+    text-decoration: none;
+    color: ${p => p.theme.mainColor};
+    cursor: pointer;
+
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+
+    border-radius: 4px;
+    background-color: ${p => p.theme.mainBackground};
+    box-shadow: 0 2px 10px 0 rgb(0 0 0 / 20%);
+
+    padding: 10px;
+    margin: 10px 0;
+
+    &:hover {
+        box-shadow: none;
+    }
+
+    font-size: ${p => p.theme.textSize};
+`;
+
+const TransactionDescription = styled.p`
+    padding: 4px 0;
+`;
+
+const TransactionDate = styled.p`
+    padding: 4px 0;
+    text-align: center;
+`;
+
+const TransactionResultWrapper = styled.div`
+    text-align: center;
+`;
+
+const TransactionResult = styled.p<{ status: string }>`
+    display: inline-block;
+    border-radius: 4px;
+    padding: 4px 8px;
+
+    background-color: ${p => p.status === 'completed'
+        ? p.theme.successBackground
+        : p.theme.warningBackground
+    };
+
+    color: ${p => p.status === 'completed'
+        ? p.theme.successColor
+        : p.theme.warningColor
+    };
+`;
+
+const TransactionCost = styled.p`
+    padding: 4px 0;
+    text-align: right;
+`;

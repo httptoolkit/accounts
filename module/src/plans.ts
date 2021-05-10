@@ -94,3 +94,13 @@ function formatPrice(currency: string, price: number) {
 
 export const getSubscriptionPlanCode = (id: number | undefined) =>
     _.findKey(SubscriptionPlans, { id: id }) as SubscriptionPlanCode | undefined;
+
+export const getPlanByCode = (name: SubscriptionPlanCode): SubscriptionPlan | undefined =>
+    SubscriptionPlans[name];
+
+export const getPlanById = (id: number) => {
+    const planCode = getSubscriptionPlanCode(id);
+    return planCode
+        ? getPlanByCode(planCode)
+        : undefined;
+}
