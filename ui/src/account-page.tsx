@@ -12,6 +12,7 @@ import { AccountStore } from './account-store';
 
 import { Button, ButtonLink } from './inputs';
 import { Transactions } from './account-transactions';
+import { TeamMembers } from './account-team-members';
 
 const PageContainer = styled.main`
     position: relative;
@@ -122,6 +123,15 @@ export const AccountPage = (props: {
                     { getPlanByCode(sub.plan)?.name ?? 'Unknown' }
                 </ContentValue>
 
+                { user.teamMembers && <>
+                    <ContentLabel>
+                        Licenses
+                    </ContentLabel>
+                    <ContentValue>
+                        { sub.quantity }
+                    </ContentValue>
+                </> }
+
                 <ContentLabel>
                     Status
                 </ContentLabel>
@@ -188,6 +198,14 @@ export const AccountPage = (props: {
                 }
             </AccountControls>
         </AccountSection>
+
+        { sub && user.teamMembers && <AccountSection>
+            <SectionHeading>Team</SectionHeading>
+            <TeamMembers
+                licenseCount={sub.quantity}
+                teamMembers={user.teamMembers}
+            />
+        </AccountSection> }
 
         <AccountSection>
             <SectionHeading>Invoices</SectionHeading>

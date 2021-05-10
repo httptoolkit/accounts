@@ -7,8 +7,10 @@ export const interactiveMouseoverStyles = css`
 
     &:not([disabled]) {
         cursor: pointer;
+
+        background-image: linear-gradient(transparent, rgba(0,0,0,.05) 40%, rgba(0,0,0,.1));
         &:hover {
-            background-image: linear-gradient(transparent, rgba(0,0,0,.05) 40%, rgba(0,0,0,.1));
+            background-image: none;
         }
 
         &:active {
