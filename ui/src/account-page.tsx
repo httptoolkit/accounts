@@ -15,7 +15,7 @@ import { Transactions } from './account-transactions';
 
 const PageContainer = styled.main`
     position: relative;
-    padding-top: 40px;
+    padding: 40px 0;
 
     ${media.desktop`
         margin: 0 auto;
