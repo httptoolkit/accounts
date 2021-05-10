@@ -10,6 +10,7 @@ export const LoginPage = (props: {
     React.useEffect(() => {
         if (!accountStore.isLoggedIn) {
             accountStore.showLoginDialog();
+            return () => accountStore.hideLoginDialog();
         }
     }, [accountStore]);
 

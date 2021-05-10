@@ -84,6 +84,10 @@ export class AccountStore {
         showLoginDialog();
     }
 
+    hideLoginDialog() {
+        hideLoginDialog();
+    }
+
     logOut() {
         logOut();
     }

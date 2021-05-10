@@ -128,6 +128,8 @@ export const showLoginDialog = () => {
     });
 };
 
+export const hideLoginDialog = () => auth0Lock?.hide();
+
 export const logOut = () => {
     loginEvents.emit('logout');
 };
