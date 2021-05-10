@@ -234,7 +234,8 @@ describe('/get-billing-data', () => {
             const billingUserEmail = 'billinguser@example.com';
             const teamMemberEmails = [
                 "teammember1@example.com",
-                "teammember2@example.com"
+                "teammember2@example.com",
+                "teammember3@example.com"
             ];
             const subExpiry = Date.now();
 
@@ -248,7 +249,7 @@ describe('/get-billing-data', () => {
                     team_member_ids: ['1', '2'],
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
-                    subscription_quantity: 2,
+                    subscription_quantity: 1,
                     subscription_plan_id: 550789,
                     subscription_status: "active",
                     last_receipt_url: 'lru',
@@ -268,6 +269,11 @@ describe('/get-billing-data', () => {
                         user_id: '1',
                         email: teamMemberEmails[0],
                         app_metadata: { subscription_owner_id: billingUserId }
+                    },
+                    {
+                        user_id: '3',
+                        email: teamMemberEmails[2],
+                        app_metadata: { }
                     }
                 ]);
 
@@ -292,7 +298,7 @@ describe('/get-billing-data', () => {
 
                 subscription_expiry: subExpiry,
                 subscription_id: 2,
-                subscription_quantity: 2,
+                subscription_quantity: 1,
                 subscription_plan_id: 550789,
                 subscription_status: "active",
                 last_receipt_url: 'lru',
@@ -302,7 +308,8 @@ describe('/get-billing-data', () => {
                 transactions: [transaction],
                 team_members: [
                     { id: '1', name: teamMemberEmails[0] },
-                    { id: '2', name: teamMemberEmails[1] }
+                    { id: '2', name: teamMemberEmails[1], error: 'member-beyond-team-limit' },
+                    { id: '3', name: teamMemberEmails[2], error: 'inconsistent-member-data' }
                 ]
             });
         });

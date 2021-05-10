@@ -171,18 +171,34 @@ async function getTeamMembers(userId: string, userMetadata: Partial<UserAppData>
         return undefined;
     }
 
+    // Sort to match their configured id order (so that if the quantities change,
+    // we can consistently see who is now past the end of the list).
+    const usersOwnedByTeam = _.sortBy(await getTeamMemberData(userId), (member) => {
+        const memberIndex = userMetadata.team_member_ids?.indexOf(member.user_id!);
+        if (memberIndex === -1) return Infinity;
+        else return memberIndex;
+    })
+
     // If you currently have a team subscription, we need the basic data about your team
     // members included here too, so can you see and manage them:
-    const teamMembers = (await getTeamMemberData(userId)).map((member) => ({
+    const teamMembers = usersOwnedByTeam.map((member, i) => ({
         id: member.user_id!,
-        name: member.email!
+        name: member.email!,
+        error: !userMetadata.team_member_ids?.includes(member.user_id!)
+                ? 'inconsistent-member-data'
+            : i >= userMetadata.subscription_quantity!
+                ? 'member-beyond-team-limit'
+            : undefined
     }));
 
-    // Sort to match their configured id order (so that if the quantities change, we
-    // can consistently see who is now past the end of the list).
-    return _.sortBy(teamMembers, m =>
-        userMetadata.team_member_ids?.indexOf(m.id)
+    // Report any team member data errors:
+    teamMembers.filter(m => m.error).forEach(({ id, error }) =>
+        reportError(
+            `Billing data member issue for ${id} of team ${userId}: ${error}`
+        )
     );
+
+    return teamMembers;
 }
 
 async function getTeamMemberData(teamOwnerId: string) {
@@ -219,7 +235,7 @@ async function getTeamOwner(userId: string, userMetadata: Partial<UserAppData>) 
             : undefined;
 
         if (error) {
-            reportError(`Billing data issue for ${userId}: ${error}`);
+            reportError(`Billing data owner issue for ${userId}: ${error}`);
         }
 
         return {
