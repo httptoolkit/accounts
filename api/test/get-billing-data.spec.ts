@@ -235,7 +235,8 @@ describe('/get-billing-data', () => {
             const teamMemberEmails = [
                 "teammember1@example.com",
                 "teammember2@example.com",
-                "teammember3@example.com"
+                "teammember3@example.com",
+                "teammember4@example.com"
             ];
             const subExpiry = Date.now();
 
@@ -246,10 +247,11 @@ describe('/get-billing-data', () => {
                 email: billingUserEmail,
                 app_metadata: {
                     feature_flags: ['a flag'],
-                    team_member_ids: ['1', '2'],
+                    team_member_ids: ['1', '2', '3'],
+                    locked_licenses: ['2050-01-01T00:00:00Z'], // Locked for ~30 years
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
-                    subscription_quantity: 1,
+                    subscription_quantity: 2, // <-- 2 allowed, but only 1 really due to locked license
                     subscription_plan_id: 550789,
                     subscription_status: "active",
                     last_receipt_url: 'lru',
@@ -273,6 +275,11 @@ describe('/get-billing-data', () => {
                     {
                         user_id: '3',
                         email: teamMemberEmails[2],
+                        app_metadata: { subscription_owner_id: billingUserId }
+                    },
+                    {
+                        user_id: '4',
+                        email: teamMemberEmails[3],
                         app_metadata: { }
                     }
                 ]);
@@ -298,7 +305,8 @@ describe('/get-billing-data', () => {
 
                 subscription_expiry: subExpiry,
                 subscription_id: 2,
-                subscription_quantity: 1,
+                locked_licenses: ['2050-01-01T00:00:00Z'], // Locked for ~30 years
+                subscription_quantity: 2, // <-- 2 allowed, but only 1 really due to locked license
                 subscription_plan_id: 550789,
                 subscription_status: "active",
                 last_receipt_url: 'lru',
@@ -308,8 +316,9 @@ describe('/get-billing-data', () => {
                 transactions: [transaction],
                 team_members: [
                     { id: '1', name: teamMemberEmails[0] },
-                    { id: '2', name: teamMemberEmails[1], error: 'member-beyond-team-limit' },
-                    { id: '3', name: teamMemberEmails[2], error: 'inconsistent-member-data' }
+                    { id: '2', name: teamMemberEmails[1], error: 'member-beyond-team-limit' }, // Rejected due to lock
+                    { id: '3', name: teamMemberEmails[2], error: 'member-beyond-team-limit' }, // Rejected due to quantity
+                    { id: '4', name: teamMemberEmails[3], error: 'inconsistent-member-data' }
                 ]
             });
         });
@@ -405,6 +414,52 @@ describe('/get-billing-data', () => {
                 app_metadata: {
                     team_member_ids: ['123', '456', teamUserId],
                     subscription_quantity: 2, // <-- 2 allowed, but we're 3rd in the ids above
+                    subscription_expiry: subExpiry,
+                    subscription_id: 2,
+                    subscription_plan_id: 550789,
+                    subscription_status: "active",
+                    last_receipt_url: 'lru',
+                    cancel_url: 'cu',
+                    update_url: 'uu',
+                }
+            });
+
+            const response = await getBillingData(functionServer, authToken);
+            expect(response.status).to.equal(200);
+
+            const data = getJwtData(await response.text());
+            expect(data).to.deep.equal({
+                email: teamUserEmail,
+                transactions: [],
+                team_owner: {
+                    id: billingUserId,
+                    name: billingUserEmail,
+                    error: 'member-beyond-owner-limit'
+                }
+            });
+        });
+
+        it("returns owner with error for team members beyond the subscribed quantity due to locks", async () => {
+            const authToken = freshAuthToken();
+            const billingUserId = "abc";
+            const billingUserEmail = 'billinguser@example.com';
+            const teamUserId = "def";
+            const teamUserEmail = 'teamuser@example.com';
+            const subExpiry = Date.now();
+
+            await auth0Server.get('/userinfo')
+                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
+                .thenJson(200, { sub: teamUserId });
+            await auth0Server.get('/api/v2/users/' + teamUserId).thenJson(200, {
+                email: teamUserEmail,
+                app_metadata: { subscription_owner_id: billingUserId }
+            });
+            await auth0Server.get('/api/v2/users/' + billingUserId).thenJson(200, {
+                email: billingUserEmail,
+                app_metadata: {
+                    team_member_ids: ['123', '456', teamUserId],
+                    locked_licenses: ['2050-01-01T00:00:00Z'], // Locked for ~30 years
+                    subscription_quantity: 3, // <-- 3 allowed, OK except for the locked license
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
                     subscription_plan_id: 550789,

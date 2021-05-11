@@ -378,7 +378,8 @@ describe('Paddle webhooks', () => {
                     subscription_plan_id: 550789,
                     subscription_quantity: 5,
                     subscription_expiry: nextRenewal.add(1, 'days').valueOf(),
-                    team_member_ids: []
+                    team_member_ids: [],
+                    locked_licenses: []
                 }
             });
         });
@@ -431,7 +432,8 @@ describe('Paddle webhooks', () => {
                     subscription_plan_id: 550789,
                     subscription_quantity: 5,
                     subscription_expiry: nextRenewal.add(1, 'days').valueOf(),
-                    team_member_ids: []
+                    team_member_ids: [],
+                    locked_licenses: []
                 }
             });
         });
@@ -469,7 +471,50 @@ describe('Paddle webhooks', () => {
                     subscription_id: 456,
                     subscription_plan_id: 550789,
                     subscription_quantity: 5,
-                    subscription_expiry: nextRenewal.add(1, 'days').valueOf()
+                    subscription_expiry: nextRenewal.add(1, 'days').valueOf(),
+                    locked_licenses: []
+                    // Doesn't update team_member_ids - that's already set.
+                }
+            });
+        });
+
+        it('cleans up expired locks at subscription renewal', async () => {
+            const userId = "abc";
+            const userEmail = 'user@example.com';
+            givenUser(userId, userEmail, {
+                team_member_ids: ['teamMemberId'],
+                locked_licenses: ['2020-01-01T00:00:00Z', '2050-01-01T00:00:00Z']
+            });
+
+            const userUpdate = await auth0Server
+                .patch('/api/v2/users/' + userId)
+                .thenReply(200);
+
+            const nextRenewal = moment('2025-01-01');
+
+            await triggerWebhook(functionServer, {
+                alert_name: 'subscription_payment_succeeded',
+                status: 'active',
+                email: userEmail,
+                user_id: '123',
+                subscription_id: '456',
+                quantity: '5',
+                subscription_plan_id: '550789', // Team-annual
+                next_bill_date: nextRenewal.format('YYYY-MM-DD'),
+            });
+
+            const updateRequests = await userUpdate.getSeenRequests();
+            expect(updateRequests.length).to.equal(1);
+            expect(updateRequests[0].body.json).to.deep.equal({
+                app_metadata: {
+                    subscription_status: 'active',
+                    paddle_user_id: 123,
+                    subscription_id: 456,
+                    subscription_plan_id: 550789,
+                    subscription_quantity: 5,
+                    subscription_expiry: nextRenewal.add(1, 'days').valueOf(),
+                    locked_licenses: ['2050-01-01T00:00:00Z'] // Removes only the expired lock
+                    // Doesn't update team_member_ids - that's already set.
                 }
             });
         });

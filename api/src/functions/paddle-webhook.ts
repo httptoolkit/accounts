@@ -5,7 +5,14 @@ import moment from 'moment';
 import * as querystring from 'querystring';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 
-import { AppMetadata, mgmtClient, PayingUserMetadata, TeamOwnerMetadata, User } from '../auth0';
+import {
+    AppMetadata,
+    LICENSE_LOCK_DURATION_MS,
+    mgmtClient,
+    PayingUserMetadata,
+    TeamOwnerMetadata,
+    User
+} from '../auth0';
 import {
     validateWebhook,
     WebhookData,
@@ -130,6 +137,12 @@ async function updateTeamData(email: string, subscription: Partial<PayingUserMet
         // If the user is not currently a team owner: give them an empty team
         newMetadata.team_member_ids = [];
     }
+
+    // Cleanup locked licenses: drop all locks that expired in the past
+    newMetadata.locked_licenses = ((currentMetadata as TeamOwnerMetadata).locked_licenses ?? [])
+        .filter((lockStartTime) =>
+            moment(lockStartTime).add(LICENSE_LOCK_DURATION_MS, 'milliseconds').isAfter()
+        )
 
     dropUndefinedValues(newMetadata);
 

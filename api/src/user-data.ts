@@ -1,4 +1,5 @@
 import * as _ from 'lodash';
+import moment from 'moment';
 
 import { reportError } from './errors';
 
@@ -9,7 +10,13 @@ import {
     getPaddleUserTransactions,
     TEAM_SUBSCRIPTION_IDS
 } from './paddle';
-import { AppMetadata, authClient, mgmtClient } from './auth0';
+import {
+    authClient,
+    mgmtClient,
+    LICENSE_LOCK_DURATION_MS,
+    AppMetadata,
+    TeamOwnerMetadata
+} from './auth0';
 
 // User app data is the effective subscription of the user. For Pro that's easy,
 // for teams: team members have the subscription of the team owner. Team owners
@@ -109,16 +116,18 @@ async function buildUserAppData(userId: string, userMetadata: Partial<UserAppDat
             return { app_metadata: undefined };
         });
 
-        const subOwnerMetadata = subOwnerData.app_metadata;
+        const subOwnerMetadata = subOwnerData.app_metadata as TeamOwnerMetadata;
 
         if (subOwnerMetadata && TEAM_SUBSCRIPTION_IDS.includes(subOwnerMetadata.subscription_plan_id)) {
+            const maxTeamSize = (subOwnerMetadata.subscription_quantity || 0) - countLockedLicenses(subOwnerMetadata);
+
             const subTeamMembers = (
                 subOwnerMetadata.team_member_ids || []
-            ).slice(0, subOwnerMetadata.subscription_quantity || 0);
+            ).slice(0, maxTeamSize);
 
             if (subTeamMembers.includes(userId)) {
                 DELEGATED_TEAM_SUBSCRIPTION_PROPERTIES.forEach((field) => {
-                    userMetadata![field] = subOwnerMetadata[field];
+                    userMetadata![field] = subOwnerMetadata[field] as any;
                 });
             } else {
                 reportError(`Inconsistent team membership for ${userId}`);
@@ -128,6 +137,15 @@ async function buildUserAppData(userId: string, userMetadata: Partial<UserAppDat
     }
 
     return userMetadata;
+}
+
+function countLockedLicenses(userMetadata: TeamOwnerMetadata) {
+    // Count the number of locked licenses, where the expiry data is still in the future:
+    return (userMetadata.locked_licenses ?? [])
+        .filter((lockStartTime) =>
+            moment(lockStartTime).add(LICENSE_LOCK_DURATION_MS, 'milliseconds').isAfter()
+        )
+        .length;
 }
 
 async function getBillingData(
@@ -177,7 +195,10 @@ async function getTeamMembers(userId: string, userMetadata: Partial<UserAppData>
         const memberIndex = userMetadata.team_member_ids?.indexOf(member.user_id!);
         if (memberIndex === -1) return Infinity;
         else return memberIndex;
-    })
+    });
+
+    const maxTeamSize = (userMetadata.subscription_quantity || 0)
+        - countLockedLicenses(userMetadata as TeamOwnerMetadata);
 
     // If you currently have a team subscription, we need the basic data about your team
     // members included here too, so can you see and manage them:
@@ -186,7 +207,7 @@ async function getTeamMembers(userId: string, userMetadata: Partial<UserAppData>
         name: member.email!,
         error: !userMetadata.team_member_ids?.includes(member.user_id!)
                 ? 'inconsistent-member-data'
-            : i >= userMetadata.subscription_quantity!
+            : i >= maxTeamSize
                 ? 'member-beyond-team-limit'
             : undefined
     }));
@@ -217,12 +238,13 @@ async function getTeamOwner(userId: string, userMetadata: Partial<UserAppData>) 
 
     // We're a member of somebody else's team: get the owner
     try {
-        const ownerData = userMetadata.subscription_owner_id === userId
+        const ownerData = (userMetadata.subscription_owner_id === userId
             ? userMetadata // If we're in our own team, use that data directly:
-            : await getRawUserData(ownerId);
+            : await getRawUserData(ownerId)
+        ) as TeamOwnerMetadata & { email: string };
 
         const teamMemberIds = ownerData.team_member_ids ?? [];
-        const maxTeamSize = ownerData.subscription_quantity || 0;
+        const maxTeamSize = (ownerData.subscription_quantity || 0) - countLockedLicenses(ownerData);
         const teamMemberIndex = teamMemberIds.indexOf(userId)
 
         const isInTeam = teamMemberIndex !== -1;

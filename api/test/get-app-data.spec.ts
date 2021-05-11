@@ -339,6 +339,46 @@ describe('/get-app-data', () => {
             });
         });
 
+        it("returns empty data for team members beyond the subscribed quantity due to locked licenses", async () => {
+            const authToken = freshAuthToken();
+            const billingUserId = "abc";
+            const billingUserEmail = 'billinguser@example.com';
+            const teamUserId = "def";
+            const teamUserEmail = 'teamuser@example.com';
+            const subExpiry = Date.now();
+
+            await auth0Server.get('/userinfo')
+                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
+                .thenJson(200, { sub: teamUserId });
+            await auth0Server.get('/api/v2/users/' + teamUserId).thenJson(200, {
+                email: teamUserEmail,
+                app_metadata: { subscription_owner_id: billingUserId }
+            });
+            await auth0Server.get('/api/v2/users/' + billingUserId).thenJson(200, {
+                email: billingUserEmail,
+                app_metadata: {
+                    team_member_ids: ['123', '456', teamUserId],
+                    locked_licenses: ['2050-01-01T00:00:00Z'], // Locked for ~30 years
+                    subscription_quantity: 3, // <-- 3 allowed, OK except for the locked license
+                    subscription_expiry: subExpiry,
+                    subscription_id: 2,
+                    subscription_plan_id: 550789,
+                    subscription_status: "active",
+                    last_receipt_url: 'lru',
+                    cancel_url: 'cu',
+                    update_url: 'uu',
+                }
+            });
+
+            const response = await getAppData(functionServer, authToken);
+            expect(response.status).to.equal(200);
+
+            const data = getJwtData(await response.text());
+            expect(data).to.deep.equal({
+                email: teamUserEmail
+            });
+        });
+
         it("returns empty data for team members with inconsistent membership data", async () => {
             const authToken = freshAuthToken();
             const billingUserId = "abc";
