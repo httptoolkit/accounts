@@ -4,7 +4,7 @@ const ONE_DAY_IN_SECONDS = 60 * 60 * 24;
 
 export function getCorsResponseHeaders(event: APIGatewayProxyEvent) {
     const corsHeaders: { [key: string]: string } = {
-        'Access-Control-Allow-Headers': 'Authorization',
+        'Access-Control-Allow-Headers': 'Authorization, Content-Type',
         'Access-Control-Max-Age': ONE_DAY_IN_SECONDS.toString(), // Chrome will cache for 10 mins max anyway
     };
 
