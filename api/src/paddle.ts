@@ -17,8 +17,14 @@ const PADDLE_KEY = process.env.PADDLE_KEY;
 
 const PADDLE_BASE_URL = process.env.PADDLE_BASE_URL || "https://vendors.paddle.com";
 
-export const PRO_SUBSCRIPTION_IDS = [550380, 550382, 599788];
-export const TEAM_SUBSCRIPTION_IDS = [550788, 550789];
+const PRO_SUBSCRIPTION_IDS = [550380, 550382, 599788];
+const TEAM_SUBSCRIPTION_IDS = [550788, 550789];
+
+export const isProSubscription = (planId: number | undefined) =>
+    PRO_SUBSCRIPTION_IDS.includes(planId!);
+
+export const isTeamSubscription = (planId: number | undefined) =>
+    TEAM_SUBSCRIPTION_IDS.includes(planId!);
 
 export type PaddleAlertNames =
     | 'subscription_created'

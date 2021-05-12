@@ -16,8 +16,8 @@ import {
 import {
     validateWebhook,
     WebhookData,
-    TEAM_SUBSCRIPTION_IDS,
-    PRO_SUBSCRIPTION_IDS
+    isProSubscription,
+    isTeamSubscription
 } from '../paddle';
 
 async function getOrCreateUserData(email: string): Promise<User> {
@@ -173,10 +173,10 @@ export const handler = catchErrors(async (event) => {
 
         let userData = getSubscriptionFromHookData(paddleData);
 
-        if (TEAM_SUBSCRIPTION_IDS.includes(userData.subscription_plan_id!)) {
+        if (isTeamSubscription(userData.subscription_plan_id)) {
             console.log(`Updating team user ${email}`);
             await updateTeamData(email, userData);
-        } else if (PRO_SUBSCRIPTION_IDS.includes(userData.subscription_plan_id!)) {
+        } else if (isProSubscription(userData.subscription_plan_id)) {
             console.log(`Updating Pro user ${email} to ${JSON.stringify(userData)}`);
             await updateProUserData(email, userData);
         } else {
