@@ -434,5 +434,12 @@ async function requestUserData(type: 'app' | 'billing'): Promise<string> {
         }
     });
 
+    if (!appDataResponse.ok) {
+        console.log(`Received ${appDataResponse.status} loading ${type} data, with body: ${
+            await appDataResponse.text()
+        }`);
+        throw new Error(`Failed to load ${type} data`);
+    }
+
     return appDataResponse.text();
 }
