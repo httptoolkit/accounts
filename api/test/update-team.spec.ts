@@ -20,7 +20,7 @@ import {
     watchUserUpdates,
     applyMetadataUpdate
 } from './test-util';
-import { AppMetadata, LICENSE_LOCK_DURATION_MS, PayingUserMetadata, TeamMemberMetadata } from '../src/auth0';
+import { LICENSE_LOCK_DURATION_MS, PayingUserMetadata, TeamMemberMetadata } from '../src/auth0';
 
 const updateTeam = (server: net.Server, authToken: string | undefined, team: {
     idsToRemove?: string[],
@@ -202,7 +202,6 @@ describe('/update-team', () => {
             // Can't deep match because of this timestamp:
             expect(newUserMetadata.joined_team_at).to.be.within(Date.now() - 1000, Date.now());
 
-
             const updates = await getUserUpdates();
             expect(updates).to.deep.equal([
                 {
@@ -211,7 +210,7 @@ describe('/update-team', () => {
                         app_metadata: {
                             team_member_ids: [
                                 team[0].id,
-                                'new-user-0'
+                                newUsers[0].id
                             ],
                             locked_licenses: []
                         }
@@ -347,7 +346,7 @@ describe('/update-team', () => {
                 body: {
                     app_metadata: {
                         team_member_ids: [
-                            'new-user-0',
+                            newUsers[0].id,
                             existingUserId
                         ],
                         locked_licenses: []

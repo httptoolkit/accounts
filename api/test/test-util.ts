@@ -8,6 +8,11 @@ import { serveFunctions } from '@httptoolkit/netlify-cli/src/utils/serve-functio
 import { TransactionData } from '../../module/src/types';
 import { AppMetadata } from '../src/auth0';
 
+let idCounter = 1000;
+export function id() {
+    return idCounter++;
+}
+
 function generateKeyPair() {
     return crypto.generateKeyPairSync('rsa', {
         modulusLength: 512,
@@ -86,9 +91,10 @@ export function givenNoUsers() {
         .get('/api/v2/users-by-email')
         .thenJson(200, []);
 }
+export async function givenSubscription(subId: number) {
+    const userId = id();
 
-export function givenSubscription(subId: number, userId: number) {
-    return paddleServer
+    await paddleServer
         .post(`/api/2.0/subscription/users`)
         .withForm({
             subscription_id: subId.toString()
@@ -97,6 +103,8 @@ export function givenSubscription(subId: number, userId: number) {
             success: true,
             response: [{ user_id: userId.toString() }]
         });
+
+    return { paddleUserId: userId };
 }
 
 export function givenTransactions(userId: number, transactions: TransactionData[]) {
@@ -198,24 +206,27 @@ export function applyMetadataUpdate(data: any, update: any) {
 }
 
 export async function watchUserCreation() {
-    let i = 0;
+    let ids: string[] = [];
 
     const createEndpoint = await auth0Server
         .post('/api/v2/users')
         .thenCallback(() => {
+            const newUserId = `new-user-${id()}`;
+            ids.push(newUserId);
             return {
                 status: 200,
                 json: {
-                    user_id: `new-user-${i++}`
+                    user_id: newUserId
                 }
             };
         });
 
     return async () => {
         const newUsers = await createEndpoint.getSeenRequests();
-        return newUsers.map((newUser) => ({
+        return newUsers.map((newUser, i) => ({
             url: newUser.url.replace(auth0Server.url, ''),
-            body: newUser.body.json as any
+            body: newUser.body.json as any,
+            id: ids[i]
         }));
     }
 }

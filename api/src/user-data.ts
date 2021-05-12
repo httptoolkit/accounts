@@ -1,9 +1,9 @@
 import * as _ from 'lodash';
-import moment from 'moment';
+import NodeCache from 'node-cache';
 
 import { reportError } from './errors';
 
-import type { UserAppData, UserBillingData } from '../../module/src/types';
+import type { TransactionData, UserAppData, UserBillingData } from '../../module/src/types';
 
 import {
     getPaddleUserIdFromSubscription,
@@ -15,7 +15,8 @@ import {
     mgmtClient,
     LICENSE_LOCK_DURATION_MS,
     AppMetadata,
-    TeamOwnerMetadata
+    TeamOwnerMetadata,
+    TeamMemberMetadata
 } from './auth0';
 
 // User app data is the effective subscription of the user. For Pro that's easy,
@@ -180,15 +181,42 @@ async function getBillingData(
     };
 }
 
+// We cache paddle subscription to user id map, which never changes
+const paddleUserIdCache: { [subscriptionId: number]: number } = {};
+// We temporarily cache per-user paddle transactions, since the lookup is *super* slow
+const paddleTransactionsCache = new NodeCache({
+    stdTTL: 60 * 60 // Cached for 1h
+});
+
 async function getTransactions(userMetadata: Partial<UserAppData>) {
     const paddleUserId = userMetadata.paddle_user_id
-    // Older user metadata doesn't include the user id:
-    ?? await getPaddleUserIdFromSubscription(userMetadata.subscription_id);
+        // Read
+        ?? paddleUserIdCache[userMetadata.subscription_id!]
+        // Older user metadata doesn't include the user id:
+        ?? await getPaddleUserIdFromSubscription(userMetadata.subscription_id);
 
-    // If you have ever had a subscription, we want to include your invoices in this response:
-    return paddleUserId
-        ? getPaddleUserTransactions(paddleUserId)
-        : [];
+    // Cache this id for faster lookup next time:
+    if (!userMetadata.paddle_user_id) {
+        paddleUserIdCache[userMetadata.subscription_id!] = paddleUserId;
+    }
+
+    if (!paddleUserId) return [];
+
+    // If you have a Paddle account at all, we always query for your transaction data:
+    const transactionsRequest = getPaddleUserTransactions(paddleUserId)
+        .then((transactions) => {
+            paddleTransactionsCache.set(paddleUserId, transactions);
+            return transactions;
+        });
+
+    if (paddleTransactionsCache.has(paddleUserId)) {
+        // If we already have a cache result, we return that for now (transactions will
+        // still update the cache in the background though).
+        return paddleTransactionsCache.get<TransactionData[]>(paddleUserId)!;
+    } else {
+        // If there's no cached data, we just wait until the request is done like normal:
+        return transactionsRequest;
+    }
 }
 
 async function getTeamMembers(userId: string, userMetadata: Partial<UserAppData>) {

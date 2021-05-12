@@ -73,6 +73,7 @@
     "lodash": "^4.17.21",
     "mobx": "^6.0.5",
     "mobx-react-lite": "^3.1.7",
+    "node-cache": "^5.1.2",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
     "styled-components": "^5.2.3",

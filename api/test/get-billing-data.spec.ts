@@ -14,7 +14,8 @@ import {
     paddleServer,
     PADDLE_PORT,
     givenSubscription,
-    givenTransactions
+    givenTransactions,
+    id
 } from './test-util';
 import { TransactionData } from '../../module/src/types';
 import { LICENSE_LOCK_DURATION_MS, TeamOwnerMetadata } from '../src/auth0';
@@ -100,6 +101,8 @@ describe('/get-billing-data', () => {
             const authToken = freshAuthToken();
             const userId = "abc";
             const userEmail = 'user@example.com';
+
+            const subId = id();
             const subExpiry = Date.now();
 
             await auth0Server.get('/userinfo')
@@ -110,13 +113,13 @@ describe('/get-billing-data', () => {
                     email: userEmail,
                     app_metadata: {
                         subscription_expiry: subExpiry,
-                        subscription_id: 2,
+                        subscription_id: subId,
                         subscription_plan_id: 550380,
                         subscription_status: "active"
                     }
                 });
 
-            await givenSubscription(2, 123);
+            const { paddleUserId } = await givenSubscription(subId);
             const transaction: TransactionData = {
                 amount: "1.00",
                 currency: "USD",
@@ -126,7 +129,7 @@ describe('/get-billing-data', () => {
                 receipt_url: "receipt.example",
                 status: "completed"
             };
-            await givenTransactions(123, [transaction]);
+            await givenTransactions(paddleUserId, [transaction]);
 
             const response = await getBillingData(functionServer, authToken);
             expect(response.status).to.equal(200);
@@ -135,7 +138,7 @@ describe('/get-billing-data', () => {
             expect(data).to.deep.equal({
                 email: userEmail,
                 subscription_expiry: subExpiry,
-                subscription_id: 2,
+                subscription_id: subId,
                 subscription_plan_id: 550380,
                 subscription_status: "active",
                 transactions: [transaction]
@@ -146,6 +149,8 @@ describe('/get-billing-data', () => {
             const authToken = freshAuthToken();
             const userId = "abc";
             const userEmail = 'user@example.com';
+
+            const subId = id();
             const subExpiry = Date.now();
 
             const userInfoLookup = await auth0Server.get('/userinfo')
@@ -157,14 +162,14 @@ describe('/get-billing-data', () => {
                     email: userEmail,
                     app_metadata: {
                         subscription_expiry: subExpiry,
-                        subscription_id: 2,
+                        subscription_id: subId,
                         subscription_plan_id: 550380,
                         subscription_status: "active"
                     }
                 });
 
-            await givenSubscription(2, 123);
-            await givenTransactions(123, []);
+            const { paddleUserId } = await givenSubscription(subId);
+            await givenTransactions(paddleUserId, []);
 
             const response1 = await getBillingData(functionServer, authToken);
             expect(response1.status).to.equal(200);
@@ -191,6 +196,8 @@ describe('/get-billing-data', () => {
             const billingUserEmail = 'billinguser@example.com';
             const teamUserId = "def";
             const teamUserEmail = 'teamuser@example.com';
+
+            const subId = id();
             const subExpiry = Date.now();
 
             await auth0Server.get('/userinfo')
@@ -205,7 +212,7 @@ describe('/get-billing-data', () => {
                 app_metadata: {
                     team_member_ids: ['123', '456', teamUserId],
                     subscription_expiry: subExpiry,
-                    subscription_id: 2,
+                    subscription_id: subId,
                     subscription_quantity: 3,
                     subscription_plan_id: 550789,
                     subscription_status: "active",
@@ -239,6 +246,7 @@ describe('/get-billing-data', () => {
                 "teammember3@example.com",
                 "teammember4@example.com"
             ];
+            const subId = id();
             const subExpiry = Date.now();
 
             await auth0Server.get('/userinfo')
@@ -254,7 +262,7 @@ describe('/get-billing-data', () => {
                         new Date(2050, 0, 0).getTime() // Locked for ~30 years
                     ],
                     subscription_expiry: subExpiry,
-                    subscription_id: 2,
+                    subscription_id: subId,
                     subscription_quantity: 2, // <-- 2 allowed, but only 1 really due to locked license
                     subscription_plan_id: 550789,
                     subscription_status: "active",
@@ -288,7 +296,7 @@ describe('/get-billing-data', () => {
                     }
                 ]);
 
-            await givenSubscription(2, 123);
+            const { paddleUserId } = await givenSubscription(subId);
             const transaction: TransactionData = {
                 amount: "1.00",
                 currency: "USD",
@@ -298,7 +306,7 @@ describe('/get-billing-data', () => {
                 receipt_url: "receipt.example",
                 status: "completed"
             };
-            await givenTransactions(123, [transaction]);
+            await givenTransactions(paddleUserId, [transaction]);
 
             const response = await getBillingData(functionServer, authToken);
             expect(response.status).to.equal(200);
@@ -308,7 +316,7 @@ describe('/get-billing-data', () => {
                 email: billingUserEmail,
 
                 subscription_expiry: subExpiry,
-                subscription_id: 2,
+                subscription_id: subId,
                 locked_license_expiries: [
                     // Locked for ~30 years
                     new Date(2050, 0, 0).getTime() + LICENSE_LOCK_DURATION_MS
@@ -334,6 +342,8 @@ describe('/get-billing-data', () => {
             const authToken = freshAuthToken();
             const billingUserId = "abc";
             const billingUserEmail = 'billinguser@example.com';
+
+            const subId = id();
             const subExpiry = Date.now();
 
             await auth0Server.get('/userinfo')
@@ -346,7 +356,7 @@ describe('/get-billing-data', () => {
                     feature_flags: ['a flag'],
                     team_member_ids: [billingUserId], // Includes their own id
                     subscription_expiry: subExpiry,
-                    subscription_id: 2,
+                    subscription_id: subId,
                     subscription_quantity: 1,
                     subscription_plan_id: 550789,
                     subscription_status: "active",
@@ -365,7 +375,7 @@ describe('/get-billing-data', () => {
                     },
                 ]);
 
-            await givenSubscription(2, 123);
+            const { paddleUserId } = await givenSubscription(subId);
             const transaction: TransactionData = {
                 amount: "1.00",
                 currency: "USD",
@@ -375,7 +385,7 @@ describe('/get-billing-data', () => {
                 receipt_url: "receipt.example",
                 status: "completed"
             };
-            await givenTransactions(123, [transaction]);
+            await givenTransactions(paddleUserId, [transaction]);
 
             const response = await getBillingData(functionServer, authToken);
             expect(response.status).to.equal(200);
@@ -385,7 +395,7 @@ describe('/get-billing-data', () => {
                 email: billingUserEmail,
 
                 subscription_expiry: subExpiry,
-                subscription_id: 2,
+                subscription_id: subId,
                 subscription_quantity: 1,
                 subscription_plan_id: 550789,
                 subscription_status: "active",
@@ -407,6 +417,8 @@ describe('/get-billing-data', () => {
             const billingUserEmail = 'billinguser@example.com';
             const teamUserId = "def";
             const teamUserEmail = 'teamuser@example.com';
+
+            const subId = id();
             const subExpiry = Date.now();
 
             await auth0Server.get('/userinfo')
@@ -422,7 +434,7 @@ describe('/get-billing-data', () => {
                     team_member_ids: ['123', '456', teamUserId],
                     subscription_quantity: 2, // <-- 2 allowed, but we're 3rd in the ids above
                     subscription_expiry: subExpiry,
-                    subscription_id: 2,
+                    subscription_id: subId,
                     subscription_plan_id: 550789,
                     subscription_status: "active",
                     last_receipt_url: 'lru',
