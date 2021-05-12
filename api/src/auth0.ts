@@ -65,4 +65,4 @@ export interface TeamMemberMetadata extends BaseMetadata {
     joined_team_at?: number; // Timestamp when the owner was set. Undefined for old/manual cases.
 }
 
-export const LICENSE_LOCK_DURATION_MS = 1000 * 60 * 24 * 2; // 48h limit on reassigning licenses
+export const LICENSE_LOCK_DURATION_MS = 1000 * 60 * 60 * 24 * 2; // 48h limit on reassigning licenses
