@@ -1,6 +1,7 @@
 import * as net from 'net';
 import fetch from 'node-fetch';
 import * as jwt from 'jsonwebtoken';
+import stoppable from 'stoppable';
 
 import { expect } from 'chai';
 
@@ -11,7 +12,7 @@ import {
     AUTH0_PORT,
     freshAuthToken
 } from './test-util';
-import stoppable from 'stoppable';
+import { TeamOwnerMetadata } from '../src/auth0';
 
 const getAppData = (server: net.Server, authToken?: string) => fetch(
     `http://localhost:${(server.address() as net.AddressInfo).port}/get-app-data`,
@@ -358,7 +359,7 @@ describe('/get-app-data', () => {
                 email: billingUserEmail,
                 app_metadata: {
                     team_member_ids: ['123', '456', teamUserId],
-                    locked_licenses: ['2050-01-01T00:00:00Z'], // Locked for ~30 years
+                    locked_licenses: [new Date(2050, 0, 0).getTime()], // Locked for ~30 years
                     subscription_quantity: 3, // <-- 3 allowed, OK except for the locked license
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
@@ -367,7 +368,7 @@ describe('/get-app-data', () => {
                     last_receipt_url: 'lru',
                     cancel_url: 'cu',
                     update_url: 'uu',
-                }
+                } as TeamOwnerMetadata
             });
 
             const response = await getAppData(functionServer, authToken);

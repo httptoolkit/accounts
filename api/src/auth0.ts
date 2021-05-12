@@ -36,7 +36,7 @@ export type AppMetadata =
     | TeamMemberMetadata;
 
 interface BaseMetadata {
-    feature_flags: string[];
+    feature_flags?: string[];
 }
 
 export interface TrialUserMetadata extends BaseMetadata {
@@ -56,13 +56,13 @@ export interface PayingUserMetadata extends TrialUserMetadata {
 
 export interface TeamOwnerMetadata extends PayingUserMetadata {
     team_member_ids: string[];
-    locked_licenses?: string[]; // Array of time strings - the moment locked licenses were last assigned
+    locked_licenses?: number[]; // Array of timestamps - the moment locked licenses were last assigned
     subscription_owner_id?: string; // Owners can be members of their own team
 }
 
 export interface TeamMemberMetadata extends BaseMetadata {
     subscription_owner_id: string;
-    joined_team_at?: string; // UTC time string when the owner was set. Undefined for old/manual cases.
+    joined_team_at?: number; // Timestamp when the owner was set. Undefined for old/manual cases.
 }
 
 export const LICENSE_LOCK_DURATION_MS = 1000 * 60 * 24 * 2; // 48h limit on reassigning licenses

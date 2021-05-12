@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { getLocal } from 'mockttp';
@@ -5,6 +6,7 @@ import stoppable from 'stoppable';
 
 import { serveFunctions } from '@httptoolkit/netlify-cli/src/utils/serve-functions';
 import { TransactionData } from '../../module/src/types';
+import { AppMetadata } from '../src/auth0';
 
 function generateKeyPair() {
     return crypto.generateKeyPairSync('rsa', {
@@ -109,8 +111,8 @@ export function givenTransactions(userId: number, transactions: TransactionData[
 // Create a team, with the given list of users, and 'undefined' for each
 // unused license slot that should be created.
 export async function givenTeam(
-    teamMembers: readonly (
-        { id: string, email: string, joinedAt?: string } | undefined
+    teamMembersAndSpaces: readonly (
+        { id: string, email: string, joinedAt?: number } | undefined
     )[]
 ) {
     const ownerAuthToken = freshAuthToken();
@@ -118,49 +120,82 @@ export async function givenTeam(
     const ownerEmail = 'billinguser@example.com';
     const subExpiry = Date.now();
 
-    const existingTeamMembers = teamMembers.filter(m => !!m) as
-        Array<{ id: string, email: string, joinedAt?: string }>;
+    let teamMembers = teamMembersAndSpaces.filter(m => !!m) as
+        Array<{ id: string, email: string, joinedAt?: number }>;
 
     // Define the owner in Auth0:
     await auth0Server.get('/userinfo')
         .withHeaders({ 'Authorization': 'Bearer ' + ownerAuthToken })
         .thenJson(200, { sub: ownerId });
 
-    // Give the owner subscription data for the team:
-    await auth0Server.get('/api/v2/users/' + ownerId).thenJson(200, {
-        email: ownerEmail,
-        app_metadata: {
-            feature_flags: ['a flag'],
-            team_member_ids: existingTeamMembers.map(m => m.id),
-            locked_licenses: [],
-            subscription_expiry: subExpiry,
-            subscription_id: 2,
-            subscription_quantity: teamMembers.length,
-            subscription_plan_id: 550789,
-            subscription_status: "active",
-            last_receipt_url: 'lru',
-            cancel_url: 'cu',
-            update_url: 'uu',
-        }
-    });
+    let ownerData: AppMetadata = {
+        feature_flags: ['a flag'],
+        team_member_ids: teamMembers.map(m => m.id),
+        locked_licenses: [],
+        subscription_expiry: subExpiry,
+        subscription_id: 2,
+        subscription_quantity: teamMembersAndSpaces.length,
+        subscription_plan_id: 550789,
+        subscription_status: "active",
+        last_receipt_url: 'lru',
+        cancel_url: 'cu',
+        update_url: 'uu',
+    };
+
+    // Return the owner subscription data for the team:
+    await auth0Server.get('/api/v2/users/' + ownerId)
+        .thenCallback(() => ({
+            status: 200,
+            json: {
+                email: ownerEmail,
+                app_metadata: ownerData
+            }
+        }));
 
     // Define the team members in Auth0:
     await auth0Server.get('/api/v2/users')
         .withQuery({ q: `app_metadata.subscription_owner_id:${ownerId}` })
-        .thenJson(200, existingTeamMembers.map((member) => ({
-            user_id: member.id,
-            email: member.email,
-            app_metadata: {
-                subscription_owner_id: ownerId,
-                joined_at: member.joinedAt ?? '2000-01-01T00:00:00Z'
-            }
-        })));
+        .thenCallback(() => ({
+            status: 200,
+            json: teamMembers.map((member) => ({
+                user_id: member.id,
+                email: member.email,
+                app_metadata: {
+                    subscription_owner_id: ownerId,
+                    joined_team_at: member.joinedAt ?? new Date(2000, 0, 0).getTime()
+                }
+            }))
+        }));
+
+    // Allow tests to easily update the data returned by the above mocks:
+    const updateOwnerData = (update: Partial<AppMetadata>) => {
+        ownerData = applyMetadataUpdate(ownerData, update);
+    };
+
+    const updateTeamMembers = (
+        updatedTeamMembers: Array<{ id: string, email: string, joinedAt?: number }>
+    ) => {
+        teamMembers = updatedTeamMembers;
+    };
 
     return {
         ownerId,
-        ownerAuthToken
+        ownerAuthToken,
+        updateOwnerData,
+        updateTeamMembers
     };
 };
+
+export function applyMetadataUpdate(data: any, update: any) {
+    if (_.isEmpty(update)) return {}; // Empty updates wipe metadata
+
+    return _.omitBy({
+        ...data,
+        ...update
+    }, (_v, key) =>
+        update[key] === null // Null values are actually deleted
+    );
+}
 
 export async function watchUserCreation() {
     let i = 0;

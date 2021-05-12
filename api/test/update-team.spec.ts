@@ -17,9 +17,10 @@ import {
     givenNoUser,
     givenTeam,
     watchUserCreation,
-    watchUserUpdates
+    watchUserUpdates,
+    applyMetadataUpdate
 } from './test-util';
-import { PayingUserMetadata, TeamMemberMetadata } from '../src/auth0';
+import { AppMetadata, LICENSE_LOCK_DURATION_MS, PayingUserMetadata, TeamMemberMetadata } from '../src/auth0';
 
 const updateTeam = (server: net.Server, authToken: string | undefined, team: {
     idsToRemove?: string[],
@@ -162,7 +163,8 @@ describe('/update-team', () => {
                             team_member_ids: [
                                 team[1].id,
                                 team[2].id
-                            ]
+                            ],
+                            locked_licenses: []
                         }
                     }
                 }
@@ -198,9 +200,8 @@ describe('/update-team', () => {
                 ownerId
             );
             // Can't deep match because of this timestamp:
-            expect(newUserMetadata.joined_team_at).to.match(
-                /202\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d\d\dZ/
-            );
+            expect(newUserMetadata.joined_team_at).to.be.within(Date.now() - 1000, Date.now());
+
 
             const updates = await getUserUpdates();
             expect(updates).to.deep.equal([
@@ -211,7 +212,8 @@ describe('/update-team', () => {
                             team_member_ids: [
                                 team[0].id,
                                 'new-user-0'
-                            ]
+                            ],
+                            locked_licenses: []
                         }
                     }
                 }
@@ -250,9 +252,7 @@ describe('/update-team', () => {
             const updatedMemberMetadata = memberUpdate.body!.app_metadata;
             expect(updatedMemberMetadata.subscription_owner_id).to.equal(ownerId);
             // Can't deep match because of this timestamp:
-            expect(updatedMemberMetadata.joined_team_at).to.match(
-                /202\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d\d\dZ/
-            );
+            expect(updatedMemberMetadata.joined_team_at).to.be.within(Date.now() - 1000, Date.now());
 
             const ownerUpdate = updates[1];
             expect(ownerUpdate).to.deep.equal({
@@ -262,7 +262,8 @@ describe('/update-team', () => {
                         team_member_ids: [
                             team[0].id,
                             existingUserId
-                        ]
+                        ],
+                        locked_licenses: []
                     }
                 }
             });
@@ -305,10 +306,7 @@ describe('/update-team', () => {
                 ownerId
             );
             // Can't deep match because of this timestamp:
-            expect(newUserMetadata.joined_team_at).to.match(
-                /202\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d\d\dZ/
-            );
-
+            expect(newUserMetadata.joined_team_at).to.be.within(Date.now() - 1000, Date.now());
 
             const updates = await getUserUpdates();
             expect(updates.length).to.equal(4);
@@ -341,9 +339,7 @@ describe('/update-team', () => {
             const updatedMemberMetadata = memberUpdate.body!.app_metadata;
             expect(updatedMemberMetadata.subscription_owner_id).to.equal(ownerId);
             // Can't deep match because of this timestamp:
-            expect(updatedMemberMetadata.joined_team_at).to.match(
-                /202\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d\d\dZ/
-            );
+            expect(updatedMemberMetadata.joined_team_at).to.be.within(Date.now() - 1000, Date.now());
 
             const ownerUpdate = updates[3];
             expect(ownerUpdate).to.deep.equal({
@@ -353,7 +349,8 @@ describe('/update-team', () => {
                         team_member_ids: [
                             'new-user-0',
                             existingUserId
-                        ]
+                        ],
+                        locked_licenses: []
                     }
                 }
             });
@@ -541,6 +538,224 @@ describe('/update-team', () => {
 
             expect(response.status).to.equal(409);
             expect((await getUserUpdates()).length).to.equal(0);
+        });
+
+        it("locks licenses after reassignment", async () => {
+            const memberJoinedAt = Date.now();
+
+            const team = [
+                // One user: added to the team mere moments ago
+                { id: 'id-1', email: 'member1@example.com', joinedAt: memberJoinedAt }
+            ] as const;
+
+            const { ownerId, ownerAuthToken } = await givenTeam(team);
+            const getUserUpdates = await watchUserUpdates();
+
+            const response = await updateTeam(functionServer, ownerAuthToken, {
+                idsToRemove: [team[0].id]
+            });
+            expect(response.status).to.equal(200);
+
+            const updates = await getUserUpdates();
+            expect(updates).to.deep.equal([
+                {
+                    url: `/api/v2/users/${team[0].id}`,
+                    body: {
+                        app_metadata: {
+                            subscription_owner_id: null,
+                            joined_team_at: null
+                        }
+                    }
+                },
+                {
+                    url: `/api/v2/users/${ownerId}`,
+                    body: {
+                        app_metadata: {
+                            team_member_ids: [],
+                            locked_licenses: [memberJoinedAt] // <-- License is locked
+                        }
+                    }
+                }
+            ]);
+        });
+
+        it("does not allow rapid license reassignment", async () => {
+            const team = [
+                undefined // One empty space
+            ] as const;
+
+            const {
+                ownerAuthToken,
+                updateOwnerData,
+                updateTeamMembers
+            } = await givenTeam(team);
+
+            const memberId = "member-id";
+            const memberEmail = "member@example.com";
+
+            let memberData: any = {};
+            await auth0Server
+                .get('/api/v2/users-by-email')
+                .withQuery({ email: memberEmail })
+                .thenCallback(() => ({
+                    status: 200,
+                    json: [{ email: memberEmail, user_id: memberId, app_metadata: memberData }]
+                }));
+            const getUserUpdates = await watchUserUpdates();
+
+            // Add the user once:
+            const response1 = await updateTeam(functionServer, ownerAuthToken, {
+                emailsToAdd: [memberEmail]
+            });
+            expect(response1.status).to.equal(200);
+
+            // Update mocks with the updates this triggers:
+            let updates = await getUserUpdates();
+            memberData = applyMetadataUpdate(memberData, updates[0].body.app_metadata);
+            updateTeamMembers([{
+                id: memberId,
+                email: memberEmail,
+                joinedAt: memberData.joined_team_at
+            }]);
+            updateOwnerData(updates[1].body.app_metadata);
+
+            // Remove the user again:
+            const response2 = await updateTeam(functionServer, ownerAuthToken, {
+                idsToRemove: [memberId]
+            });
+            expect(response2.status).to.equal(200);
+
+            // Update mocks again
+            updates = (await getUserUpdates()).slice(2);
+            memberData = applyMetadataUpdate(memberData, updates[0].body.app_metadata);
+            updateTeamMembers([]);
+            updateOwnerData(updates[1].body.app_metadata);
+
+            // Try to re-add the user, nope:
+            const response3 = await updateTeam(functionServer, ownerAuthToken, {
+                emailsToAdd: [memberEmail]
+            });
+            expect(response3.status).to.equal(403); // Rejected: User is now locked
+        });
+
+        it("does not allow single-request license reassignment", async () => {
+            const team = [
+                undefined // One empty space
+            ] as const;
+
+            const {
+                ownerAuthToken,
+                updateOwnerData,
+                updateTeamMembers
+            } = await givenTeam(team);
+
+            const memberId = "member-id";
+            const memberEmail = "member@example.com";
+
+            let memberData: any = {};
+            await auth0Server
+                .get('/api/v2/users-by-email')
+                .withQuery({ email: memberEmail })
+                .thenCallback(() => ({
+                    status: 200,
+                    json: [{ email: memberEmail, user_id: memberId, app_metadata: memberData }]
+                }));
+            const getUserUpdates = await watchUserUpdates();
+
+            // Add the user once:
+            const response1 = await updateTeam(functionServer, ownerAuthToken, {
+                emailsToAdd: [memberEmail]
+            });
+            expect(response1.status).to.equal(200);
+
+            // Update mocks with the updates this triggers:
+            const updates = await getUserUpdates();
+            memberData = applyMetadataUpdate(memberData, updates[0].body.app_metadata);
+            updateTeamMembers([{
+                id: memberId,
+                email: memberEmail,
+                joinedAt: memberData.joined_team_at
+            }]);
+            updateOwnerData(updates[1].body.app_metadata);
+
+            const replacementMemberId = "2nd-member";
+            const replacementMemberEmail = "2nd@example.com";
+
+            await givenUser(replacementMemberId, replacementMemberEmail);
+
+            // Remove them and then add a new user, with our one license:
+            const response2 = await updateTeam(functionServer, ownerAuthToken, {
+                idsToRemove: [memberId],
+                emailsToAdd: [replacementMemberEmail]
+            });
+            expect(response2.status).to.equal(403); // Rejected: a lock will be required
+        });
+
+        it("does allow slow license reassignment", async () => {
+            const team = [
+                undefined // One empty space
+            ] as const;
+
+            const {
+                ownerAuthToken,
+                updateOwnerData,
+                updateTeamMembers
+            } = await givenTeam(team);
+
+            const memberId = "member-id";
+            const memberEmail = "member@example.com";
+
+            let memberData: any = {};
+            await auth0Server
+                .get('/api/v2/users-by-email')
+                .withQuery({ email: memberEmail })
+                .thenCallback(() => ({
+                    status: 200,
+                    json: [{ email: memberEmail, user_id: memberId, app_metadata: memberData }]
+                }));
+            const getUserUpdates = await watchUserUpdates();
+
+            // Add the user once:
+            const response1 = await updateTeam(functionServer, ownerAuthToken, {
+                emailsToAdd: [memberEmail]
+            });
+            expect(response1.status).to.equal(200);
+
+            // Update mocks with the updates this triggers:
+            let updates = await getUserUpdates();
+            memberData = applyMetadataUpdate(memberData, updates[0].body.app_metadata);
+            updateTeamMembers([{
+                id: memberId,
+                email: memberEmail,
+                joinedAt: memberData.joined_team_at
+            }]);
+            updateOwnerData(updates[1].body.app_metadata);
+
+            // Remove the user again:
+            const response2 = await updateTeam(functionServer, ownerAuthToken, {
+                idsToRemove: [memberId]
+            });
+            expect(response2.status).to.equal(200);
+
+            // Update mocks again
+            updates = (await getUserUpdates()).slice(2);
+            memberData = applyMetadataUpdate(memberData, updates[0].body.app_metadata);
+            updateTeamMembers([]);
+
+            // But override the lock time to pretend 2* the lock duration has passed:
+            const ownerUpdate = updates[1].body.app_metadata;
+            updateOwnerData({
+                ...ownerUpdate,
+                locked_licenses: (ownerUpdate.locked_licenses as number[]).map(timestamp =>
+                    timestamp - LICENSE_LOCK_DURATION_MS * 2
+                )
+            });
+
+            // Try to re-add the user:
+            const response3 = await updateTeam(functionServer, ownerAuthToken, {
+                emailsToAdd: [memberEmail]
+            });
+            expect(response3.status).to.equal(200); // <-- Now OK, since the lock has expired
         });
     });
 });

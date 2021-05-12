@@ -144,7 +144,7 @@ async function updateTeamData(email: string, subscription: Partial<PayingUserMet
     // Cleanup locked licenses: drop all locks that expired in the past
     newMetadata.locked_licenses = ((currentMetadata as TeamOwnerMetadata).locked_licenses ?? [])
         .filter((lockStartTime) =>
-            moment(lockStartTime).add(LICENSE_LOCK_DURATION_MS, 'milliseconds').isAfter()
+            lockStartTime + LICENSE_LOCK_DURATION_MS > Date.now()
         )
 
     dropUndefinedValues(newMetadata);

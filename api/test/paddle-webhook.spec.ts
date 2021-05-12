@@ -2,6 +2,7 @@ import * as crypto from 'crypto';
 import * as net from 'net';
 import fetch from 'node-fetch';
 import moment from 'moment';
+import stoppable from 'stoppable';
 
 import { expect } from 'chai';
 
@@ -14,7 +15,6 @@ import {
     givenNoUsers
 } from './test-util';
 import { serializeWebhookData, WebhookData, UnsignedWebhookData } from '../src/paddle';
-import stoppable from 'stoppable';
 
 const signBody = (body: UnsignedWebhookData) => {
     const serializedData = serializeWebhookData(body);
@@ -483,7 +483,10 @@ describe('Paddle webhooks', () => {
             const userEmail = 'user@example.com';
             givenUser(userId, userEmail, {
                 team_member_ids: ['teamMemberId'],
-                locked_licenses: ['2020-01-01T00:00:00Z', '2050-01-01T00:00:00Z']
+                locked_licenses: [
+                    new Date(2000, 0, 0).getTime(),
+                    new Date(2050, 0, 0).getTime()
+                ]
             });
 
             const userUpdate = await auth0Server
@@ -511,9 +514,9 @@ describe('Paddle webhooks', () => {
                     paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_plan_id: 550789,
-                    subscription_quantity: 5,
                     subscription_expiry: nextRenewal.add(1, 'days').valueOf(),
-                    locked_licenses: ['2050-01-01T00:00:00Z'] // Removes only the expired lock
+                    subscription_quantity: 5,
+                    locked_licenses: [new Date(2050, 0, 0).getTime()] // Removes only the expired lock
                     // Doesn't update team_member_ids - that's already set.
                 }
             });

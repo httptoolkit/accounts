@@ -7,7 +7,8 @@ import {
     AppMetadata,
     TeamMemberMetadata,
     TeamOwnerMetadata,
-    User
+    User,
+    LICENSE_LOCK_DURATION_MS
 } from '../auth0';
 import { getCorsResponseHeaders } from '../cors';
 import { getMaxTeamSize, getTeamMemberData, getUserId } from '../user-data';
@@ -51,7 +52,8 @@ export const handler = catchErrors(async (event) => {
             getTeamMemberData(ownerId)
         ]);
 
-        if (!isTeamSubscription(userData.app_metadata?.subscription_plan_id)) {
+        const ownerData = userData.app_metadata as TeamOwnerMetadata;
+        if (!isTeamSubscription(ownerData?.subscription_plan_id)) {
             throw new StatusError(403, "Your account does not have a Team subscription");
         }
 
@@ -70,8 +72,18 @@ export const handler = catchErrors(async (event) => {
             console.log(`Adding ${emailsToAdd.join(', ')}`);
         }
 
-        const ownerData = userData.app_metadata as TeamOwnerMetadata;
-        const maxTeamSize = getMaxTeamSize(ownerData);
+        // Licenses are locked if they are added and removed within 48 hours. If that happens they
+        // can't be reassigned again until the 48 hours expires. This ensures team licenses cover
+        // all the users who frequently use the app (i.e. you shouldn't be able to swap 1 license
+        // around 100 people whenever somebody needs it for a minute).
+        const licensesToLock = memberData
+            .filter((member) => idsToRemove.includes(member.user_id!))
+            .map((member) => (member.app_metadata as TeamMemberMetadata).joined_team_at)
+            .filter((memberJoinDate) => !!memberJoinDate &&
+                Date.now() - memberJoinDate <= LICENSE_LOCK_DURATION_MS
+            ) as number[];
+
+        const maxTeamSize = getMaxTeamSize(ownerData) - licensesToLock.length;
 
         const newTeamSize = ownerData.team_member_ids.length +
             emailsToAdd.length -
@@ -79,7 +91,7 @@ export const handler = catchErrors(async (event) => {
 
         if (newTeamSize > maxTeamSize) {
             throw new StatusError(403,
-                "The proposed team would be larger than your current subscription"
+                "The proposed team would use more licenses than you have available"
             );
         }
 
@@ -92,9 +104,17 @@ export const handler = catchErrors(async (event) => {
             .filter(id => !idsToRemove.includes(id))
             .concat(newMemberIds);
 
+        const updatedLicenseLocks = (ownerData.locked_licenses ?? [])
+            .concat(licensesToLock)
+            .filter((lock) =>
+                // Keep only the locks that haven't expired:
+                lock + LICENSE_LOCK_DURATION_MS >= Date.now()
+            );
+
         await mgmtClient.updateAppMetadata({ id: ownerId }, {
-            team_member_ids: updatedTeamIds
-        });
+            team_member_ids: updatedTeamIds,
+            locked_licenses: updatedLicenseLocks
+        } as TeamOwnerMetadata);
 
         return { statusCode: 200, headers, body: 'success' };
     } catch (e) {
@@ -177,7 +197,7 @@ async function linkNewTeamMembers(ownerId: string, memberData: User[], emailsToA
         users.map(async (user) => {
             const appMetadata = {
                 subscription_owner_id: ownerId,
-                joined_team_at: new Date().toISOString()
+                joined_team_at: Date.now()
             } as TeamMemberMetadata;
 
             // Existing users must be validated before they can be added

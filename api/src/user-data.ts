@@ -147,7 +147,7 @@ function countLockedLicenses(userMetadata: TeamOwnerMetadata) {
     // Count the number of locked licenses, where the expiry data is still in the future:
     return (userMetadata.locked_licenses ?? [])
         .filter((lockStartTime) =>
-            moment(lockStartTime).add(LICENSE_LOCK_DURATION_MS, 'milliseconds').isAfter()
+            lockStartTime + LICENSE_LOCK_DURATION_MS >= Date.now()
         )
         .length;
 }
