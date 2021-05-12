@@ -78,7 +78,7 @@ export const handler = catchErrors(async (event) => {
         // around 100 people whenever somebody needs it for a minute).
         const licensesToLock = memberData
             .filter((member) => idsToRemove.includes(member.user_id!))
-            .map((member) => (member.app_metadata as TeamMemberMetadata).joined_team_at)
+            .map((member) => (member.app_metadata as TeamMemberMetadata)?.joined_team_at)
             .filter((memberJoinDate) => !!memberJoinDate &&
                 Date.now() - memberJoinDate <= LICENSE_LOCK_DURATION_MS
             ) as number[];
@@ -246,7 +246,7 @@ async function linkNewTeamMembers(ownerId: string, existingMemberData: User[], e
 }
 
 function checkUserCanJoinTeams(user: User): true {
-    const metadata = user.app_metadata as AppMetadata;
+    const metadata = (user.app_metadata ?? {}) as AppMetadata;
 
     if ('subscription_owner_id' in metadata) {
         // If you're already in a team, you can't join a new team until you leave
