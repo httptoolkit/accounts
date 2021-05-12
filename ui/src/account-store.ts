@@ -1,7 +1,9 @@
+import * as _ from 'lodash';
 import { makeObservable, observable, computed, flow } from 'mobx';
 
 import {
     getBillingData,
+    updateTeamMembers,
     loginEvents,
     initializeAuthUi,
     showLoginDialog,
@@ -9,14 +11,6 @@ import {
     logOut,
     BillingAccount
 } from '../../module/dist/auth';
-import type {
-    SubscriptionPlanCode,
-} from "../../module/src/types";
-import {
-    getSubscriptionPlanCode,
-    SubscriptionPlan,
-    SubscriptionPlans
-} from '../../module/dist/plans';
 
 const isSSR = typeof window === 'undefined';
 
@@ -88,8 +82,37 @@ export class AccountStore {
         hideLoginDialog();
     }
 
+    updateTeamMembers = flow(function * (
+        this: AccountStore,
+        idsToRemove: string[],
+        emailsToAdd: string[]
+    ) {
+        const originalTeamMembers = _.cloneDeep(this.user!.teamMembers);
+
+        // Optimistically update our data model
+        this.user!.teamMembers = this.user!.teamMembers?.filter(
+            member => !idsToRemove.includes(member.id)
+        ).concat(emailsToAdd.map((email) =>
+            ({ id: PLACEHOLDER_ID_PREFIX + placeholderId++, name: email, locked: true })
+        ));
+
+        try {
+            yield updateTeamMembers(idsToRemove, emailsToAdd);
+            yield this.updateUser(); // Reload the billing data after changes
+        } catch (e) {
+            // Undo our optimistic update:
+            this.user!.teamMembers = originalTeamMembers;
+            alert(e);
+            throw e;
+        }
+    }).bind(this)
+
     logOut() {
         logOut();
     }
 
 }
+
+// Used as an id for team members who are added optimistically, while the request runs
+export const PLACEHOLDER_ID_PREFIX = "placeholder-member-id-";
+let placeholderId = 0;

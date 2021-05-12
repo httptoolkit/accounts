@@ -443,3 +443,26 @@ async function requestUserData(type: 'app' | 'billing'): Promise<string> {
 
     return appDataResponse.text();
 }
+
+export async function updateTeamMembers(
+    idsToRemove: string[],
+    emailsToAdd: string[]
+): Promise<void> {
+    const token = await getToken();
+    if (!token) throw new Error("Not authenticated");
+
+    const appDataResponse = await fetch(`${apiBase}/update-team`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ idsToRemove, emailsToAdd })
+    });
+
+    if (!appDataResponse.ok) {
+        const responseBody = await appDataResponse.text();
+        console.log(`Received ${appDataResponse.status} updating team members: ${responseBody}`);
+        throw new Error(responseBody || `Failed to update team members`);
+    }
+}

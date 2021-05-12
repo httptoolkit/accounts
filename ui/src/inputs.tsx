@@ -87,3 +87,23 @@ export const SecondaryButton = styled.button.attrs(() => ({
         border-color: ${p => p.theme.secondaryInputBorder};
     }
 `;
+
+export const UnstyledButton = styled.button.attrs(() => ({
+    // 'submit' is the default, which makes 'enter' behaviour super wacky:
+    'type': 'button'
+}))`
+    /* Reset styles that get broken because <button> overrides them: */
+    border: none;
+    background: none;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+
+    &[disabled] {
+        cursor: default;
+    }
+
+    &:not([disabled]) {
+        cursor: pointer;
+    }
+`;

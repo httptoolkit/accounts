@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 import * as React from 'react';
+import { observer } from 'mobx-react-lite';
 import {
     formatDistanceStrict, format
 } from 'date-fns';
@@ -88,7 +89,7 @@ const AccountControls = styled.div`
     }
 `;
 
-export const AccountPage = (props: {
+export const AccountPage = observer((props: {
     accountStore: AccountStore
 }) => {
     const { accountStore } = props;
@@ -96,6 +97,7 @@ export const AccountPage = (props: {
     const {
         user,
         userSubscription,
+        updateTeamMembers,
         logOut
     } = accountStore;
 
@@ -203,7 +205,9 @@ export const AccountPage = (props: {
             <SectionHeading>Team</SectionHeading>
             <TeamMembers
                 licenseCount={sub.quantity}
+                lockedLicenses={user.lockedLicenseExpiries ?? []}
                 teamMembers={user.teamMembers}
+                updateTeam={updateTeamMembers}
             />
         </AccountSection> }
 
@@ -212,4 +216,4 @@ export const AccountPage = (props: {
             <Transactions transactions={user.transactions} />
         </AccountSection>
     </PageContainer>;
-};
+});

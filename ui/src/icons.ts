@@ -6,13 +6,37 @@ import {
     library,
     IconPrefix,
     IconName,
+    IconDefinition,
     IconProp
 } from '@fortawesome/fontawesome-svg-core';
 
+import { faTrashAlt } from '@fortawesome/free-regular-svg-icons/faTrashAlt';
 import { faExclamationTriangle } from '@fortawesome/free-solid-svg-icons/faExclamationTriangle';
+import { faPlus } from '@fortawesome/free-solid-svg-icons/faPlus';
+import { faUndo } from '@fortawesome/free-solid-svg-icons/faUndo';
+import { faSave } from '@fortawesome/free-solid-svg-icons/faSave';
+
+const customSpinnerArc: IconDefinition = {
+    // Based on https://codepen.io/aurer/pen/jEGbA
+    prefix: <IconPrefix>'fac',
+    iconName: <IconName>'spinner-arc',
+    icon: [
+        // height x width
+        50, 50,
+        [],
+        '',
+        // SVG path
+        'M25.251,6.461c-10.318,0-18.683,8.365-18.683,18.683h4.068c0-8.071,6.543-14.615,14.615-14.615V6.461z'
+    ]
+};
 
 library.add(
-    faExclamationTriangle
+    customSpinnerArc,
+    faTrashAlt,
+    faExclamationTriangle,
+    faPlus,
+    faUndo,
+    faSave
 );
 
 import { FontAwesomeIcon, Props as FAIProps } from '@fortawesome/react-fontawesome';

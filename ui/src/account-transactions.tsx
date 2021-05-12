@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 import * as React from 'react';
+import { observer } from 'mobx-react-lite';
 
 import { styled } from './styles';
 
@@ -11,7 +12,7 @@ import {
     getPlanById
 } from '../../module/src/plans';
 
-export const Transactions = (p: {
+export const Transactions = observer((p: {
     transactions: Transaction[],
 }) => <TransactionsContainer>
     { p.transactions.map((transaction) => <li key={transaction.orderId}>
@@ -45,7 +46,7 @@ export const Transactions = (p: {
             </TransactionCost>
         </TransactionRow>
     </li>) }
-</TransactionsContainer>;
+</TransactionsContainer>);
 
 const TransactionsContainer = styled.ol`
     list-style: none;
