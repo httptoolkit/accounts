@@ -1,6 +1,7 @@
 import { initSentry, catchErrors } from '../errors';
 initSentry();
 
+import _ from 'lodash';
 import moment from 'moment';
 import * as querystring from 'querystring';
 
@@ -46,7 +47,10 @@ async function updateProUserData(email: string, subscription: Partial<PayingUser
     const user = await getOrCreateUserData(email);
 
     dropUndefinedValues(subscription);
-    await mgmtClient.updateAppMetadata({ id: user.user_id! }, subscription);
+
+    if (!_.isEmpty(subscription)) {
+        await mgmtClient.updateAppMetadata({ id: user.user_id! }, subscription);
+    }
 }
 
 function getSubscriptionFromHookData(hookData: WebhookData): Partial<PayingUserMetadata> {
@@ -145,7 +149,9 @@ async function updateTeamData(email: string, subscription: Partial<PayingUserMet
 
     dropUndefinedValues(newMetadata);
 
-    await mgmtClient.updateAppMetadata({ id: currentUserData.user_id! }, newMetadata);
+    if (!_.isEmpty(newMetadata)) {
+        await mgmtClient.updateAppMetadata({ id: currentUserData.user_id! }, newMetadata);
+    }
 }
 
 export const handler = catchErrors(async (event) => {
