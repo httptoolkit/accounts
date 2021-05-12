@@ -3,7 +3,6 @@ initSentry();
 
 import moment from 'moment';
 import * as querystring from 'querystring';
-import { APIGatewayProxyEvent } from 'aws-lambda';
 
 import {
     AppMetadata,
@@ -149,7 +148,7 @@ async function updateTeamData(email: string, subscription: Partial<PayingUserMet
     await mgmtClient.updateAppMetadata({ id: currentUserData.user_id! }, newMetadata);
 }
 
-export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
+export const handler = catchErrors(async (event) => {
     const paddleData = querystring.parse(event.body || '') as unknown as WebhookData;
     console.log('Received Paddle webhook', paddleData);
 

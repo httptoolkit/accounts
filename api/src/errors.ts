@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/node';
-import { APIGatewayProxyEvent, Handler } from 'aws-lambda';
+import { APIGatewayProxyEvent, APIGatewayProxyResult, Handler } from 'aws-lambda';
 import { TypedError } from 'typed-error';
 
 const { SENTRY_DSN, VERSION } = process.env;
@@ -76,7 +76,9 @@ export async function reportError(error: Error | Auth0RequestError | string, eve
     await Sentry.flush();
 }
 
-export function catchErrors(handler: Handler): Handler {
+type ApiHandler = Handler<APIGatewayProxyEvent, APIGatewayProxyResult>;
+
+export function catchErrors(handler: ApiHandler): ApiHandler {
     return async function (this: any, event, context) {
         // Make sure AWS doesn't wait for an empty event loop, as that
         // can break things with Sentry

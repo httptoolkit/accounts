@@ -1,11 +1,10 @@
 import { initSentry, catchErrors, reportError } from '../errors';
 initSentry();
 
-import { APIGatewayProxyEvent } from 'aws-lambda';
 import { getCorsResponseHeaders } from '../cors';
 import { getPrices } from '../paddle';
 
-export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
+export const handler = catchErrors(async (event) => {
     let headers = getCorsResponseHeaders(event);
 
     if (event.httpMethod !== 'OPTIONS') {

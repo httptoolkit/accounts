@@ -1,7 +1,6 @@
 import { initSentry, catchErrors, reportError } from '../errors';
 initSentry();
 
-import { APIGatewayProxyEvent } from 'aws-lambda';
 import * as jwt from 'jsonwebtoken';
 
 import { AUTH0_DATA_SIGNING_PRIVATE_KEY } from '../auth0';
@@ -18,7 +17,7 @@ If the token is found and is usable, the user's billing data (email, subscriptio
 status, invoices and team members data) are loaded and signed into a JWT, so the
 billing UI can read that info.
 */
-export const handler = catchErrors(async (event: APIGatewayProxyEvent) => {
+export const handler = catchErrors(async (event) => {
     let headers = getCorsResponseHeaders(event);
 
     if (event.httpMethod !== 'OPTIONS') {
