@@ -239,6 +239,9 @@ async function getTeamMembers(userId: string, userMetadata: Partial<UserAppData>
     const teamMembers = usersOwnedByTeam.map((member, i) => ({
         id: member.user_id!,
         name: member.email!,
+        locked: ( // Was the user added super recently, so removing them will lock the license?
+            (member.app_metadata as TeamMemberMetadata)?.joined_team_at || 0
+        ) + LICENSE_LOCK_DURATION_MS > Date.now(),
         error: !userMetadata.team_member_ids?.includes(member.user_id!)
                 ? 'inconsistent-member-data'
             : i >= maxTeamSize

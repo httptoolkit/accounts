@@ -19,6 +19,7 @@ export type UserAppData = {
 // User billing data, as returned by the API
 export type UserBillingData = {
     email: string;
+    transactions: TransactionData[];
 
     // Team members only:
     team_owner?: {
@@ -31,11 +32,10 @@ export type UserBillingData = {
     team_members?: Array<{
         id: string;
         name: string;
+        locked: boolean; // If this user is removed, is the license blocked from reassignment?
         error?: string;
     }>;
-    locked_license_expiries?: number[];
-
-    transactions: TransactionData[];
+    locked_license_expiries?: number[]; // Array of lock expiry timestamps
 } & SubscriptionData; // <-- Real sub data lives on the root
 
 // Subscription data as returned by the API

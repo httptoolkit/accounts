@@ -240,11 +240,11 @@ describe('/get-billing-data', () => {
             const authToken = freshAuthToken();
             const billingUserId = "abc";
             const billingUserEmail = 'billinguser@example.com';
-            const teamMemberEmails = [
-                "teammember1@example.com",
-                "teammember2@example.com",
-                "teammember3@example.com",
-                "teammember4@example.com"
+            const team = [
+                { id: '1', email: "teammember1@example.com" },
+                { id: '2', email: "teammember2@example.com" },
+                { id: '3', email: "teammember3@example.com" },
+                { id: '4', email: "teammember4@example.com" },
             ];
             const subId = id();
             const subExpiry = Date.now();
@@ -275,23 +275,23 @@ describe('/get-billing-data', () => {
                 .withQuery({ q: `app_metadata.subscription_owner_id:${billingUserId}` })
                 .thenJson(200, [ // N.b: out of order - API order should match team_member_ids
                     {
-                        user_id: '2',
-                        email: teamMemberEmails[1],
+                        user_id: team[1].id,
+                        email: team[1].email,
                         app_metadata: { subscription_owner_id: billingUserId }
                     },
                     {
-                        user_id: '1',
-                        email: teamMemberEmails[0],
+                        user_id: team[0].id,
+                        email: team[0].email,
                         app_metadata: { subscription_owner_id: billingUserId }
                     },
                     {
-                        user_id: '3',
-                        email: teamMemberEmails[2],
+                        user_id: team[2].id,
+                        email: team[2].email,
                         app_metadata: { subscription_owner_id: billingUserId }
                     },
                     {
-                        user_id: '4',
-                        email: teamMemberEmails[3],
+                        user_id: team[3].id,
+                        email: team[3].email,
                         app_metadata: { }
                     }
                 ]);
@@ -330,10 +330,13 @@ describe('/get-billing-data', () => {
 
                 transactions: [transaction],
                 team_members: [
-                    { id: '1', name: teamMemberEmails[0] },
-                    { id: '2', name: teamMemberEmails[1], error: 'member-beyond-team-limit' }, // Rejected due to lock
-                    { id: '3', name: teamMemberEmails[2], error: 'member-beyond-team-limit' }, // Rejected due to quantity
-                    { id: '4', name: teamMemberEmails[3], error: 'inconsistent-member-data' }
+                    { id: '1', name: team[0].email, locked: false },
+                    // Rejected due to lock:
+                    { id: '2', name: team[1].email, locked: false, error: 'member-beyond-team-limit' },
+                    // Rejected due to quantity:
+                    { id: '3', name: team[2].email, locked: false, error: 'member-beyond-team-limit' },
+                    // Doesn't have subscription_owner_id:
+                    { id: '4', name: team[3].email, locked: false, error: 'inconsistent-member-data' }
                 ]
             });
         });
@@ -406,7 +409,7 @@ describe('/get-billing-data', () => {
                 transactions: [transaction],
                 team_owner: { id: billingUserId, name: billingUserEmail },
                 team_members: [
-                    { id: billingUserId, name: billingUserEmail }
+                    { id: billingUserId, name: billingUserEmail, locked: false }
                 ]
             });
         });

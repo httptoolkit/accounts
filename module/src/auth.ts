@@ -282,6 +282,7 @@ export interface Transaction {
 export interface TeamMember {
     id: string;
     name: string;
+    locked: boolean;
     error?: string;
 }
 
@@ -299,6 +300,7 @@ export interface BillingAccount extends BaseAccountData {
 
     // Only defined if you are the owner of a team:
     teamMembers?: TeamMember[];
+    lockedLicenseExpiries?: number[]; // Timestamps when locked licenses will unlock
 }
 
 const anonBillingAccount = (): BillingAccount => ({ transactions: [] });
@@ -386,7 +388,8 @@ function parseBillingData(userJwt: string | null): BillingAccount {
         subscription: parseSubscriptionData(billingData),
         transactions,
         teamMembers: billingData.team_members,
-        teamOwner: billingData.team_owner
+        teamOwner: billingData.team_owner,
+        lockedLicenseExpiries: billingData.locked_license_expiries
     };
 }
 
