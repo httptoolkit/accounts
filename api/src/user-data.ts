@@ -39,7 +39,7 @@ export async function getUserBillingData(accessToken: string) {
 // A cache to avoid hitting userinfo unnecessarily.
 const tokenIdCache: { [accessToken: string]: string } = {};
 
-async function getUserId(accessToken: string): Promise<string> {
+export async function getUserId(accessToken: string): Promise<string> {
     let userId = tokenIdCache[accessToken];
 
     if (userId) {
@@ -139,7 +139,7 @@ async function buildUserAppData(userId: string, userMetadata: Partial<UserAppDat
     return userMetadata;
 }
 
-function getMaxTeamSize(ownerMetadata: TeamOwnerMetadata) {
+export function getMaxTeamSize(ownerMetadata: TeamOwnerMetadata) {
     return ownerMetadata.subscription_quantity - countLockedLicenses(ownerMetadata);
 }
 
@@ -225,7 +225,7 @@ async function getTeamMembers(userId: string, userMetadata: Partial<UserAppData>
     return teamMembers;
 }
 
-async function getTeamMemberData(teamOwnerId: string) {
+export async function getTeamMemberData(teamOwnerId: string) {
     return mgmtClient.getUsers({
         q: `app_metadata.subscription_owner_id:${teamOwnerId}`,
         // 100 is the max value. If we have a team of >100 users, we'll need some paging

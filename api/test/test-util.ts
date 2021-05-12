@@ -72,6 +72,13 @@ export function givenUser(userId: string, email: string, appMetadata = {}) {
         ]);
 }
 
+export function givenNoUser(email: string) {
+    return auth0Server
+        .get('/api/v2/users-by-email')
+        .withQuery({ email })
+        .thenJson(200, []);
+}
+
 export function givenNoUsers() {
     return auth0Server
         .get('/api/v2/users-by-email')
@@ -97,6 +104,106 @@ export function givenTransactions(userId: number, transactions: TransactionData[
             success: true,
             response: transactions
         });
+}
+
+// Create a team, with the given list of users, and 'undefined' for each
+// unused license slot that should be created.
+export async function givenTeam(
+    teamMembers: readonly (
+        { id: string, email: string, joinedAt?: string } | undefined
+    )[]
+) {
+    const ownerAuthToken = freshAuthToken();
+    const ownerId = "abc";
+    const ownerEmail = 'billinguser@example.com';
+    const subExpiry = Date.now();
+
+    const existingTeamMembers = teamMembers.filter(m => !!m) as
+        Array<{ id: string, email: string, joinedAt?: string }>;
+
+    // Define the owner in Auth0:
+    await auth0Server.get('/userinfo')
+        .withHeaders({ 'Authorization': 'Bearer ' + ownerAuthToken })
+        .thenJson(200, { sub: ownerId });
+
+    // Give the owner subscription data for the team:
+    await auth0Server.get('/api/v2/users/' + ownerId).thenJson(200, {
+        email: ownerEmail,
+        app_metadata: {
+            feature_flags: ['a flag'],
+            team_member_ids: existingTeamMembers.map(m => m.id),
+            locked_licenses: [],
+            subscription_expiry: subExpiry,
+            subscription_id: 2,
+            subscription_quantity: teamMembers.length,
+            subscription_plan_id: 550789,
+            subscription_status: "active",
+            last_receipt_url: 'lru',
+            cancel_url: 'cu',
+            update_url: 'uu',
+        }
+    });
+
+    // Define the team members in Auth0:
+    await auth0Server.get('/api/v2/users')
+        .withQuery({ q: `app_metadata.subscription_owner_id:${ownerId}` })
+        .thenJson(200, existingTeamMembers.map((member) => ({
+            user_id: member.id,
+            email: member.email,
+            app_metadata: {
+                subscription_owner_id: ownerId,
+                joined_at: member.joinedAt ?? '2000-01-01T00:00:00Z'
+            }
+        })));
+
+    return {
+        ownerId,
+        ownerAuthToken
+    };
+};
+
+export async function watchUserCreation() {
+    let i = 0;
+
+    const createEndpoint = await auth0Server
+        .post('/api/v2/users')
+        .thenCallback(() => {
+            return {
+                status: 200,
+                json: {
+                    user_id: `new-user-${i++}`
+                }
+            };
+        });
+
+    return async () => {
+        const newUsers = await createEndpoint.getSeenRequests();
+        return newUsers.map((newUser) => ({
+            url: newUser.url.replace(auth0Server.url, ''),
+            body: newUser.body.json as any
+        }));
+    }
+}
+
+export async function watchUserUpdates() {
+    const updateEndpoint = await auth0Server
+        .patch(/\/api\/v2\/users\/[^\/]+/)
+        .thenCallback((req) => {
+            const idMatch = req.url.match(/\/([^\/]+)$/);
+            return {
+                json: {
+                    user_id: idMatch![1]
+                }
+            };
+        });
+
+    return async () => {
+        const updates = await updateEndpoint.getSeenRequests();
+        return updates.map((update) => ({
+            url: update.url.replace(auth0Server.url, ''),
+            body: update.body.json as any
+        }));
+    }
 }
 
 export function freshAuthToken() {
