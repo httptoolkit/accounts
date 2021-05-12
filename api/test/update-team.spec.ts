@@ -524,16 +524,28 @@ describe('/update-team', () => {
 
             const { ownerAuthToken } = await givenTeam(team);
 
-            const existingUserId = 'existing-user';
-            const existingUserEmail = 'existing@example.com';
-
-            await givenUser(existingUserId, existingUserEmail, {
-                subscription_owner_id: 'another-owner-321'
-            } as TeamMemberMetadata);
             const getUserUpdates = await watchUserUpdates();
 
             const response = await updateTeam(functionServer, ownerAuthToken, {
                 idsToRemove: ['unrelated-id']
+            });
+
+            expect(response.status).to.equal(409);
+            expect((await getUserUpdates()).length).to.equal(0);
+        });
+
+        it("does not allow removing team members who are inconsistently registered in the team", async () => {
+            const team = [
+                { id: 'id-1', email: `member1@example.com` }
+            ] as const;
+
+            const { ownerAuthToken, updateOwnerData } = await givenTeam(team);
+            const getUserUpdates = await watchUserUpdates();
+
+            updateOwnerData({ team_member_ids: [] }); // Lose the id from team_member_ids
+
+            const response = await updateTeam(functionServer, ownerAuthToken, {
+                idsToRemove: [team[0].id]
             });
 
             expect(response.status).to.equal(409);

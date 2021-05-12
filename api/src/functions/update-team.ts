@@ -96,7 +96,7 @@ export const handler = catchErrors(async (event) => {
         }
 
         // Update the team members:
-        await unlinkTeamMembers(ownerId, memberData, idsToRemove);
+        await unlinkTeamMembers(ownerData, memberData, idsToRemove);
         const newMemberIds = await linkNewTeamMembers(ownerId, memberData, emailsToAdd);
 
         // Update the owner:
@@ -128,20 +128,25 @@ export const handler = catchErrors(async (event) => {
     }
 });
 
-async function unlinkTeamMembers(ownerId: string, memberData: User[], idsToRemove: string[]) {
+async function unlinkTeamMembers(ownerData: TeamOwnerMetadata, memberData: User[], idsToRemove: string[]) {
     if (_.uniq(idsToRemove).length !== idsToRemove.length) {
         throw new StatusError(400, "Cannot remove a team member more than once");
     }
 
+    // This effectively checks membership via subscription_owner_id (used to popular memberData)
     const membersToRemove = memberData.filter((member) => idsToRemove.includes(member.user_id!));
-
     if (membersToRemove.length !== idsToRemove.length) {
-        throw new StatusError(409, "Cannot remove a team member who is not a member of the team");
+        throw new StatusError(409,
+            "Cannot remove a team member who is not registered as a member of the team"
+        );
     }
 
-    membersToRemove.forEach(member =>
-        checkUserCanLeaveTeam(ownerId, member)
-    );
+    // This checks membership via team_member_ids, just in case data is inconsistent somehow:
+    if (idsToRemove.some(id => !ownerData.team_member_ids.includes(id))) {
+        throw new StatusError(409,
+            "Cannot remove a team member who is not listed as a member of the team"
+        );
+    }
 
     const removalResult = await Promise.all<boolean | Error>(
         idsToRemove.map(async (idToRemove) =>
@@ -170,12 +175,12 @@ async function unlinkTeamMembers(ownerId: string, memberData: User[], idsToRemov
     }
 }
 
-async function linkNewTeamMembers(ownerId: string, memberData: User[], emailsToAdd: string[]) {
+async function linkNewTeamMembers(ownerId: string, existingMemberData: User[], emailsToAdd: string[]) {
     if (_.uniq(emailsToAdd).length !== emailsToAdd.length) {
         throw new StatusError(400, "Cannot add a team member more than once");
     }
 
-    if (emailsToAdd.some((email) => memberData.some(m => m.email === email))) {
+    if (emailsToAdd.some((email) => existingMemberData.some(m => m.email === email))) {
         throw new StatusError(409, "Cannot add team member who is already present");
     }
 
@@ -186,6 +191,8 @@ async function linkNewTeamMembers(ownerId: string, memberData: User[], emailsToA
             if (matchingUsers.length === 1) {
                 return matchingUsers[0];
             } else if (matchingUsers.length > 1) {
+                // Should never happen, since we use email itself as our user id, but
+                // it's worth handling explicitly anyway:
                 throw new Error(`More than one user found for email ${email}`);
             } else {
                 return email;
@@ -236,21 +243,6 @@ async function linkNewTeamMembers(ownerId: string, memberData: User[], emailsToA
     }
 
     return linkUserResults as string[];
-}
-
-function checkUserCanLeaveTeam(ownerId: string, user: User): true {
-    const metadata = user.app_metadata as TeamMemberMetadata;
-
-    if (metadata.subscription_owner_id === ownerId) {
-        // User is currently in the team => they can leave the team.
-        return true;
-    }
-
-    // Every other case => no way. This shouldn't actually happen since we
-    // check team_member_ids first, but it doesn't hurt to be thorough.
-    throw new StatusError(400,
-        "Cannot remove a user who is not a member of the team"
-    );
 }
 
 function checkUserCanJoinTeams(user: User): true {
