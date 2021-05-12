@@ -157,10 +157,11 @@ async function getBillingData(
     userMetadata: Partial<UserAppData>
 ): Promise<UserBillingData> {
     // Load transactions, team members and team owner in parallel:
-    const [transactions, teamMembers, owner] = await Promise.all([
+    const [transactions, teamMembers, owner, lockedLicenseExpiries] = await Promise.all([
         getTransactions(userMetadata),
         getTeamMembers(userId, userMetadata),
-        getTeamOwner(userId, userMetadata)
+        getTeamOwner(userId, userMetadata),
+        getLockedLicenseExpiries(userMetadata)
     ]);
 
     return {
@@ -168,12 +169,14 @@ async function getBillingData(
             // Filter to just billing related non-duplicated data
             'feature_flags',
             'subscription_owner_id',
-            'team_member_ids'
+            'team_member_ids',
+            'locked_licenses'
         ]),
         email: userMetadata.email!,
         transactions,
         team_members: teamMembers,
-        team_owner: owner
+        team_owner: owner,
+        locked_license_expiries: lockedLicenseExpiries
     };
 }
 
@@ -275,4 +278,14 @@ async function getTeamOwner(userId: string, userMetadata: Partial<UserAppData>) 
             error: 'owner-unavailable'
         };
     }
+}
+
+function getLockedLicenseExpiries(userMetadata: Partial<TeamOwnerMetadata>) {
+    return userMetadata
+        .locked_licenses
+        ?.map((lockStartTime) =>
+            lockStartTime + LICENSE_LOCK_DURATION_MS
+        ).filter((lockExpiryTime) =>
+            lockExpiryTime > Date.now()
+        );
 }

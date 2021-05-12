@@ -17,7 +17,7 @@ import {
     givenTransactions
 } from './test-util';
 import { TransactionData } from '../../module/src/types';
-import { TeamOwnerMetadata } from '../src/auth0';
+import { LICENSE_LOCK_DURATION_MS, TeamOwnerMetadata } from '../src/auth0';
 
 const getBillingData = (server: net.Server, authToken?: string) => fetch(
     `http://localhost:${(server.address() as net.AddressInfo).port}/get-billing-data`,
@@ -249,7 +249,10 @@ describe('/get-billing-data', () => {
                 app_metadata: {
                     feature_flags: ['a flag'],
                     team_member_ids: ['1', '2', '3'],
-                    locked_licenses: [new Date(2050, 0, 0).getTime()], // Locked for ~30 years
+                    locked_licenses: [
+                        new Date(2000, 0, 0).getTime(), // Expired lock
+                        new Date(2050, 0, 0).getTime() // Locked for ~30 years
+                    ],
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
                     subscription_quantity: 2, // <-- 2 allowed, but only 1 really due to locked license
@@ -306,7 +309,10 @@ describe('/get-billing-data', () => {
 
                 subscription_expiry: subExpiry,
                 subscription_id: 2,
-                locked_licenses: [new Date(2050, 0, 0).getTime()], // Locked for ~30 years
+                locked_license_expiries: [
+                    // Locked for ~30 years
+                    new Date(2050, 0, 0).getTime() + LICENSE_LOCK_DURATION_MS
+                ],
                 subscription_quantity: 2, // <-- 2 allowed, but only 1 really due to locked license
                 subscription_plan_id: 550789,
                 subscription_status: "active",
@@ -324,7 +330,7 @@ describe('/get-billing-data', () => {
             });
         });
 
-        it("returns subscription & member data for owners who are in their team", async () => {
+        it("returns subscription + member data for owners in their own team", async () => {
             const authToken = freshAuthToken();
             const billingUserId = "abc";
             const billingUserEmail = 'billinguser@example.com';
@@ -395,7 +401,7 @@ describe('/get-billing-data', () => {
             });
         });
 
-        it("returns owner with error for team members beyond the subscribed quantity", async () => {
+        it("returns owner + error for team members beyond the subscribed quantity", async () => {
             const authToken = freshAuthToken();
             const billingUserId = "abc";
             const billingUserEmail = 'billinguser@example.com';
@@ -440,7 +446,7 @@ describe('/get-billing-data', () => {
             });
         });
 
-        it("returns owner with error for team members beyond the subscribed quantity due to locks", async () => {
+        it("returns owner + error for team members beyond the subscribed quantity due to locks", async () => {
             const authToken = freshAuthToken();
             const billingUserId = "abc";
             const billingUserEmail = 'billinguser@example.com';
@@ -460,7 +466,7 @@ describe('/get-billing-data', () => {
                 app_metadata: {
                     team_member_ids: ['123', '456', teamUserId],
                     locked_licenses: [new Date(2050, 0, 0).getTime()], // Locked for ~30 years
-                    subscription_quantity: 3, // <-- 3 allowed, OK except for the locked license
+                    subscription_quantity: 3, // <-- 3 allowed, would be OK except for the locked license
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
                     subscription_plan_id: 550789,
@@ -486,7 +492,7 @@ describe('/get-billing-data', () => {
             });
         });
 
-        it("returns owner with error for team members with inconsistent membership data", async () => {
+        it("returns owner + error for team members with inconsistent membership data", async () => {
             const authToken = freshAuthToken();
             const billingUserId = "abc";
             const billingUserEmail = 'billinguser@example.com';

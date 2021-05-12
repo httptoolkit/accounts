@@ -33,6 +33,7 @@ export type UserBillingData = {
         name: string;
         error?: string;
     }>;
+    locked_license_expiries?: number[];
 
     transactions: TransactionData[];
 } & SubscriptionData; // <-- Real sub data lives on the root
