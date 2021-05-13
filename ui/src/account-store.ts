@@ -25,15 +25,17 @@ export class AccountStore {
     constructor() {
         makeObservable(this, {
             user: observable,
+            isMaybeLoggedIn: observable,
             isLoggedIn: computed,
             userSubscription: computed,
             updateUser: flow.bound
         });
 
         // Update account data automatically on login, logout & every 10 mins
-        loginEvents.on('authenticated', async () => {
-            await this.updateUser();
-        });
+        loginEvents.on('authenticated', flow(function * (this: AccountStore) {
+            this.isMaybeLoggedIn = true;
+            yield this.updateUser();
+        }.bind(this)));
         loginEvents.on('logout', this.updateUser);
         if (!isSSR) setInterval(this.updateUser, 1000 * 60 * 10);
 
@@ -41,6 +43,10 @@ export class AccountStore {
     }
 
     user: BillingAccount | undefined = undefined;
+
+    // Defaults to true, updated to match isLoggedIn after the first
+    // user update that completes.
+    isMaybeLoggedIn = true;
 
     @computed get isLoggedIn() {
         return !!this.user?.email;
@@ -71,6 +77,10 @@ export class AccountStore {
     *updateUser() {
         this.user = yield getBillingData();
         loginEvents.emit('user_data_loaded');
+
+        // Once we've got the user data (successfully or not) we now
+        // know for sure whether we're logged in.
+        this.isMaybeLoggedIn = this.isLoggedIn
     }
 
     // Re-export functions from the stateless auth module:

@@ -55,6 +55,12 @@ export const Transactions = observer((p: {
     </li>) }
 </TransactionsContainer>);
 
+export const PlaceholderTransactions = () => <TransactionsContainer>
+    { _.range(6).map((i) => <li key={i}>
+        <PlaceholderTransactionRow />
+    </li>) }
+</TransactionsContainer>;
+
 const TransactionsContainer = styled.ol`
     list-style: none;
     margin-top: 10px;
@@ -80,6 +86,17 @@ const TransactionRow = styled.a`
     }
 
     font-size: ${p => p.theme.textSize};
+`;
+
+const PlaceholderTransactionRow = styled(TransactionRow)`
+    height: 43px;
+
+    li:nth-child(1) > & { opacity: 0.9; }
+    li:nth-child(2) > & { opacity: 0.7; }
+    li:nth-child(3) > & { opacity: 0.5; }
+    li:nth-child(4) > & { opacity: 0.3; }
+    li:nth-child(5) > & { opacity: 0.2; }
+    li:nth-child(6) > & { opacity: 0.1; }
 `;
 
 const TransactionDescription = styled.p`

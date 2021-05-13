@@ -8,11 +8,12 @@ import {
 import { getPlanByCode } from '../../module/src/plans';
 
 import { styled, media } from './styles';
+import { Icon } from './icons';
 
 import { AccountStore } from './account-store';
 
 import { Button, ButtonLink } from './inputs';
-import { Transactions } from './account-transactions';
+import { Transactions, PlaceholderTransactions } from './account-transactions';
 import { TeamMembers } from './account-team-members';
 
 const PageContainer = styled.main`
@@ -217,3 +218,58 @@ export const AccountPage = observer((props: {
         </AccountSection>
     </PageContainer>;
 });
+
+export const PlaceholderAccountPage = observer((props: {
+    accountStore: AccountStore
+}) => {
+    const { accountStore } = props;
+    const { logOut } = accountStore;
+
+    return <PageContainer>
+        <PageHeading>
+            Your Account <Spinner />
+        </PageHeading>
+
+        <LogOutButton onClick={logOut}>
+            Log out
+        </LogOutButton>
+
+        <AccountSection>
+            <SectionHeading>Subscription <Spinner /></SectionHeading>
+
+            <ContentGrid>
+                <ContentLabel>Email</ContentLabel>
+                <ContentValue></ContentValue>
+
+                <ContentLabel>Plan</ContentLabel>
+                <ContentValue></ContentValue>
+
+                <ContentLabel>Licenses</ContentLabel>
+                <ContentValue></ContentValue>
+
+                <ContentLabel>Status</ContentLabel>
+                <ContentValue></ContentValue>
+
+                <ContentLabel>Renews</ContentLabel>
+                <ContentValue></ContentValue>
+            </ContentGrid>
+
+            <AccountControls>
+                <ButtonLink>Update billing details</ButtonLink>
+                <ButtonLink>Cancel subscription</ButtonLink>
+            </AccountControls>
+        </AccountSection>
+
+        <AccountSection>
+            <SectionHeading>Invoices <Spinner /></SectionHeading>
+            <PlaceholderTransactions />
+        </AccountSection>
+    </PageContainer>;
+});
+
+const Spinner = styled((p: { className?: string }) =>
+    <Icon icon={['fac', 'spinner-arc']} spin className={p.className} />
+)`
+    font-size: 0.9em;
+    margin-left: 10px;
+`;
