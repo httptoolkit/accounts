@@ -102,8 +102,15 @@ export const AccountPage = observer((props: {
         logOut
     } = accountStore;
 
-    const sub = userSubscription!;
-    if (!user) throw new Error("Account page with no user data");
+    const sub = userSubscription;
+    if (!user || !sub) {
+        alert(`No subscription found for ${
+            user?.email ?? 'this user'
+        }`);
+        logOut();
+        window.location.reload();
+        return null;
+    }
 
     return <PageContainer>
         <PageHeading>Your Account</PageHeading>
