@@ -1,6 +1,9 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 import { observer } from 'mobx-react-lite';
+import {
+    parse as parseDate
+} from 'date-fns';
 
 import { styled } from './styles';
 
@@ -29,7 +32,11 @@ export const Transactions = observer((p: {
             </TransactionDescription>
 
             <TransactionDate>
-                { new Date(transaction.createdAt).toLocaleDateString() }
+                { parseDate(
+                    transaction.createdAt + "Z", // Z to make UTC TZ explicit
+                    "yyyy-LL-dd HH:mm:ssX",
+                    new Date()
+                ).toLocaleDateString() }
             </TransactionDate>
 
             <TransactionResultWrapper>
