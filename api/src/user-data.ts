@@ -100,6 +100,7 @@ async function buildUserAppData(userId: string, userMetadata: Partial<UserAppDat
         // That means your subscription data isn't actually for *you*, it's for
         // the actual team members. Move it into a separate team_subscription to make that clear.
         userMetadata.team_subscription = {};
+        delete (userMetadata as TeamOwnerMetadata)['locked_licenses'];
         EXTRACTED_TEAM_SUBSCRIPTION_PROPERTIES.forEach((key) => {
             const teamSub = userMetadata!.team_subscription! as any;
             teamSub[key] = userMetadata![key];
