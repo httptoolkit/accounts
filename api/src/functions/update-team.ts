@@ -118,7 +118,7 @@ export const handler = catchErrors(async (event) => {
 
         return { statusCode: 200, headers, body: 'success' };
     } catch (e) {
-        reportError(e);
+        await reportError(e);
 
         return {
             statusCode: e.statusCode ?? 500,
@@ -169,7 +169,7 @@ async function unlinkTeamMembers(ownerData: TeamOwnerMetadata, memberData: User[
         } errors removing ${
             idsToRemove.length
         } team members`);
-        removalErrors.forEach(e => reportError(e as Error));
+        await Promise.all(removalErrors.map(e => reportError(e as Error)));
 
         throw removalErrors[0];
     }
@@ -237,7 +237,7 @@ async function linkNewTeamMembers(ownerId: string, existingMemberData: User[], e
         } errors adding ${
             emailsToAdd.length
         } team members`);
-        linkUserErrors.forEach(e => reportError(e as Error));
+        await Promise.all(linkUserErrors.map(e => reportError(e as Error)));
 
         throw linkUserErrors[0];
     }

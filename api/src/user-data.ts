@@ -113,8 +113,8 @@ async function buildUserAppData(userId: string, userMetadata: Partial<UserAppDat
         // read the basic subscription details from the real owner across to this user.
         const subOwnerData = await mgmtClient.getUser({
             id: userMetadata.subscription_owner_id
-        }).catch((e) => {
-            reportError(e);
+        }).catch(async (e) => {
+            await reportError(e);
             return { app_metadata: undefined };
         });
 
@@ -132,7 +132,7 @@ async function buildUserAppData(userId: string, userMetadata: Partial<UserAppDat
                     userMetadata![field] = subOwnerMetadata[field] as any;
                 });
             } else {
-                reportError(`Inconsistent team membership for ${userId}`);
+                await reportError(`Inconsistent team membership for ${userId}`);
                 delete userMetadata.subscription_owner_id;
             }
         }
@@ -251,9 +251,11 @@ async function getTeamMembers(userId: string, userMetadata: Partial<UserAppData>
     }));
 
     // Report any team member data errors:
-    teamMembers.filter(m => m.error).forEach(({ id, error }) =>
-        reportError(
-            `Billing data member issue for ${id} of team ${userId}: ${error}`
+    await Promise.all(
+        teamMembers.filter(m => m.error).map(({ id, error }) =>
+            reportError(
+                `Billing data member issue for ${id} of team ${userId}: ${error}`
+            )
         )
     );
 
@@ -295,7 +297,7 @@ async function getTeamOwner(userId: string, userMetadata: Partial<UserAppData>) 
             : undefined;
 
         if (error) {
-            reportError(`Billing data owner issue for ${userId}: ${error}`);
+            await reportError(`Billing data owner issue for ${userId}: ${error}`);
         }
 
         return {
@@ -304,7 +306,7 @@ async function getTeamOwner(userId: string, userMetadata: Partial<UserAppData>) 
             error
         };
     } catch (e) {
-        reportError(e);
+        await reportError(e);
         return {
             id: ownerId,
             error: 'owner-unavailable'

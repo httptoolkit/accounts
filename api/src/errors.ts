@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/node';
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Handler } from 'aws-lambda';
 import { TypedError } from 'typed-error';
 
-const { SENTRY_DSN, VERSION, NODE_ENV } = process.env;
+const { SENTRY_DSN, VERSION } = process.env;
 
 let sentryInitialized = false;
 export function initSentry() {

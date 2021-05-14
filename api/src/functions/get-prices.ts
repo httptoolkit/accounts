@@ -34,7 +34,7 @@ export const handler = catchErrors(async (event) => {
             })
         };
     } catch (e) {
-        reportError(e);
+        await reportError(e);
         return {
             statusCode: e.statusCode ?? 502,
             headers: { ...headers,

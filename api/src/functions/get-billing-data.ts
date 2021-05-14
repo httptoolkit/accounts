@@ -55,7 +55,7 @@ export const handler = catchErrors(async (event) => {
             body: signedAppData
         };
     } catch (e) {
-        reportError(e);
+        await reportError(e);
 
         return {
             statusCode: e.statusCode ?? 500,
