@@ -207,7 +207,7 @@ async function linkNewTeamMembers(ownerId: string, existingMemberData: User[], e
             } as TeamMemberMetadata;
 
             // Existing users must be validated before they can be added
-            if (_.isObject(user)) checkUserCanJoinTeams(user);
+            if (_.isObject(user)) checkUserCanJoinTeams(ownerId, user);
 
             const updatePromise = _.isObject(user)
                 ? mgmtClient.updateAppMetadata({ id: user.user_id! }, appMetadata)
@@ -244,7 +244,7 @@ async function linkNewTeamMembers(ownerId: string, existingMemberData: User[], e
     return linkUserResults as string[];
 }
 
-function checkUserCanJoinTeams(user: User): true {
+function checkUserCanJoinTeams(ownerId: string, user: User): true {
     const metadata = (user.app_metadata ?? {}) as AppMetadata;
 
     if ('subscription_owner_id' in metadata) {
@@ -257,6 +257,10 @@ function checkUserCanJoinTeams(user: User): true {
         // our purposes, so that you can cancel a private sub to immediately become
         // addable to your new company subscription.
         if (metadata.subscription_status === 'deleted') return true;
+
+        // The owner is also allowed to join the team: although they have a subscription,
+        // unless they're a member they can't use it. Other team owners still can't join.
+        if (user.user_id === ownerId) return true;
 
         // Otherwise, unless your data has expired, you have some kind of active
         // subscription (and so you can't be added to a team).

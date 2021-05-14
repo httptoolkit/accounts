@@ -125,7 +125,7 @@ export async function givenTeam(
 ) {
     const ownerAuthToken = freshAuthToken();
     const ownerId = "abc";
-    const ownerEmail = 'billinguser@example.com';
+    const ownerEmail = `billinguser${id()}@example.com`;
     const subExpiry = Date.now();
 
     let teamMembers = teamMembersAndSpaces.filter(m => !!m) as
@@ -160,6 +160,8 @@ export async function givenTeam(
             }
         }));
 
+    await givenUser(ownerId, ownerEmail, ownerData);
+
     // Define the team members in Auth0:
     await auth0Server.get('/api/v2/users')
         .withQuery({ q: `app_metadata.subscription_owner_id:${ownerId}` })
@@ -188,6 +190,7 @@ export async function givenTeam(
 
     return {
         ownerId,
+        ownerEmail,
         ownerAuthToken,
         updateOwnerData,
         updateTeamMembers

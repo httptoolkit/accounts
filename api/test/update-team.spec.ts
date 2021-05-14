@@ -443,6 +443,40 @@ describe('/update-team', () => {
             expect((await getUserUpdates()).length).to.equal(0);
         });
 
+        it("does allow adding the team owner to their own team", async () => {
+            const team = [
+                { id: 'id-1', email: `member1@example.com` },
+                undefined // 1 empty space
+            ] as const;
+
+            const { ownerId, ownerEmail, ownerAuthToken } = await givenTeam(team);
+            const getUserUpdates = await watchUserUpdates();
+
+            const response = await updateTeam(functionServer, ownerAuthToken, {
+                emailsToAdd: [ownerEmail]
+            });
+
+            expect(response.status).to.equal(200);
+            const updates = await getUserUpdates();
+            expect(updates.length).to.equal(2); // Takes 2 updates, it's fiddly to combine unfortunately
+
+            expect(updates[0].url).to.equal(`/api/v2/users/${ownerId}`);
+            expect(updates[0].body.app_metadata.subscription_owner_id).to.equal(ownerId);
+            expect(updates[0].body.app_metadata.joined_team_at).to.be.within(Date.now() - 1000, Date.now());
+            expect(updates[1]).to.deep.equal({
+                url: `/api/v2/users/${ownerId}`,
+                body: {
+                    app_metadata: {
+                        team_member_ids: [
+                            team[0].id,
+                            ownerId
+                        ],
+                        locked_licenses: []
+                    }
+                }
+            });
+        });
+
         it("does allow adding team members who recently cancelled", async () => {
             const team = [
                 { id: 'id-1', email: `member1@example.com` },
