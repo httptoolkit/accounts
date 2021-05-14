@@ -65,12 +65,11 @@ export const handler = catchErrors(async (event) => {
         const idsToRemove = input.idsToRemove ?? [];
         const emailsToAdd = input.emailsToAdd ?? [];
 
-        if (idsToRemove.length) {
-            console.log(`Removing ${idsToRemove.join(', ')}`);
-        }
-        if (emailsToAdd.length) {
-            console.log(`Adding ${emailsToAdd.join(', ')}`);
-        }
+        console.log(`For team ${ownerId}: add ${
+            emailsToAdd.join(', ') || 'nobody'
+        } and remove ${
+            idsToRemove.join(', ') || 'nobody'
+        }`);
 
         // Licenses are locked if they are added and removed within 48 hours. If that happens they
         // can't be reassigned again until the 48 hours expires. This ensures team licenses cover
