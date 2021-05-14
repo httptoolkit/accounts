@@ -9,6 +9,8 @@ const OUTPUT_DIR = path.resolve(__dirname, '..', 'dist', 'public');
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
+const INDEX_HTML = path.join(SRC_DIR, 'index.html');
+
 module.exports = {
     mode: NODE_ENV,
 
@@ -16,7 +18,8 @@ module.exports = {
 
     output: {
         path: OUTPUT_DIR,
-        filename: 'app.js'
+        filename: 'app.js',
+        libraryTarget: 'umd'
     },
 
     resolve: {
@@ -44,12 +47,24 @@ module.exports = {
         }, {
             test: /\.css$/,
             use: ['style-loader', 'css-loader']
-        }]
+        }, NODE_ENV === 'production' ? {
+            test: INDEX_HTML,
+            use: [{
+                loader: '@httptoolkit/prerender-loader',
+                options: {
+                    string: true,
+                    documentUrl: "https://accounts.httptoolkit.tech",
+                    env: {
+                        SC_DISABLE_SPEEDY: 'true'
+                    }
+                }
+            }]
+        } : {}]
     },
 
     plugins: [
         new HtmlWebpackPlugin({
-            template: path.join(SRC_DIR, 'index.html')
+            template: INDEX_HTML
         }),
         new GoogleFontsPlugin({
             fonts: [

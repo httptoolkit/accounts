@@ -12,17 +12,9 @@ import {
     BillingAccount
 } from '../../module/dist/auth';
 
-const isSSR = typeof window === 'undefined';
-
-initializeAuthUi({
-    apiBase: process.env.API_BASE,
-    closeable: false,
-    rememberLastLogin: false
-});
-
 export class AccountStore {
 
-    constructor() {
+    constructor(isSSR?: true) {
         makeObservable(this, {
             user: observable,
             isMaybeLoggedIn: observable,
@@ -37,7 +29,16 @@ export class AccountStore {
             yield this.updateUser();
         }.bind(this)));
         loginEvents.on('logout', this.updateUser);
-        if (!isSSR) setInterval(this.updateUser, 1000 * 60 * 10);
+
+        if (!isSSR) {
+            initializeAuthUi({
+                apiBase: process.env.API_BASE,
+                closeable: false,
+                rememberLastLogin: false
+            });
+
+            setInterval(this.updateUser, 1000 * 60 * 10);
+        }
 
         this.updateUser();
     }

@@ -27,6 +27,7 @@
   "homepage": "https://github.com/httptoolkit/accounts#readme",
   "devDependencies": {
     "@httptoolkit/netlify-cli": "^2.19.1-testable",
+    "@httptoolkit/prerender-loader": "^1.4.0-custom-env-vars",
     "@sentry/node": "^4.6.1",
     "@types/auth0": "^2.9.10",
     "@types/aws-lambda": "^8.10.17",
