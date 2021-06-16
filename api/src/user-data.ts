@@ -259,6 +259,10 @@ async function getTeamMembers(userId: string, userMetadata: Partial<UserAppData>
         )
     );
 
+    if (teamMembers.length !== userMetadata.team_member_ids?.length) {
+        await reportError(`Missing team members for team ${userId}`);
+    }
+
     return teamMembers;
 }
 
