@@ -1,6 +1,8 @@
 import * as _ from 'lodash';
 import { makeObservable, observable, computed, flow } from 'mobx';
 
+import { reportError } from './errors';
+
 import {
     getBillingData,
     updateTeamMembers,
@@ -76,8 +78,14 @@ export class AccountStore {
     }
 
     *updateUser() {
-        this.user = yield getBillingData();
-        loginEvents.emit('user_data_loaded');
+        try {
+            this.user = yield getBillingData();
+            loginEvents.emit('user_data_loaded');
+        } catch (e) {
+            console.log("Failed to load user data");
+            reportError(e);
+            this.user = undefined;
+        }
 
         // Once we've got the user data (successfully or not) we now
         // know for sure whether we're logged in.
