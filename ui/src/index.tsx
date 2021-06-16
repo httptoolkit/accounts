@@ -1,3 +1,6 @@
+import { initSentry } from './errors';
+initSentry();
+
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 

@@ -46,6 +46,12 @@ jobs:
           VERSION: ${{ github.sha }}
           NODE_ENV: production
 
+      - run: npm run build
+        env:
+          VERSION: ${{ github.sha }}
+          NODE_ENV: production
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v1.1
         with:
