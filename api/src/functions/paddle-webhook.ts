@@ -156,7 +156,7 @@ async function updateTeamData(email: string, subscription: Partial<PayingUserMet
 
 export const handler = catchErrors(async (event) => {
     const paddleData = querystring.parse(event.body || '') as unknown as WebhookData;
-    console.log('Received Paddle webhook', paddleData);
+    console.log('Received Paddle webhook', JSON.stringify(paddleData));
 
     validateWebhook(paddleData);
 
