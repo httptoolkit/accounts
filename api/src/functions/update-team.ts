@@ -94,9 +94,28 @@ export const handler = catchErrors(async (event) => {
             );
         }
 
-        // Update the team members:
-        await unlinkTeamMembers(ownerData, memberData, idsToRemove);
-        const newMemberIds = await linkNewTeamMembers(ownerId, memberData, emailsToAdd);
+        validateTeamMembersBeforeRemove(ownerData, memberData, idsToRemove);
+        validateNewMemberEmails(memberData, emailsToAdd);
+
+        // For each new member, get either their current data, or just keep their email
+        // (we'll create new accounts for those in a minute)
+        const newMemberAccounts = await Promise.all(emailsToAdd.map(async (email) => {
+            const matchingUsers = (await mgmtClient.getUsersByEmail(email));
+            if (matchingUsers.length === 1) {
+                return matchingUsers[0];
+            } else if (matchingUsers.length > 1) {
+                // Should never happen, since we use email itself as our user id, but
+                // it's worth handling explicitly anyway:
+                throw new Error(`More than one user found for email ${email}`);
+            } else {
+                return email;
+            }
+        }));
+        validateNewMemberAccounts(ownerId, newMemberAccounts);
+
+        // All validated (so this should work!) - now actually update the users:
+        await unlinkTeamMembers(idsToRemove);
+        const newMemberIds = await linkNewTeamMembers(ownerId, newMemberAccounts);
 
         // Update the owner:
         const updatedTeamIds = ownerData.team_member_ids
@@ -127,12 +146,16 @@ export const handler = catchErrors(async (event) => {
     }
 });
 
-async function unlinkTeamMembers(ownerData: TeamOwnerMetadata, memberData: User[], idsToRemove: string[]) {
+function validateTeamMembersBeforeRemove(
+    ownerData: TeamOwnerMetadata,
+    memberData: User[],
+    idsToRemove: string[]
+) {
     if (_.uniq(idsToRemove).length !== idsToRemove.length) {
         throw new StatusError(400, "Cannot remove a team member more than once");
     }
 
-    // This effectively checks membership via subscription_owner_id (used to popular memberData)
+    // This effectively checks membership via subscription_owner_id (used to populate memberData)
     const membersToRemove = memberData.filter((member) => idsToRemove.includes(member.user_id!));
     if (membersToRemove.length !== idsToRemove.length) {
         throw new StatusError(409,
@@ -147,6 +170,9 @@ async function unlinkTeamMembers(ownerData: TeamOwnerMetadata, memberData: User[
         );
     }
 
+}
+
+async function unlinkTeamMembers(idsToRemove: string[]) {
     const removalResult = await Promise.all<boolean | Error>(
         idsToRemove.map(async (idToRemove) =>
             mgmtClient.updateAppMetadata({ id: idToRemove }, {
@@ -174,7 +200,7 @@ async function unlinkTeamMembers(ownerData: TeamOwnerMetadata, memberData: User[
     }
 }
 
-async function linkNewTeamMembers(ownerId: string, existingMemberData: User[], emailsToAdd: string[]) {
+function validateNewMemberEmails(existingMemberData: User[], emailsToAdd: string[]) {
     if (_.uniq(emailsToAdd).length !== emailsToAdd.length) {
         throw new StatusError(400, "Cannot add a team member more than once");
     }
@@ -182,32 +208,21 @@ async function linkNewTeamMembers(ownerId: string, existingMemberData: User[], e
     if (emailsToAdd.some((email) => existingMemberData.some(m => m.email === email))) {
         throw new StatusError(409, "Cannot add team member who is already present");
     }
+}
 
-    // Get the details of all the users involved, creating them if required
-    const users = await Promise.all(
-        emailsToAdd.map(async (email) => {
-            const matchingUsers = (await mgmtClient.getUsersByEmail(email));
-            if (matchingUsers.length === 1) {
-                return matchingUsers[0];
-            } else if (matchingUsers.length > 1) {
-                // Should never happen, since we use email itself as our user id, but
-                // it's worth handling explicitly anyway:
-                throw new Error(`More than one user found for email ${email}`);
-            } else {
-                return email;
-            }
-        })
-    );
+function validateNewMemberAccounts(ownerId: string, newMembers: Array<User | string>) {
+    newMembers.forEach((member) => {
+        if (_.isObject(member)) checkUserCanJoinTeams(ownerId, member);
+    });
+}
 
+async function linkNewTeamMembers(ownerId: string, membersToAdd: Array<User | string>) {
     const linkUserResults = await Promise.all<string | Error>(
-        users.map(async (user) => {
+        membersToAdd.map(async (user) => {
             const appMetadata = {
                 subscription_owner_id: ownerId,
                 joined_team_at: Date.now()
             } as TeamMemberMetadata;
-
-            // Existing users must be validated before they can be added
-            if (_.isObject(user)) checkUserCanJoinTeams(ownerId, user);
 
             const updatePromise = _.isObject(user)
                 ? mgmtClient.updateAppMetadata({ id: user.user_id! }, appMetadata)
@@ -234,7 +249,7 @@ async function linkNewTeamMembers(ownerId: string, existingMemberData: User[], e
         console.log(`${
             linkUserErrors.length
         } errors adding ${
-            emailsToAdd.length
+            membersToAdd.length
         } team members`);
         await Promise.all(linkUserErrors.map(e => reportError(e as Error)));
 
