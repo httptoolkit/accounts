@@ -6,6 +6,7 @@ import stoppable from 'stoppable';
 import { expect } from 'chai';
 
 import {
+    delay,
     startServer,
     auth0Server,
     AUTH0_PORT,
@@ -18,7 +19,8 @@ import {
     givenTeam,
     watchUserCreation,
     watchUserUpdates,
-    applyMetadataUpdate
+    applyMetadataUpdate,
+    withUserUpdateNetworkFailures
 } from './test-util';
 import { LICENSE_LOCK_DURATION_MS, PayingUserMetadata, TeamMemberMetadata } from '../src/auth0';
 
@@ -355,6 +357,27 @@ describe('/update-team', () => {
             });
         });
 
+        it("reports failures for internal API issues", async () => {
+            const team = [
+                undefined
+            ] as const;
+
+            const { ownerAuthToken } = await givenTeam(team);
+
+            const newUserId = 'non-subscribed-user';
+            const newUserEmail = 'non-subscribed-user-email';
+
+            await givenUser(newUserId, newUserEmail);
+
+            await withUserUpdateNetworkFailures();
+
+            const response = await updateTeam(functionServer, ownerAuthToken, {
+                emailsToAdd: [newUserEmail]
+            });
+
+            expect(response.status).to.equal(500);
+        });
+
         it("does not allow adding team members beyond the subscribed quantity", async () => {
             const team = [
                 { id: 'id-1', email: `member1@example.com` },
@@ -440,6 +463,43 @@ describe('/update-team', () => {
             });
 
             expect(response.status).to.equal(409);
+            expect((await getUserUpdates()).length).to.equal(0);
+        });
+
+        it("does not half-add team members, if only some members are independently subscribed", async () => {
+            const team = [
+                undefined,
+                undefined // 2 empty spaces
+            ] as const;
+
+            const { ownerAuthToken } = await givenTeam(team);
+
+            const newUserId = 'non-subscribed-user';
+            const newUserEmail = 'non-subscribed-user-email';
+
+            await givenUser(newUserId, newUserEmail);
+
+            const existingUserId = 'existing-user';
+            const existingUserEmail = 'existing@example.com';
+
+            await givenUser(existingUserId, existingUserEmail, {
+                paddle_user_id: 123,
+                subscription_id: 234,
+                subscription_quantity: 1,
+                subscription_plan_id: 550380,
+                update_url: 'uu',
+                cancel_url: 'cu',
+                subscription_status: 'active',
+                subscription_expiry: Date.now() + 1000
+            } as PayingUserMetadata);
+            const getUserUpdates = await watchUserUpdates();
+
+            const response = await updateTeam(functionServer, ownerAuthToken, {
+                emailsToAdd: [newUserEmail, existingUserEmail]
+            });
+
+            expect(response.status).to.equal(409);
+            await delay(100);
             expect((await getUserUpdates()).length).to.equal(0);
         });
 

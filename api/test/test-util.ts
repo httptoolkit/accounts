@@ -13,6 +13,8 @@ export function id() {
     return idCounter++;
 }
 
+export const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function generateKeyPair() {
     return crypto.generateKeyPairSync('rsa', {
         modulusLength: 512,
@@ -237,6 +239,7 @@ export async function watchUserCreation() {
 export async function watchUserUpdates() {
     const updateEndpoint = await auth0Server
         .patch(/\/api\/v2\/users\/[^\/]+/)
+        .always()
         .thenCallback((req) => {
             const idMatch = req.url.match(/\/([^\/]+)$/);
             return {
@@ -253,6 +256,12 @@ export async function watchUserUpdates() {
             body: update.body.json as any
         }));
     }
+}
+
+export async function withUserUpdateNetworkFailures() {
+    await auth0Server
+        .patch(/\/api\/v2\/users\/[^\/]+/)
+        .thenCloseConnection();
 }
 
 export function freshAuthToken() {
