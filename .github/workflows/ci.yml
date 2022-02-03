@@ -4,7 +4,6 @@ jobs:
   build-module:
     name: Build & test npm module
     runs-on: ubuntu-latest
-    container: httptoolkit/act-build-base
     defaults:
       run:
         working-directory: module
@@ -24,7 +23,6 @@ jobs:
   build-app:
     name: Build & test app
     runs-on: ubuntu-latest
-    container: httptoolkit/act-build-base
     steps:
       - uses: actions/checkout@v2
 
@@ -32,6 +30,8 @@ jobs:
       - uses: actions/setup-node@v1
         with:
           node-version: 14
+
+      - run: npm install -g npm@^8
 
       - name: App NPM CI
         run: npm ci
