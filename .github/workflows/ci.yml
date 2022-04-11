@@ -33,7 +33,7 @@ jobs:
         with:
           node-version: 14
 
-      - run: npm install -g npm@^8
+      - run: npm install -g npm@8.5.5
 
       - name: App NPM CI
         run: npm ci
