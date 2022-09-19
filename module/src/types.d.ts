@@ -8,6 +8,7 @@ export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'deleted';
 export type UserAppData = {
     email: string;
     feature_flags?: string[];
+    banned?: boolean;
 
     // If you're the owner of a team, you'll have team subscription data.
     // This data defines the team's subscription, but doesn't affect you
