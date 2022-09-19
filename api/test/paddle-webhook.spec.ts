@@ -523,4 +523,31 @@ describe('Paddle webhooks', () => {
         });
 
     });
+
+    describe("for disputed payments", () => {
+
+        it("should ban the user until they contact support", async () => {
+            const userId = "abc";
+            const userEmail = 'user@example.com';
+            givenUser(userId, userEmail);
+
+            const userUpdate = await auth0Server
+                .patch('/api/v2/users/' + userId)
+                .thenReply(200);
+
+            await triggerWebhook(functionServer, {
+                alert_name: 'payment_dispute_created',
+                email: userEmail
+            });
+
+            const updateRequests = await userUpdate.getSeenRequests();
+            expect(updateRequests.length).to.equal(1);
+            expect(updateRequests[0].body.json).to.deep.equal({
+                app_metadata: {
+                    banned: true
+                }
+            });
+        });
+
+    });
 });

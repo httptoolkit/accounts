@@ -33,6 +33,7 @@ export type PaddleAlertNames =
     | 'subscription_payment_succeeded'
     | 'subscription_payment_failed'
     | 'subscription_payment_refunded'
+    | 'payment_dispute_created';
 
 export interface BaseWebhookData {
     alert_name: PaddleAlertNames;
@@ -86,13 +87,18 @@ export interface PaymentFailedHookData extends BaseWebhookData {
     next_retry_date?: string; // YYYY-MM-DD
 }
 
+export interface DisputeCreatedData extends BaseWebhookData {
+    alert_name: 'payment_dispute_created';
+}
+
 export type WebhookData =
     | NewSubscriptionHookData
     | UpdatedSubscriptionHookData
     | CancellationHookData
     | PaymentSuccessHookData
     | PaymentRefundedHookData
-    | PaymentFailedHookData;
+    | PaymentFailedHookData
+    | DisputeCreatedData;
 
 export type UnsignedWebhookData = Omit<WebhookData, 'p_signature'>;
 

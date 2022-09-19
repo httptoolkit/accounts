@@ -53,6 +53,11 @@ async function updateProUserData(email: string, subscription: Partial<PayingUser
     }
 }
 
+async function banUser(email: string) {
+    const user = await getOrCreateUserData(email);
+    await mgmtClient.updateAppMetadata({ id: user.user_id! }, { banned: true });
+}
+
 function getSubscriptionFromHookData(hookData: WebhookData): Partial<PayingUserMetadata> {
     if (
         hookData.alert_name === 'subscription_created' ||
@@ -184,6 +189,14 @@ export const handler = catchErrors(async (event) => {
                 userData.subscription_plan_id
             }`);
         }
+    } else if (paddleData.alert_name === 'payment_dispute_created') {
+        // If we receive a payment dispute, that means either the user has stolen somebody else's credit card,
+        // and the transaction has been reported, or they've disputed their own valid payment for HTTP Toolkit
+        // to avoid paying for it (and cause us major existential problems in return).
+        // In either case, this is abusive behaviour, and we ban them from the app. This results in an alert
+        // at startup, telling them to contact support and then insta-closing the app.
+        const email = paddleData.email.toLowerCase();
+        await banUser(email);
     } else {
         console.log(`Ignoring ${paddleData.alert_name} event`);
     }
