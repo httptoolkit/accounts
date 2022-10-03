@@ -19,9 +19,9 @@ export function getCorsResponseHeaders(event: APIGatewayProxyEvent) {
         corsHeaders['Vary'] = 'Authorization, Origin';
     }
 
-    // Check the origin, include CORS if it's *.httptoolkit.tech
+    // Check the origin, include CORS if it's *.httptoolkit.tech or .com
     const { origin } = event.headers;
-    let allowedOrigin = /^https?:\/\/(.*\.)?httptoolkit.tech(:\d+)?$/.test(origin) ?
+    let allowedOrigin = /^https?:\/\/(.*\.)?httptoolkit\.(tech|com)(:\d+)?$/.test(origin) ?
         origin : undefined;
 
     if (allowedOrigin) {
