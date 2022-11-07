@@ -37,6 +37,7 @@ export type AppMetadata =
 
 interface BaseMetadata {
     feature_flags?: string[];
+    banned?: boolean;
 }
 
 export interface TrialUserMetadata extends BaseMetadata {
