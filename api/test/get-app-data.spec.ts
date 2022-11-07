@@ -154,6 +154,76 @@ describe('/get-app-data', () => {
             expect(userInfoRequests.length).to.equal(1);
             expect(userDataRequests.length).to.equal(2);
         });
+
+        it("returns valid but expired data for 24h after expiry", async () => {
+            const authToken = freshAuthToken();
+            const userId = "abc";
+            const userEmail = 'user@example.com';
+
+            // Expire the data 23 hours ago:
+            const subExpiry = Date.now() - (23 * 60 * 60 * 1000);
+
+            await auth0Server.get('/userinfo')
+                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
+                .thenJson(200, { sub: userId });
+            await auth0Server.get('/api/v2/users/' + userId)
+                .thenJson(200, {
+                    email: userEmail,
+                    app_metadata: {
+                        feature_flags: ['test_flag'],
+                        subscription_expiry: subExpiry,
+                        subscription_id: 2,
+                        subscription_plan_id: 550380,
+                        subscription_status: "active"
+                    }
+                });
+
+            const response = await getAppData(functionServer, authToken);
+            expect(response.status).to.equal(200);
+
+            const data = getJwtData(await response.text());
+            expect(data).to.deep.equal({
+                email: userEmail,
+                feature_flags: ['test_flag'],
+                subscription_expiry: subExpiry,
+                subscription_id: 2,
+                subscription_plan_id: 550380,
+                subscription_status: "active"
+            });
+        });
+
+        it("stops returning subscription data 24h after expiry", async () => {
+            const authToken = freshAuthToken();
+            const userId = "abc";
+            const userEmail = 'user@example.com';
+
+            // Expire the data 25 hours ago:
+            const subExpiry = Date.now() - (25 * 60 * 60 * 1000);
+
+            await auth0Server.get('/userinfo')
+                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
+                .thenJson(200, { sub: userId });
+            await auth0Server.get('/api/v2/users/' + userId)
+                .thenJson(200, {
+                    email: userEmail,
+                    app_metadata: {
+                        feature_flags: ['test_flag'],
+                        subscription_expiry: subExpiry,
+                        subscription_id: 2,
+                        subscription_plan_id: 550380,
+                        subscription_status: "active"
+                    }
+                });
+
+            const response = await getAppData(functionServer, authToken);
+            expect(response.status).to.equal(200);
+
+            const data = getJwtData(await response.text());
+            expect(data).to.deep.equal({
+                email: userEmail,
+                feature_flags: ['test_flag']
+            });
+        });
     });
 
     describe("for Team users", () => {

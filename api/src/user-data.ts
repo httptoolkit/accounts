@@ -75,6 +75,23 @@ async function getRawUserData(userId: string): Promise<Partial<UserAppData>> {
     };
 }
 
+// All subscription-related properties:
+const SUBSCRIPTION_PROPERTIES = [
+    'subscription_status',
+    'subscription_id',
+    'subscription_plan_id',
+    'subscription_expiry',
+    'subscription_quantity',
+    'last_receipt_url',
+    'paddle_user_id',
+    'update_url',
+    'cancel_url',
+    'team_member_ids',
+    'locked_licenses',
+    'subscription_owner_id',
+    'joined_team_at'
+];
+
 const EXTRACTED_TEAM_SUBSCRIPTION_PROPERTIES = [
     'subscription_status',
     'subscription_id',
@@ -94,6 +111,8 @@ const DELEGATED_TEAM_SUBSCRIPTION_PROPERTIES = [
     'subscription_plan_id'
 ] as const;
 
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
 async function buildUserAppData(userId: string, userMetadata: Partial<UserAppData>) {
     if (isTeamSubscription(userMetadata.subscription_plan_id)) {
         // If you have a team subscription, you're the *owner* of a team, not a member.
@@ -105,7 +124,7 @@ async function buildUserAppData(userId: string, userMetadata: Partial<UserAppDat
             const teamSub = userMetadata!.team_subscription! as any;
             teamSub[key] = userMetadata![key];
             delete userMetadata![key];
-        }, {});
+        });
     }
 
     if (userMetadata.subscription_owner_id) {
@@ -136,6 +155,15 @@ async function buildUserAppData(userId: string, userMetadata: Partial<UserAppDat
                 delete userMetadata.subscription_owner_id;
             }
         }
+    }
+
+    const metadataExpiry = userMetadata.subscription_expiry
+        // No expiry = never expire (shouldn't happen, but just in case):
+        ?? Number.POSITIVE_INFINITY;
+    if (metadataExpiry < (Date.now() - ONE_DAY_MS)) {
+        SUBSCRIPTION_PROPERTIES.forEach((key) => {
+            delete userMetadata[key as keyof typeof userMetadata];
+        });
     }
 
     return userMetadata;
