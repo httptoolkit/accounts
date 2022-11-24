@@ -2,7 +2,10 @@ import { APIGatewayProxyEvent } from "aws-lambda";
 
 const ONE_DAY_IN_SECONDS = 60 * 60 * 24;
 
-export function getCorsResponseHeaders(event: APIGatewayProxyEvent) {
+export function getCorsResponseHeaders(
+    event: APIGatewayProxyEvent,
+    originMatch = /^https?:\/\/(.*\.)?httptoolkit\.(tech|com)(:\d+)?$/
+) {
     const corsHeaders: { [key: string]: string } = {
         'Access-Control-Allow-Headers': 'Authorization, Content-Type',
         'Access-Control-Max-Age': ONE_DAY_IN_SECONDS.toString(), // Chrome will cache for 10 mins max anyway
@@ -21,7 +24,7 @@ export function getCorsResponseHeaders(event: APIGatewayProxyEvent) {
 
     // Check the origin, include CORS if it's *.httptoolkit.tech or .com
     const { origin } = event.headers;
-    let allowedOrigin = /^https?:\/\/(.*\.)?httptoolkit\.(tech|com)(:\d+)?$/.test(origin) ?
+    let allowedOrigin = originMatch.test(origin) ?
         origin : undefined;
 
     if (allowedOrigin) {

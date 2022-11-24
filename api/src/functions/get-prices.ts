@@ -5,7 +5,7 @@ import { getCorsResponseHeaders } from '../cors';
 import { getPrices } from '../paddle';
 
 export const handler = catchErrors(async (event) => {
-    let headers = getCorsResponseHeaders(event);
+    let headers = getCorsResponseHeaders(event, /.*/); // Pricing data is CORS-accessible anywhere
 
     if (event.httpMethod !== 'OPTIONS') {
         // Cache the per-user result for 1 hour
