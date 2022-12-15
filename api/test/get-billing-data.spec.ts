@@ -114,6 +114,7 @@ describe('/get-billing-data', () => {
                     app_metadata: {
                         subscription_expiry: subExpiry,
                         subscription_id: subId,
+                        subscription_sku: 'pro-monthly',
                         subscription_plan_id: 550380,
                         subscription_status: "active"
                     }
@@ -139,6 +140,7 @@ describe('/get-billing-data', () => {
                 email: userEmail,
                 subscription_expiry: subExpiry,
                 subscription_id: subId,
+                subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
                 subscription_status: "active",
                 transactions: [transaction]
@@ -163,6 +165,7 @@ describe('/get-billing-data', () => {
                     app_metadata: {
                         subscription_expiry: subExpiry,
                         subscription_id: subId,
+                        subscription_sku: 'pro-monthly',
                         subscription_plan_id: 550380,
                         subscription_status: "active"
                     }
@@ -214,6 +217,7 @@ describe('/get-billing-data', () => {
                     subscription_expiry: subExpiry,
                     subscription_id: subId,
                     subscription_quantity: 3,
+                    subscription_sku: 'pro-monthly',
                     subscription_plan_id: 550789,
                     subscription_status: "active",
                     last_receipt_url: 'lru',
@@ -264,6 +268,7 @@ describe('/get-billing-data', () => {
                     subscription_expiry: subExpiry,
                     subscription_id: subId,
                     subscription_quantity: 2, // <-- 2 allowed, but only 1 really due to locked license
+                    subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_status: "active",
                     last_receipt_url: 'lru',
@@ -322,6 +327,7 @@ describe('/get-billing-data', () => {
                     new Date(2050, 0, 0).getTime() + LICENSE_LOCK_DURATION_MS
                 ],
                 subscription_quantity: 2, // <-- 2 allowed, but only 1 really due to locked license
+                subscription_sku: 'team-monthly',
                 subscription_plan_id: 550789,
                 subscription_status: "active",
                 last_receipt_url: 'lru',
@@ -361,6 +367,7 @@ describe('/get-billing-data', () => {
                     subscription_expiry: subExpiry,
                     subscription_id: subId,
                     subscription_quantity: 1,
+                    subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_status: "active",
                     last_receipt_url: 'lru',
@@ -400,6 +407,7 @@ describe('/get-billing-data', () => {
                 subscription_expiry: subExpiry,
                 subscription_id: subId,
                 subscription_quantity: 1,
+                subscription_sku: 'team-monthly',
                 subscription_plan_id: 550789,
                 subscription_status: "active",
                 last_receipt_url: 'lru',
@@ -438,6 +446,7 @@ describe('/get-billing-data', () => {
                     subscription_quantity: 2, // <-- 2 allowed, but we're 3rd in the ids above
                     subscription_expiry: subExpiry,
                     subscription_id: subId,
+                    subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_status: "active",
                     last_receipt_url: 'lru',
@@ -484,6 +493,7 @@ describe('/get-billing-data', () => {
                     subscription_quantity: 3, // <-- 3 allowed, would be OK except for the locked license
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
+                    subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_status: "active",
                     last_receipt_url: 'lru',
@@ -528,6 +538,7 @@ describe('/get-billing-data', () => {
                     team_member_ids: [], // <-- doesn't include this user
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
+                    subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_status: "active",
                     last_receipt_url: 'lru',

@@ -2,7 +2,17 @@ import type { SubscriptionPlans } from "./plans";
 
 // Valid subscription state values:
 export type SubscriptionPlanCode = keyof typeof SubscriptionPlans;
-export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'deleted';
+export type SubscriptionStatus =
+    | 'active'
+    | 'trialing'
+    | 'past_due'
+    | 'deleted';
+export type SKU =
+    | 'pro-monthly'
+    | 'pro-annual'
+    | 'pro-perpetual'
+    | 'team-monthly'
+    | 'team-annual';
 
 // User app data, as returned by the API
 export type UserAppData = {
@@ -44,6 +54,7 @@ export interface SubscriptionData {
     subscription_status?: SubscriptionStatus;
     paddle_user_id?: number;
     subscription_id?: number;
+    subscription_sku?: SKU;
     subscription_plan_id?: number;
     subscription_expiry?: number;
     update_url?: string;

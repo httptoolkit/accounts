@@ -3,12 +3,15 @@ import NodeCache from 'node-cache';
 
 import { reportError } from './errors';
 
-import type { TransactionData, UserAppData, UserBillingData } from '../../module/src/types';
+import type {
+    TransactionData,
+    UserAppData,
+    UserBillingData
+} from '../../module/src/types';
 
 import {
     getPaddleUserIdFromSubscription,
-    getPaddleUserTransactions,
-    isTeamSubscription
+    getPaddleUserTransactions
 } from './paddle';
 import {
     authClient,
@@ -18,6 +21,10 @@ import {
     TeamOwnerMetadata,
     TeamMemberMetadata
 } from './auth0';
+import {
+    getSku,
+    isTeamSubscription
+} from './products';
 
 // User app data is the effective subscription of the user. For Pro that's easy,
 // for teams: team members have the subscription of the team owner. Team owners
@@ -114,7 +121,8 @@ const DELEGATED_TEAM_SUBSCRIPTION_PROPERTIES = [
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 async function buildUserAppData(userId: string, userMetadata: Partial<UserAppData>) {
-    if (isTeamSubscription(userMetadata.subscription_plan_id)) {
+    const sku = getSku(userMetadata);
+    if (isTeamSubscription(sku)) {
         // If you have a team subscription, you're the *owner* of a team, not a member.
         // That means your subscription data isn't actually for *you*, it's for
         // the actual team members. Move it into a separate team_subscription to make that clear.
@@ -138,8 +146,9 @@ async function buildUserAppData(userId: string, userMetadata: Partial<UserAppDat
         });
 
         const subOwnerMetadata = subOwnerData.app_metadata as TeamOwnerMetadata;
+        const teamSku = getSku(subOwnerMetadata);
 
-        if (subOwnerMetadata && isTeamSubscription(subOwnerMetadata.subscription_plan_id)) {
+        if (subOwnerMetadata && isTeamSubscription(teamSku)) {
             const maxTeamSize = getMaxTeamSize(subOwnerMetadata);
 
             const subTeamMembers = (
@@ -249,7 +258,8 @@ async function getTransactions(userMetadata: Partial<UserAppData>) {
 }
 
 async function getTeamMembers(userId: string, userMetadata: Partial<UserAppData>) {
-    if (!isTeamSubscription(userMetadata.subscription_plan_id)) {
+    const sku = getSku(userMetadata);
+    if (!isTeamSubscription(sku)) {
         return undefined;
     }
 

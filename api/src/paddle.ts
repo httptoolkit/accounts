@@ -17,14 +17,20 @@ const PADDLE_KEY = process.env.PADDLE_KEY;
 
 const PADDLE_BASE_URL = process.env.PADDLE_BASE_URL || "https://vendors.paddle.com";
 
-const PRO_SUBSCRIPTION_IDS = [550380, 550382, 599788];
-const TEAM_SUBSCRIPTION_IDS = [550788, 550789];
+// Map the legacy Paddle subscription plan IDs to SKUs
+const PADDLE_ID_TO_SKU = {
+    550380: 'pro-monthly',
+    550382: 'pro-annual',
+    599788: 'pro-perpetual',
+    550789: 'team-monthly',
+    550788: 'team-annual'
+} as const;
 
-export const isProSubscription = (planId: number | undefined) =>
-    PRO_SUBSCRIPTION_IDS.includes(planId!);
-
-export const isTeamSubscription = (planId: number | undefined) =>
-    TEAM_SUBSCRIPTION_IDS.includes(planId!);
+type PADDLE_PLAN_ID = keyof typeof PADDLE_ID_TO_SKU;
+export const getSkuForPaddleId = (id: number | undefined) =>
+    id
+    ? PADDLE_ID_TO_SKU[id as PADDLE_PLAN_ID]
+    : undefined;
 
 export type PaddleAlertNames =
     | 'subscription_created'

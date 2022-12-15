@@ -1,5 +1,5 @@
 import * as auth0 from 'auth0';
-import { SubscriptionStatus } from '../../module/src/types';
+import { SubscriptionStatus, SKU } from '../../module/src/types';
 
 const {
     AUTH0_DOMAIN,
@@ -42,7 +42,8 @@ interface BaseMetadata {
 
 export interface TrialUserMetadata extends BaseMetadata {
     subscription_status: SubscriptionStatus;
-    subscription_plan_id: number;
+    subscription_plan_id: number; // Paddle-specific plan id
+    subscription_sku: SKU; // Generic subscription type id
     subscription_expiry: number;
 }
 

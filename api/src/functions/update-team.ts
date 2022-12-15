@@ -12,7 +12,7 @@ import {
 } from '../auth0';
 import { getCorsResponseHeaders } from '../cors';
 import { getMaxTeamSize, getTeamMemberData, getUserId } from '../user-data';
-import { isTeamSubscription } from '../paddle';
+import { getSku, isTeamSubscription } from '../products';
 
 const BearerRegex = /^Bearer (\S+)$/;
 
@@ -53,7 +53,8 @@ export const handler = catchErrors(async (event) => {
         ]);
 
         const ownerData = userData.app_metadata as TeamOwnerMetadata;
-        if (!isTeamSubscription(ownerData?.subscription_plan_id)) {
+        const sku = getSku(ownerData);
+        if (!isTeamSubscription(sku)) {
             throw new StatusError(403, "Your account does not have a Team subscription");
         }
 

@@ -16,9 +16,13 @@ import {
 import {
     validateWebhook,
     WebhookData,
+    getSkuForPaddleId
+} from '../paddle';
+import {
+    getSku,
     isProSubscription,
     isTeamSubscription
-} from '../paddle';
+} from '../products';
 
 async function getOrCreateUserData(email: string): Promise<User> {
     const users = await mgmtClient.getUsersByEmail(email);
@@ -71,11 +75,14 @@ function getSubscriptionFromHookData(hookData: WebhookData): Partial<PayingUserM
             ? hookData.quantity
             : hookData.new_quantity;
 
+        const planId = parseInt(hookData.subscription_plan_id, 10);
+
         return {
             subscription_status: hookData.status,
             paddle_user_id: parseInt(hookData.user_id, 10),
             subscription_id: parseInt(hookData.subscription_id, 10),
-            subscription_plan_id: parseInt(hookData.subscription_plan_id, 10),
+            subscription_sku: getSkuForPaddleId(planId),
+            subscription_plan_id: planId,
             subscription_quantity: parseInt(quantity, 10),
             subscription_expiry: endDate,
             update_url: hookData.update_url,
@@ -88,11 +95,14 @@ function getSubscriptionFromHookData(hookData: WebhookData): Partial<PayingUserM
         // Cancelled subscriptions end of the last day of the current plan
         const endDate = moment(hookData.cancellation_effective_date).valueOf();
 
+        const planId = parseInt(hookData.subscription_plan_id, 10);
+
         return {
             subscription_status: 'deleted',
             paddle_user_id: parseInt(hookData.user_id, 10),
             subscription_id: parseInt(hookData.subscription_id, 10),
-            subscription_plan_id: parseInt(hookData.subscription_plan_id, 10),
+            subscription_sku: getSkuForPaddleId(planId),
+            subscription_plan_id: planId,
             subscription_expiry: endDate,
             update_url: hookData.update_url,
             cancel_url: hookData.cancel_url
@@ -103,11 +113,14 @@ function getSubscriptionFromHookData(hookData: WebhookData): Partial<PayingUserM
         // 1 day of slack for ongoing renewals (we don't know what time they renew).
         const endDate = moment(hookData.next_bill_date).add(1, 'day').valueOf();
 
+        const planId = parseInt(hookData.subscription_plan_id, 10);
+
         return {
             subscription_status: hookData.status,
             paddle_user_id: parseInt(hookData.user_id, 10),
             subscription_id: parseInt(hookData.subscription_id, 10),
-            subscription_plan_id: parseInt(hookData.subscription_plan_id, 10),
+            subscription_sku: getSkuForPaddleId(planId),
+            subscription_plan_id: planId,
             subscription_expiry: endDate,
             subscription_quantity: parseInt(hookData.quantity, 10),
             last_receipt_url: hookData.receipt_url,
@@ -121,11 +134,14 @@ function getSubscriptionFromHookData(hookData: WebhookData): Partial<PayingUserM
             ? moment(hookData.next_retry_date).add(1, 'day').valueOf()
             : undefined;
 
+        const planId = parseInt(hookData.subscription_plan_id, 10);
+
         return {
             subscription_status: hookData.next_retry_date ? 'past_due' : 'deleted',
             paddle_user_id: parseInt(hookData.user_id, 10),
             subscription_id: parseInt(hookData.subscription_id, 10),
-            subscription_plan_id: parseInt(hookData.subscription_plan_id, 10),
+            subscription_sku: getSkuForPaddleId(planId),
+            subscription_plan_id: planId,
             subscription_expiry: endDate,
             update_url: hookData.update_url,
             cancel_url: hookData.cancel_url,
@@ -176,16 +192,19 @@ export const handler = catchErrors(async (event) => {
         // https://community.auth0.com/t/creating-a-user-converts-email-to-lowercase/6678/4
         const email = paddleData.email.toLowerCase();
 
-        let userData = getSubscriptionFromHookData(paddleData);
+        const userData = getSubscriptionFromHookData(paddleData);
+        const sku = getSku(userData);
 
-        if (isTeamSubscription(userData.subscription_plan_id)) {
+        if (isTeamSubscription(sku)) {
             console.log(`Updating team user ${email}`);
             await updateTeamData(email, userData);
-        } else if (isProSubscription(userData.subscription_plan_id)) {
+        } else if (isProSubscription(sku)) {
             console.log(`Updating Pro user ${email} to ${JSON.stringify(userData)}`);
             await updateProUserData(email, userData);
         } else {
-            throw new Error(`Webhook received for unknown subscription: ${
+            throw new Error(`Webhook received for unknown subscription type: ${
+                userData.subscription_sku
+            }/${
                 userData.subscription_plan_id
             }`);
         }
