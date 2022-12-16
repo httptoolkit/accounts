@@ -50,7 +50,7 @@ describe('/update-team', () => {
         functionServer = await startServer();
 
         await auth0Server.start(AUTH0_PORT);
-        await auth0Server.post('/oauth/token').thenReply(200);
+        await auth0Server.forPost('/oauth/token').thenReply(200);
 
         await paddleServer.start(PADDLE_PORT);
     });
@@ -76,14 +76,14 @@ describe('/update-team', () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
 
-            await auth0Server.get('/userinfo')
+            await auth0Server.forGet('/userinfo')
                 .withHeaders({ 'Authorization': 'Bearer ' + authToken })
                 .thenJson(200, { sub: userId });
-            await auth0Server.get('/api/v2/users/' + userId).thenJson(200, {
+            await auth0Server.forGet('/api/v2/users/' + userId).thenJson(200, {
                 email: userEmail,
                 app_metadata: { }
             });
-            await auth0Server.get('/api/v2/users').thenJson(200, []);
+            await auth0Server.forGet('/api/v2/users').thenJson(200, []);
 
             const response = await updateTeam(functionServer, authToken, {
                 emailsToAdd: ['a@b.com']
@@ -99,10 +99,10 @@ describe('/update-team', () => {
             const userEmail = 'user@example.com';
             const subExpiry = Date.now();
 
-            await auth0Server.get('/userinfo')
+            await auth0Server.forGet('/userinfo')
                 .withHeaders({ 'Authorization': 'Bearer ' + authToken })
                 .thenJson(200, { sub: userId });
-            await auth0Server.get('/api/v2/users/' + userId)
+            await auth0Server.forGet('/api/v2/users/' + userId)
                 .thenJson(200, {
                     email: userEmail,
                     app_metadata: {
@@ -112,7 +112,7 @@ describe('/update-team', () => {
                         subscription_status: "active"
                     }
                 });
-            await auth0Server.get('/api/v2/users').thenJson(200, []);
+            await auth0Server.forGet('/api/v2/users').thenJson(200, []);
 
             const response = await updateTeam(functionServer, authToken, {
                 emailsToAdd: ['a@b.com']
@@ -700,7 +700,7 @@ describe('/update-team', () => {
 
             let memberData: any = {};
             await auth0Server
-                .get('/api/v2/users-by-email')
+                .forGet('/api/v2/users-by-email')
                 .withQuery({ email: memberEmail })
                 .thenCallback(() => ({
                     status: 200,
@@ -759,7 +759,7 @@ describe('/update-team', () => {
 
             let memberData: any = {};
             await auth0Server
-                .get('/api/v2/users-by-email')
+                .forGet('/api/v2/users-by-email')
                 .withQuery({ email: memberEmail })
                 .thenCallback(() => ({
                     status: 200,
@@ -812,7 +812,7 @@ describe('/update-team', () => {
 
             let memberData: any = {};
             await auth0Server
-                .get('/api/v2/users-by-email')
+                .forGet('/api/v2/users-by-email')
                 .withQuery({ email: memberEmail })
                 .thenCallback(() => ({
                     status: 200,

@@ -53,7 +53,7 @@ describe('/get-billing-data', () => {
         functionServer = await startServer();
 
         await auth0Server.start(AUTH0_PORT);
-        await auth0Server.post('/oauth/token').thenReply(200);
+        await auth0Server.forPost('/oauth/token').thenReply(200);
 
         await paddleServer.start(PADDLE_PORT);
     });
@@ -77,10 +77,10 @@ describe('/get-billing-data', () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
 
-            await auth0Server.get('/userinfo')
+            await auth0Server.forGet('/userinfo')
                 .withHeaders({ 'Authorization': 'Bearer ' + authToken })
                 .thenJson(200, { sub: userId });
-            await auth0Server.get('/api/v2/users/' + userId).thenJson(200, {
+            await auth0Server.forGet('/api/v2/users/' + userId).thenJson(200, {
                 email: userEmail,
                 app_metadata: { }
             });
@@ -105,10 +105,10 @@ describe('/get-billing-data', () => {
             const subId = id();
             const subExpiry = Date.now();
 
-            await auth0Server.get('/userinfo')
+            await auth0Server.forGet('/userinfo')
                 .withHeaders({ 'Authorization': 'Bearer ' + authToken })
                 .thenJson(200, { sub: userId });
-            await auth0Server.get('/api/v2/users/' + userId)
+            await auth0Server.forGet('/api/v2/users/' + userId)
                 .thenJson(200, {
                     email: userEmail,
                     app_metadata: {
@@ -155,11 +155,11 @@ describe('/get-billing-data', () => {
             const subId = id();
             const subExpiry = Date.now();
 
-            const userInfoLookup = await auth0Server.get('/userinfo')
+            const userInfoLookup = await auth0Server.forGet('/userinfo')
                 .withHeaders({ 'Authorization': 'Bearer ' + authToken })
                 .thenJson(200, { sub: userId });
 
-            const userDataLookup = await auth0Server.get('/api/v2/users/' + userId)
+            const userDataLookup = await auth0Server.forGet('/api/v2/users/' + userId)
                 .thenJson(200, {
                     email: userEmail,
                     app_metadata: {
@@ -203,14 +203,14 @@ describe('/get-billing-data', () => {
             const subId = id();
             const subExpiry = Date.now();
 
-            await auth0Server.get('/userinfo')
+            await auth0Server.forGet('/userinfo')
                 .withHeaders({ 'Authorization': 'Bearer ' + authToken })
                 .thenJson(200, { sub: teamUserId });
-            await auth0Server.get('/api/v2/users/' + teamUserId).thenJson(200, {
+            await auth0Server.forGet('/api/v2/users/' + teamUserId).thenJson(200, {
                 email: teamUserEmail,
                 app_metadata: { subscription_owner_id: billingUserId }
             });
-            await auth0Server.get('/api/v2/users/' + billingUserId).thenJson(200, {
+            await auth0Server.forGet('/api/v2/users/' + billingUserId).thenJson(200, {
                 email: billingUserEmail,
                 app_metadata: {
                     team_member_ids: ['123', '456', teamUserId],
@@ -253,10 +253,10 @@ describe('/get-billing-data', () => {
             const subId = id();
             const subExpiry = Date.now();
 
-            await auth0Server.get('/userinfo')
+            await auth0Server.forGet('/userinfo')
                 .withHeaders({ 'Authorization': 'Bearer ' + authToken })
                 .thenJson(200, { sub: billingUserId });
-            await auth0Server.get('/api/v2/users/' + billingUserId).thenJson(200, {
+            await auth0Server.forGet('/api/v2/users/' + billingUserId).thenJson(200, {
                 email: billingUserEmail,
                 app_metadata: {
                     feature_flags: ['a flag'],
@@ -276,7 +276,7 @@ describe('/get-billing-data', () => {
                     update_url: 'uu',
                 } as TeamOwnerMetadata
             });
-            await auth0Server.get('/api/v2/users')
+            await auth0Server.forGet('/api/v2/users')
                 .withQuery({ q: `app_metadata.subscription_owner_id:${billingUserId}` })
                 .thenJson(200, [ // N.b: out of order - API order should match team_member_ids
                     {
@@ -355,10 +355,10 @@ describe('/get-billing-data', () => {
             const subId = id();
             const subExpiry = Date.now();
 
-            await auth0Server.get('/userinfo')
+            await auth0Server.forGet('/userinfo')
                 .withHeaders({ 'Authorization': 'Bearer ' + authToken })
                 .thenJson(200, { sub: billingUserId });
-            await auth0Server.get('/api/v2/users/' + billingUserId).thenJson(200, {
+            await auth0Server.forGet('/api/v2/users/' + billingUserId).thenJson(200, {
                 email: billingUserEmail,
                 app_metadata: {
                     subscription_owner_id: billingUserId, // Points to their own id
@@ -375,7 +375,7 @@ describe('/get-billing-data', () => {
                     update_url: 'uu',
                 }
             });
-            await auth0Server.get('/api/v2/users')
+            await auth0Server.forGet('/api/v2/users')
                 .withQuery({ q: `app_metadata.subscription_owner_id:${billingUserId}` })
                 .thenJson(200, [
                     {
@@ -432,14 +432,14 @@ describe('/get-billing-data', () => {
             const subId = id();
             const subExpiry = Date.now();
 
-            await auth0Server.get('/userinfo')
+            await auth0Server.forGet('/userinfo')
                 .withHeaders({ 'Authorization': 'Bearer ' + authToken })
                 .thenJson(200, { sub: teamUserId });
-            await auth0Server.get('/api/v2/users/' + teamUserId).thenJson(200, {
+            await auth0Server.forGet('/api/v2/users/' + teamUserId).thenJson(200, {
                 email: teamUserEmail,
                 app_metadata: { subscription_owner_id: billingUserId }
             });
-            await auth0Server.get('/api/v2/users/' + billingUserId).thenJson(200, {
+            await auth0Server.forGet('/api/v2/users/' + billingUserId).thenJson(200, {
                 email: billingUserEmail,
                 app_metadata: {
                     team_member_ids: ['123', '456', teamUserId],
@@ -478,14 +478,14 @@ describe('/get-billing-data', () => {
             const teamUserEmail = 'teamuser@example.com';
             const subExpiry = Date.now();
 
-            await auth0Server.get('/userinfo')
+            await auth0Server.forGet('/userinfo')
                 .withHeaders({ 'Authorization': 'Bearer ' + authToken })
                 .thenJson(200, { sub: teamUserId });
-            await auth0Server.get('/api/v2/users/' + teamUserId).thenJson(200, {
+            await auth0Server.forGet('/api/v2/users/' + teamUserId).thenJson(200, {
                 email: teamUserEmail,
                 app_metadata: { subscription_owner_id: billingUserId }
             });
-            await auth0Server.get('/api/v2/users/' + billingUserId).thenJson(200, {
+            await auth0Server.forGet('/api/v2/users/' + billingUserId).thenJson(200, {
                 email: billingUserEmail,
                 app_metadata: {
                     team_member_ids: ['123', '456', teamUserId],
@@ -525,14 +525,14 @@ describe('/get-billing-data', () => {
             const teamUserEmail = 'teamuser@example.com';
             const subExpiry = Date.now();
 
-            await auth0Server.get('/userinfo')
+            await auth0Server.forGet('/userinfo')
                 .withHeaders({ 'Authorization': 'Bearer ' + authToken })
                 .thenJson(200, { sub: teamUserId });
-            await auth0Server.get('/api/v2/users/' + teamUserId).thenJson(200, {
+            await auth0Server.forGet('/api/v2/users/' + teamUserId).thenJson(200, {
                 email: teamUserEmail,
                 app_metadata: { subscription_owner_id: billingUserId }
             });
-            await auth0Server.get('/api/v2/users/' + billingUserId).thenJson(200, {
+            await auth0Server.forGet('/api/v2/users/' + billingUserId).thenJson(200, {
                 email: billingUserEmail,
                 app_metadata: {
                     team_member_ids: [], // <-- doesn't include this user

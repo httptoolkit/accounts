@@ -58,7 +58,7 @@ describe('Paddle webhooks', () => {
     beforeEach(async () => {
         functionServer = await startServer();
         await auth0Server.start(AUTH0_PORT);
-        await auth0Server.post('/oauth/token').thenReply(200);
+        await auth0Server.forPost('/oauth/token').thenReply(200);
     });
 
     afterEach(async () => {
@@ -74,7 +74,7 @@ describe('Paddle webhooks', () => {
             givenUser(userId, userEmail);
 
             const userUpdate = await auth0Server
-                .patch('/api/v2/users/' + userId)
+                .forPatch('/api/v2/users/' + userId)
                 .thenReply(200);
 
             const nextRenewal = moment('2025-01-01');
@@ -92,7 +92,7 @@ describe('Paddle webhooks', () => {
 
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
-            expect(updateRequests[0].body.json).to.deep.equal({
+            expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
                     paddle_user_id: 123,
@@ -111,14 +111,14 @@ describe('Paddle webhooks', () => {
 
             const userId = "qwe";
             const userCreate = await auth0Server
-                .post('/api/v2/users')
-                .thenJSON(201, {
+                .forPost('/api/v2/users')
+                .thenJson(201, {
                     user_id: userId,
                     app_metadata: {}
                 });
 
             const userUpdate = await auth0Server
-                .patch('/api/v2/users/' + userId)
+                .forPatch('/api/v2/users/' + userId)
                 .thenReply(200);
 
             const nextRenewal = moment('2025-01-01');
@@ -136,7 +136,7 @@ describe('Paddle webhooks', () => {
 
             const createRequests = await userCreate.getSeenRequests();
             expect(createRequests.length).to.equal(1);
-            expect(createRequests[0].body.json).to.deep.equal({
+            expect(await createRequests[0].body.getJson()).to.deep.equal({
                 email: userEmail,
                 connection: 'email',
                 email_verified: true,
@@ -145,7 +145,7 @@ describe('Paddle webhooks', () => {
 
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
-            expect(updateRequests[0].body.json).to.deep.equal({
+            expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
                     paddle_user_id: 123,
@@ -173,7 +173,7 @@ describe('Paddle webhooks', () => {
             });
 
             const userUpdate = await auth0Server
-                .patch('/api/v2/users/' + userId)
+                .forPatch('/api/v2/users/' + userId)
                 .thenReply(200);
 
             await triggerWebhook(functionServer, {
@@ -189,7 +189,7 @@ describe('Paddle webhooks', () => {
 
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
-            expect(updateRequests[0].body.json).to.deep.equal({
+            expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
                     paddle_user_id: 123,
@@ -217,7 +217,7 @@ describe('Paddle webhooks', () => {
             });
 
             const userUpdate = await auth0Server
-                .patch('/api/v2/users/' + userId)
+                .forPatch('/api/v2/users/' + userId)
                 .thenReply(200);
 
             await triggerWebhook(functionServer, {
@@ -231,7 +231,7 @@ describe('Paddle webhooks', () => {
 
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
-            expect(updateRequests[0].body.json).to.deep.equal({
+            expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'deleted',
                     paddle_user_id: 123,
@@ -260,7 +260,7 @@ describe('Paddle webhooks', () => {
             });
 
             const userUpdate = await auth0Server
-                .patch('/api/v2/users/' + userId)
+                .forPatch('/api/v2/users/' + userId)
                 .thenReply(200);
 
             // Initial renewal failure:
@@ -288,7 +288,7 @@ describe('Paddle webhooks', () => {
 
             let updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(2);
-            expect(updateRequests[0].body.json).to.deep.equal({
+            expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'past_due',
                     paddle_user_id: 123,
@@ -299,7 +299,7 @@ describe('Paddle webhooks', () => {
                     subscription_expiry: currentDate.add(1, 'days').valueOf()
                 }
             });
-            expect(updateRequests[1].body.json).to.deep.equal({
+            expect(await updateRequests[1].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'past_due',
                     paddle_user_id: 123,
@@ -333,7 +333,7 @@ describe('Paddle webhooks', () => {
 
             updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(4);
-            expect(updateRequests[2].body.json).to.deep.equal({
+            expect(await updateRequests[2].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'deleted',
                     paddle_user_id: 123,
@@ -342,7 +342,7 @@ describe('Paddle webhooks', () => {
                     subscription_plan_id: 550382
                 }
             });
-            expect(updateRequests[3].body.json).to.deep.equal({
+            expect(await updateRequests[3].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'deleted',
                     paddle_user_id: 123,
@@ -363,7 +363,7 @@ describe('Paddle webhooks', () => {
             givenUser(userId, userEmail);
 
             const userUpdate = await auth0Server
-                .patch('/api/v2/users/' + userId)
+                .forPatch('/api/v2/users/' + userId)
                 .thenReply(200);
 
             const nextRenewal = moment('2025-01-01');
@@ -381,7 +381,7 @@ describe('Paddle webhooks', () => {
 
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
-            expect(updateRequests[0].body.json).to.deep.equal({
+            expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
                     paddle_user_id: 123,
@@ -402,14 +402,14 @@ describe('Paddle webhooks', () => {
 
             const userId = "qwe";
             const userCreate = await auth0Server
-                .post('/api/v2/users')
-                .thenJSON(201, {
+                .forPost('/api/v2/users')
+                .thenJson(201, {
                     user_id: userId,
                     app_metadata: {}
                 });
 
             const userUpdate = await auth0Server
-                .patch('/api/v2/users/' + userId)
+                .forPatch('/api/v2/users/' + userId)
                 .thenReply(200);
 
             const nextRenewal = moment('2025-01-01');
@@ -427,7 +427,7 @@ describe('Paddle webhooks', () => {
 
             const createRequests = await userCreate.getSeenRequests();
             expect(createRequests.length).to.equal(1);
-            expect(createRequests[0].body.json).to.deep.equal({
+            expect(await createRequests[0].body.getJson()).to.deep.equal({
                 email: userEmail,
                 connection: 'email',
                 email_verified: true,
@@ -436,7 +436,7 @@ describe('Paddle webhooks', () => {
 
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
-            expect(updateRequests[0].body.json).to.deep.equal({
+            expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
                     paddle_user_id: 123,
@@ -459,7 +459,7 @@ describe('Paddle webhooks', () => {
             });
 
             const userUpdate = await auth0Server
-                .patch('/api/v2/users/' + userId)
+                .forPatch('/api/v2/users/' + userId)
                 .thenReply(200);
 
             const nextRenewal = moment('2025-01-01');
@@ -477,7 +477,7 @@ describe('Paddle webhooks', () => {
 
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
-            expect(updateRequests[0].body.json).to.deep.equal({
+            expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
                     paddle_user_id: 123,
@@ -504,7 +504,7 @@ describe('Paddle webhooks', () => {
             });
 
             const userUpdate = await auth0Server
-                .patch('/api/v2/users/' + userId)
+                .forPatch('/api/v2/users/' + userId)
                 .thenReply(200);
 
             const nextRenewal = moment('2025-01-01');
@@ -522,7 +522,7 @@ describe('Paddle webhooks', () => {
 
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
-            expect(updateRequests[0].body.json).to.deep.equal({
+            expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
                     paddle_user_id: 123,
@@ -547,7 +547,7 @@ describe('Paddle webhooks', () => {
             givenUser(userId, userEmail);
 
             const userUpdate = await auth0Server
-                .patch('/api/v2/users/' + userId)
+                .forPatch('/api/v2/users/' + userId)
                 .thenReply(200);
 
             await triggerWebhook(functionServer, {
@@ -557,7 +557,7 @@ describe('Paddle webhooks', () => {
 
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
-            expect(updateRequests[0].body.json).to.deep.equal({
+            expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     banned: true
                 }

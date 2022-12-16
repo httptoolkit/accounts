@@ -70,7 +70,7 @@ export const paddleServer = getLocal({
 
 export function givenUser(userId: string, email: string, appMetadata = {}) {
     return auth0Server
-        .get('/api/v2/users-by-email')
+        .forGet('/api/v2/users-by-email')
         .withQuery({ email })
         .thenJson(200, [
             {
@@ -83,21 +83,21 @@ export function givenUser(userId: string, email: string, appMetadata = {}) {
 
 export function givenNoUser(email: string) {
     return auth0Server
-        .get('/api/v2/users-by-email')
+        .forGet('/api/v2/users-by-email')
         .withQuery({ email })
         .thenJson(200, []);
 }
 
 export function givenNoUsers() {
     return auth0Server
-        .get('/api/v2/users-by-email')
+        .forGet('/api/v2/users-by-email')
         .thenJson(200, []);
 }
 export async function givenSubscription(subId: number) {
     const userId = id();
 
     await paddleServer
-        .post(`/api/2.0/subscription/users`)
+        .forPost(`/api/2.0/subscription/users`)
         .withForm({
             subscription_id: subId.toString()
         })
@@ -111,7 +111,7 @@ export async function givenSubscription(subId: number) {
 
 export function givenTransactions(userId: number, transactions: TransactionData[]) {
     return paddleServer
-        .post(`/api/2.0/user/${userId}/transactions`)
+        .forPost(`/api/2.0/user/${userId}/transactions`)
         .thenJson(200, {
             success: true,
             response: transactions
@@ -134,7 +134,7 @@ export async function givenTeam(
         Array<{ id: string, email: string, joinedAt?: number }>;
 
     // Define the owner in Auth0:
-    await auth0Server.get('/userinfo')
+    await auth0Server.forGet('/userinfo')
         .withHeaders({ 'Authorization': 'Bearer ' + ownerAuthToken })
         .thenJson(200, { sub: ownerId });
 
@@ -153,7 +153,7 @@ export async function givenTeam(
     };
 
     // Return the owner subscription data for the team:
-    await auth0Server.get('/api/v2/users/' + ownerId)
+    await auth0Server.forGet('/api/v2/users/' + ownerId)
         .thenCallback(() => ({
             status: 200,
             json: {
@@ -165,7 +165,7 @@ export async function givenTeam(
     await givenUser(ownerId, ownerEmail, ownerData);
 
     // Define the team members in Auth0:
-    await auth0Server.get('/api/v2/users')
+    await auth0Server.forGet('/api/v2/users')
         .withQuery({ q: `app_metadata.subscription_owner_id:${ownerId}` })
         .thenCallback(() => ({
             status: 200,
@@ -214,7 +214,7 @@ export async function watchUserCreation() {
     let ids: string[] = [];
 
     const createEndpoint = await auth0Server
-        .post('/api/v2/users')
+        .forPost('/api/v2/users')
         .thenCallback(() => {
             const newUserId = `new-user-${id()}`;
             ids.push(newUserId);
@@ -228,17 +228,17 @@ export async function watchUserCreation() {
 
     return async () => {
         const newUsers = await createEndpoint.getSeenRequests();
-        return newUsers.map((newUser, i) => ({
+        return Promise.all(newUsers.map(async (newUser, i) => ({
             url: newUser.url.replace(auth0Server.url, ''),
-            body: newUser.body.json as any,
+            body: await newUser.body.getJson() as any,
             id: ids[i]
-        }));
+        })));
     }
 }
 
 export async function watchUserUpdates() {
     const updateEndpoint = await auth0Server
-        .patch(/\/api\/v2\/users\/[^\/]+/)
+        .forPatch(/\/api\/v2\/users\/[^\/]+/)
         .always()
         .thenCallback((req) => {
             const idMatch = req.url.match(/\/([^\/]+)$/);
@@ -251,16 +251,16 @@ export async function watchUserUpdates() {
 
     return async () => {
         const updates = await updateEndpoint.getSeenRequests();
-        return updates.map((update) => ({
+        return Promise.all(updates.map(async (update) => ({
             url: update.url.replace(auth0Server.url, ''),
-            body: update.body.json as any
-        }));
+            body: await update.body.getJson() as any
+        })));
     }
 }
 
 export async function withUserUpdateNetworkFailures() {
     await auth0Server
-        .patch(/\/api\/v2\/users\/[^\/]+/)
+        .forPatch(/\/api\/v2\/users\/[^\/]+/)
         .thenCloseConnection();
 }
 
