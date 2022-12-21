@@ -3,6 +3,14 @@ import { SKU } from "../../module/src/types";
 import { AppMetadata, TrialUserMetadata } from "./auth0";
 import { getSkuForPaddleId } from "./paddle";
 
+export const SKUs = [
+    'pro-monthly',
+    'pro-annual',
+    'pro-perpetual',
+    'team-monthly',
+    'team-annual'
+] as const;
+
 export const isProSubscription = (sku: string | undefined) =>
     sku?.startsWith('pro-');
 

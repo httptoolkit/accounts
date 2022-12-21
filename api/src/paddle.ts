@@ -6,7 +6,7 @@ import fetch, { RequestInit } from 'node-fetch';
 import Serialize from 'php-serialize';
 
 import { StatusError } from './errors';
-import { SubscriptionStatus, TransactionData } from '../../module/src/types';
+import { SKU, SubscriptionStatus, TransactionData } from '../../module/src/types';
 
 const PADDLE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 ${process.env.PADDLE_PUBLIC_KEY}
@@ -31,6 +31,17 @@ export const getSkuForPaddleId = (id: number | undefined) =>
     id
     ? PADDLE_ID_TO_SKU[id as PADDLE_PLAN_ID]
     : undefined;
+
+const SKU_TO_PADDLE_ID = _.mapValues(
+    _.invert(PADDLE_ID_TO_SKU),
+    v => parseInt(v, 10)
+);
+
+export const getPaddleIdForSku = (sku: SKU) => {
+    const planId = SKU_TO_PADDLE_ID[sku];
+    if (!planId) throw new Error(`Invalid SKU: ${sku}`);
+    return planId;
+}
 
 export type PaddleAlertNames =
     | 'subscription_created'
