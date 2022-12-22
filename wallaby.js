@@ -37,7 +37,9 @@ module.exports = (wallaby) => {
     env: {
       type: 'node',
       params: {
-        env: `NODE_EXTRA_CA_CERTS=${path.join(__dirname, 'api', 'test', 'fixtures', 'test-ca.pem')}`
+        env: [
+          `NODE_EXTRA_CA_CERTS=${path.join(__dirname, 'api', 'test', 'fixtures', 'test-ca.pem')}`
+        ].join(';')
       }
     },
     debug: true
