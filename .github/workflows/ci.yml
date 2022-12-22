@@ -65,7 +65,7 @@ jobs:
           enable-commit-status: true
           enable-pull-request-comment: false
           enable-commit-comment: false
-          production-branch: master
+          production-branch: main
           alias: ${{ github.sha }}
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
