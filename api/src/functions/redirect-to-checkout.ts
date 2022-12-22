@@ -7,12 +7,15 @@ import { getPaddleIdForSku } from '../paddle';
 import { SKUs } from '../products';
 
 export const handler = catchErrors(async (event) => {
-    const sourceDomain = event.headers['referring_domain'] as string | undefined;
-
     const {
         email,
-        sku
-    } = event.queryStringParameters as { email?: string, sku?: SKU };
+        sku,
+        source
+    } = event.queryStringParameters as {
+        email?: string,
+        sku?: SKU,
+        source?: string
+    };
 
     if (!email || !sku || !SKUs.includes(sku)) return {
         statusCode: 400,
@@ -35,7 +38,7 @@ export const handler = catchErrors(async (event) => {
                 getPaddleIdForSku(sku)
             }?guest_email=${
                 encodeURIComponent(email)
-            }&referring_domain=${sourceDomain || 'unknown'}`
+            }&referring_domain=${source || 'unknown'}`
         },
         body: ''
     };

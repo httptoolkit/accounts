@@ -15,10 +15,9 @@ const getCheckoutUrl = (
 ) => fetch(
     `http://localhost:${
         (server.address() as net.AddressInfo).port
-    }/redirect-to-checkout?sku=${sku}&email=${email}`, {
+    }/redirect-to-checkout?sku=${sku}&email=${email}&source=site.example`, {
         headers: {
-            'x-nf-client-connection-ip': ip,
-            'referring_domain': 'site.example'
+            'x-nf-client-connection-ip': ip
         },
         redirect: 'manual'
     }
