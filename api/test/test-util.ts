@@ -68,6 +68,17 @@ export const paddleServer = getLocal({
     }
 });
 
+export const IP_API_PORT = 9093;
+process.env.IP_API_BASE_URL = `http://localhost:${IP_API_PORT}`;
+
+export const ipApiServer = getLocal({
+    https: {
+        keyPath: path.join(__dirname, 'fixtures', 'test-ca.key'),
+        certPath: path.join(__dirname, 'fixtures', 'test-ca.pem'),
+        keyLength: 2048
+    }
+});
+
 export function givenUser(userId: string, email: string, appMetadata = {}) {
     return auth0Server
         .forGet('/api/v2/users-by-email')

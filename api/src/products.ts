@@ -3,13 +3,31 @@ import { SKU, PricedSKU } from "../../module/src/types";
 import { AppMetadata, TrialUserMetadata } from "./auth0";
 import { getSkuForPaddleId } from "./paddle";
 
-export const SKUs = [
-    'pro-monthly',
-    'pro-annual',
-    'pro-perpetual',
-    'team-monthly',
-    'team-annual'
-] as const;
+export const ProductDetails = {
+    'pro-monthly': {
+        title: 'HTTP Toolkit Pro (monthly)',
+        interval: 'month'
+    },
+    'pro-annual': {
+        title: 'HTTP Toolkit Pro (annual)',
+        interval: 'year'
+    },
+    'pro-perpetual': {
+        title: 'HTTP Toolkit Pro (perpetual)',
+        interval: 'perpetual'
+    },
+    'team-monthly': {
+        title: 'HTTP Toolkit Team (monthly)',
+        interval: 'month'
+    },
+    'team-annual': {
+        title: 'HTTP Toolkit Team (annual)',
+        interval: 'year'
+    },
+} as const;
+
+export const SKUs = Object.keys(ProductDetails) as
+    Array<keyof typeof ProductDetails>;
 
 export const PricedSKUs = SKUs
     .filter(sku => sku !== 'pro-perpetual') as Array<PricedSKU>;
