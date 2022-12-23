@@ -1,10 +1,10 @@
 import { initSentry, catchErrors } from '../errors';
 initSentry();
 
-import type { SKU } from '../../../module/src/types';
+import type { PricedSKU } from '../../../module/src/types';
 
 import { getPaddleIdForSku } from '../paddle';
-import { SKUs } from '../products';
+import { PricedSKUs } from '../products';
 
 export const handler = catchErrors(async (event) => {
     const {
@@ -13,11 +13,11 @@ export const handler = catchErrors(async (event) => {
         source
     } = event.queryStringParameters as {
         email?: string,
-        sku?: SKU,
+        sku?: PricedSKU,
         source?: string
     };
 
-    if (!email || !sku || !SKUs.includes(sku)) return {
+    if (!email || !sku || !PricedSKUs.includes(sku)) return {
         statusCode: 400,
         body: `Checkout requires specifying ${
             (!email && !sku)

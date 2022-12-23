@@ -7,12 +7,17 @@ export type SubscriptionStatus =
     | 'trialing'
     | 'past_due'
     | 'deleted';
+
 export type SKU =
     | 'pro-monthly'
     | 'pro-annual'
     | 'pro-perpetual'
     | 'team-monthly'
     | 'team-annual';
+
+// We only support pro-perpetual for special cases - it's not priced
+// or shown on pricing/checkout pages:
+export type PricedSKU = Exclude<SKU, 'pro-perpetual'>;
 
 // User app data, as returned by the API
 export type UserAppData = {
