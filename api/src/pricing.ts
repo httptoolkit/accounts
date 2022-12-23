@@ -1,8 +1,6 @@
 import * as _ from 'lodash';
-import NodeCache from 'node-cache';
 
-import { reportError } from './errors';
-import { getIpData, IpData } from './ip-geolocate';
+import { IpData } from './ip-geolocate';
 
 interface Prices {
     'currency': string,
@@ -219,28 +217,10 @@ export const PRICING: { [key: string]: Prices } = {
     }
 };
 
-// We cache prices per ip, to make this more reliable, to avoid overloading IP lookup
-// services, and to ensure good UX - nobody wants prices to change between the pricing
-// page and the checkout. No hard guaratnees in all edge cases, as this process may be
-// distributed, servers may restart, and new deploys or connection issues can affect
-// prices, but it's a good start.
-const pricesCache = new NodeCache({
-    stdTTL: 60 * 60 // Cached for 6h
-});
-
 /**
- * Returns the prices for all plans available, for the location of the given IP.
+ * Returns the prices for all plans available, for the given IP location.
  */
-export async function getAllPrices(ip: string) {
-    if (pricesCache.get(ip)) return pricesCache.get(ip);
-
-    let ipData: IpData | undefined;
-    try {
-        ipData = await getIpData(ip);
-    } catch (e) {
-        reportError(e);
-    }
-
+export async function getAllPrices(ipData: IpData | undefined) {
     let result: Prices;
 
     if (!ipData || ipData.proxy || ipData.hosting) {
@@ -253,6 +233,5 @@ export async function getAllPrices(ip: string) {
             PRICING['default']
     }
 
-    pricesCache.set(ip, result);
     return result;
 }
