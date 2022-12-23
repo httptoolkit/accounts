@@ -1,4 +1,4 @@
-import { SKU } from "../../module/src/types";
+import { SKU, PricedSKU } from "../../module/src/types";
 
 import { AppMetadata, TrialUserMetadata } from "./auth0";
 import { getSkuForPaddleId } from "./paddle";
@@ -10,6 +10,9 @@ export const SKUs = [
     'team-monthly',
     'team-annual'
 ] as const;
+
+export const PricedSKUs = SKUs
+    .filter(sku => sku !== 'pro-perpetual') as Array<PricedSKU>;
 
 export const isProSubscription = (sku: string | undefined) =>
     sku?.startsWith('pro-');
