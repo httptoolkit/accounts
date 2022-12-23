@@ -19,6 +19,19 @@ export type SKU =
 // or shown on pricing/checkout pages:
 export type PricedSKU = Exclude<SKU, 'pro-perpetual'>;
 
+export type SubscriptionPricing = {
+    product_id: number; // Paddle-specific id
+    sku: SKU;
+    product_title: string;
+    currency: string; // EUR/USD/etc
+    price: {
+        net: number // Net price to 2dp in local currency
+    },
+    subscription: {
+        interval: 'month' | 'year'
+    }
+}
+
 // User app data, as returned by the API
 export type UserAppData = {
     email: string;

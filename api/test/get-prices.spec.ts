@@ -1,27 +1,39 @@
 import * as net from 'net';
 import fetch from 'node-fetch';
+import stoppable from 'stoppable';
 
 import { expect } from 'chai';
 
-import { startServer } from './test-util';
-import stoppable from 'stoppable';
+import { ipApiServer, IP_API_PORT, startServer } from './test-util';
+import { PRICING } from '../src/pricing';
 
 const REAL_IDS = [
     550380,
     550382,
-    550788,
-    550789
+    550789,
+    550788
 ];
 
-const getPrices = (server: net.Server, productIds: number[]) => fetch(
-    `http://localhost:${
-        (server.address() as net.AddressInfo).port
-    }/get-prices?product_ids=${
-        productIds.join(',')
-    }`
+// Arbitrary IPs from a quick google. Could change in future, but good quick tests for now:
+const SPAIN_IP = '83.56.0.0';
+const UK_IP = '101.167.184.0';
+const BRAZIL_IP = '101.33.22.0';
+const US_IP = '100.0.0.0';
+const FIJI_IP = '103.1.180.0';
+
+const getPrices = (
+    server: net.Server,
+    ip: string = '1.1.1.1'
+) => fetch(
+    `http://localhost:${(server.address() as net.AddressInfo).port}/get-prices`, {
+        headers: {
+            'x-nf-client-connection-ip': ip
+        }
+    }
 );
 
 interface PaddleProduct {
+    sku: string,
     product_id: number,
     product_title: string,
     currency: string,
@@ -29,34 +41,45 @@ interface PaddleProduct {
     subscription: { interval: string }
 }
 
-// Test the pricing API. Note that this is _not_ mocked, we use the real pricing API.
-// This might need to change if the pricing API isn't totally reliable, but it should be...
 describe('/get-prices', () => {
 
     let functionServer: stoppable.StoppableServer;
 
     beforeEach(async () => {
         functionServer = await startServer();
+        await ipApiServer.start(IP_API_PORT);
     });
 
     afterEach(async () => {
         await new Promise((resolve) => functionServer.stop(resolve));
+        await await ipApiServer.stop();
     });
 
-    it("can get the prices successfully", async () => {
-        const response = await getPrices(functionServer, REAL_IDS);
+    it("can return a price successfully without IP data", async () => {
+        await ipApiServer.forAnyRequest().thenCloseConnection();
+
+        const response = await getPrices(functionServer);
 
         expect(response.status).to.equal(200);
 
         const data = await response.json();
         expect(data.success).to.equal(true);
+        expect(data.response.products[0].currency).to.equal('USD');
     });
 
-    it("can get the prices correctly", async () => {
-        const response = await getPrices(functionServer, REAL_IDS);
+    it("can get the prices with correct metdata", async () => {
+        await ipApiServer.forGet(`/json/${SPAIN_IP}`).thenJson(200, {
+            status: 'success',
+            countryCode3: 'ESP',
+            continentCode: 'EU',
+            currency: 'EUR'
+        });
+
+        const response = await getPrices(functionServer, SPAIN_IP);
         const data = await response.json();
 
         const products = (data.response.products as Array<PaddleProduct>).map((p) => ({
+            sku: p.sku,
             id: p.product_id,
             title: p.product_title,
             currency: p.currency,
@@ -68,7 +91,8 @@ describe('/get-prices', () => {
 
         products.forEach((product) => {
             expect(product.title).to.include("HTTP Toolkit");
-            expect(product.currency).not.to.be.empty;
+            expect(product.currency).to.equal('EUR'); // Using Spanish IP
+            expect(product.sku).not.to.be.empty;
             expect(product.price).to.be.greaterThan(0);
             expect(['year', 'month']).to.include(product.interval);
             expect(product.title).to.include(
@@ -79,8 +103,150 @@ describe('/get-prices', () => {
         });
     });
 
-    it("returns a clear error for invalid ids", async () => {
-        const response = await getPrices(functionServer, [-1]);
-        expect(response.status).to.equal(404);
+    it("can get prices for the US", async () => {
+        await ipApiServer.forGet(`/json/${US_IP}`).thenJson(200, {
+            status: 'success',
+            countryCode3: 'USA',
+            continentCode: 'NA',
+            currency: 'USD'
+        });
+        const response = await getPrices(functionServer, US_IP);
+        const data = await response.json();
+
+        const products = (data.response.products as Array<PaddleProduct>).map((p) => ({
+            sku: p.sku,
+            currency: p.currency,
+            price: p.price.net
+        }));
+
+        expect(products).to.deep.equal([
+            { sku: 'pro-monthly', price: 14, currency: 'USD' },
+            { sku: 'pro-annual', price: 120, currency: 'USD' },
+            { sku: 'team-monthly', price: 22, currency: 'USD' },
+            { sku: 'team-annual', price: 204, currency: 'USD' }
+        ]);
+    });
+
+    it("can get prices for the UK", async () => {
+        await ipApiServer.forGet(`/json/${UK_IP}`).thenJson(200, {
+            status: 'success',
+            countryCode3: 'GBR',
+            continentCode: 'EU',
+            currency: 'GBP'
+        });
+        const response = await getPrices(functionServer, UK_IP);
+        const data = await response.json();
+
+        const products = (data.response.products as Array<PaddleProduct>).map((p) => ({
+            sku: p.sku,
+            currency: p.currency,
+            price: p.price.net
+        }));
+
+        expect(products).to.deep.equal([
+            { sku: 'pro-monthly', price: 7, currency: 'GBP' },
+            { sku: 'pro-annual', price: 60, currency: 'GBP' },
+            { sku: 'team-monthly', price: 11, currency: 'GBP' },
+            { sku: 'team-annual', price: 96, currency: 'GBP' }
+        ]);
+    });
+
+    it("can get prices within the EU", async () => {
+        await ipApiServer.forGet(`/json/${SPAIN_IP}`).thenJson(200, {
+            status: 'success',
+            countryCode3: 'FRA',
+            continentCode: 'EU',
+            currency: 'EUR'
+        });
+        const response = await getPrices(functionServer, SPAIN_IP);
+        const data = await response.json();
+
+        const products = (data.response.products as Array<PaddleProduct>).map((p) => ({
+            sku: p.sku,
+            currency: p.currency,
+            price: p.price.net
+        }));
+
+        expect(products).to.deep.equal([
+            { sku: 'pro-monthly', price: 7, currency: 'EUR' },
+            { sku: 'pro-annual', price: 60, currency: 'EUR' },
+            { sku: 'team-monthly', price: 11, currency: 'EUR' },
+            { sku: 'team-annual', price: 96, currency: 'EUR' }
+        ]);
+    });
+
+    it("can get prices for Brazil", async () => {
+        await ipApiServer.forGet(`/json/${BRAZIL_IP}`).thenJson(200, {
+            status: 'success',
+            countryCode3: 'BRA',
+            continentCode: 'SA',
+            currency: 'BRL'
+        });
+        const response = await getPrices(functionServer, BRAZIL_IP);
+        const data = await response.json();
+
+        const products = (data.response.products as Array<PaddleProduct>).map((p) => ({
+            sku: p.sku,
+            currency: p.currency,
+            price: p.price.net
+        }));
+
+        expect(products).to.deep.equal([
+            { sku: 'pro-monthly', price: 20, currency: 'BRL' },
+            { sku: 'pro-annual', price: 168, currency: 'BRL' },
+            { sku: 'team-monthly', price: 30, currency: 'BRL' },
+            { sku: 'team-annual', price: 264, currency: 'BRL' }
+        ]);
+    });
+
+    it("can get prices for countries without specific pricing", async () => {
+        await ipApiServer.forGet(`/json/${FIJI_IP}`).thenJson(200, {
+            status: 'success',
+            countryCode3: 'FJI',
+            continentCode: 'OC',
+            currency: 'FJD'
+        });
+        const response = await getPrices(functionServer, FIJI_IP);
+        const data = await response.json();
+
+        const products = (data.response.products as Array<PaddleProduct>).map((p) => ({
+            sku: p.sku,
+            currency: p.currency,
+            price: p.price.net
+        }));
+
+        expect(products).to.deep.equal([
+            { sku: 'pro-monthly', price: 5, currency: 'USD' },
+            { sku: 'pro-annual', price: 36, currency: 'USD' },
+            { sku: 'team-monthly', price: 7, currency: 'USD' },
+            { sku: 'team-annual', price: 60, currency: 'USD' }
+        ]);
+    });
+
+    it("defines prices following sensible pricing invariants", () => {
+        Object.entries(PRICING).forEach(([_key, pricing]) => {
+            expect(pricing.currency).have.lengthOf(3);
+
+            expect(pricing['pro-monthly']).to.be.greaterThan(0);
+
+            // Annual must be divisible by 12, to make the pricing pages look nice:
+            expect(pricing['pro-annual'] % 12).to.equal(0);
+            // Annual must be a discount between 50% & 99% of monthly equivalent
+            expect(pricing['pro-annual']).to.be.greaterThan(pricing['pro-monthly'] * 7);
+            expect(pricing['pro-annual']).to.be.lessThan(pricing['pro-monthly'] * 11);
+
+            // Team pricing is approx 1.5x individual pricing
+            expect(pricing['team-monthly']).to.be.greaterThan(pricing['pro-monthly'] * 1.3);
+            expect(pricing['team-monthly']).to.be.lessThan(pricing['pro-monthly'] * 1.7);
+
+            // Annual must be divisible by 12, to make the pricing pages look nice:
+            expect(pricing['team-annual'] % 12).to.equal(0);
+            // Annual must be a discount between 50% & 99% of monthly equivalent
+            expect(pricing['team-annual']).to.be.greaterThan(pricing['team-monthly'] * 7);
+            expect(pricing['team-annual']).to.be.lessThan(pricing['team-monthly'] * 11);
+            // Team annual must be less than Pro annual x2 (but less annual discount here)
+            expect(pricing['team-annual']).to.be.greaterThan(pricing['pro-annual'] * 1.4);
+            expect(pricing['team-annual']).to.be.lessThan(pricing['pro-annual'] * 1.8);
+        });
     });
 });
