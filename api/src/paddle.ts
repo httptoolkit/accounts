@@ -5,7 +5,8 @@ import { URLSearchParams } from 'url';
 import fetch, { RequestInit } from 'node-fetch';
 import Serialize from 'php-serialize';
 
-import { StatusError } from './errors';
+import { reportError, StatusError } from './errors';
+import { getLatestEurRates } from './exchange-rates';
 import { SKU, SubscriptionStatus, TransactionData } from '../../module/src/types';
 
 const PADDLE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
@@ -262,4 +263,111 @@ export async function getPaddleUserTransactions(
         'currency',
         'amount'
     ]));
+}
+
+// Taken from https://www.paddle.com/help/start/intro-to-paddle/what-currencies-do-you-support
+const PADDLE_CURRENCIES = [
+    "ARS",
+    "AUD",
+    "BRL",
+    "GBP",
+    "CAD",
+    "CNY",
+    "CZK",
+    "DKK",
+    "EUR",
+    "HKD",
+    "HUF",
+    "INR",
+    "ILS",
+    "JPY",
+    "MXN",
+    "TWD",
+    "NZD",
+    "NOK",
+    "PLN",
+    "RUB",
+    "SGD",
+    "ZAR",
+    "KRW",
+    "SEK",
+    "CHF",
+    "THB",
+    "TRY",
+    "UAH",
+    "USD"
+];
+
+export async function createCheckout(options: {
+    productId: number,
+    email: string,
+    countryCode: string,
+    currency: string,
+    price: number,
+    source: string
+}) {
+    const prices: { [currency: string]: number } = {};
+
+    // We include the currency only if Paddle understands it - otherwise
+    // we drop it - we'll send it converted as EUR anyway.
+    if (PADDLE_CURRENCIES.includes(options.currency)) {
+        // We do report this though - it shouldn't happen normally, but we allow
+        // it just for special cases (e.g. fallback for other providers in future)
+        reportError(`Opening unsupported ${options.currency} Paddle checkout`);
+
+        prices[options.currency] = options.price;
+    }
+
+    if (options.currency !== 'EUR') {
+        // We must always provide an EUR price, because a) Paddle's API
+        // requires it, and b) the user might change their country during
+        // checkout. We always use the direct conversion to EUR, so that
+        // the price they pay is the same - just the currency can vary.
+
+        const exchangeRates = await getLatestEurRates();
+        const eurRate = exchangeRates[options.currency];
+
+        if (!eurRate) throw new Error(
+            `Can't show checkout for currency ${
+                options.currency
+            } with no EUR rate available`
+        );
+
+        const eurPrice = options.price / eurRate;
+        prices['EUR'] = eurPrice;
+    }
+
+    // Prices should now contain an EUR price, plus an equivalent non-EUR price if
+    // the original pricing is some Paddle-supported currency. We leave currency
+    // selection to Paddle, but assume that the currency will match the country, so
+    // Paddle will show that by default. If it doesn't, you'll get the conversion
+    // from EUR - messy, but equivalent so acceptable.
+
+    // We have to send prices in price[0]=EUR:123 format, so we collapse our
+    // array into separate object keys here:
+    const priceParams = Object.entries(prices)
+        .reduce((priceParams, [currency, price], i) => {
+            const pricing = `${currency}:${price}`;
+            priceParams[`prices[${i}]`] = pricing;
+            // We also need the same value as recurring pricing:
+            priceParams[`recurring_prices[${i}]`] = pricing;
+            return priceParams;
+        }, {} as { [key: string]: string })
+
+    const response = await makePaddleApiRequest(
+        `/api/2.0/product/generate_pay_link`, {
+            method: 'POST',
+            body: new URLSearchParams({
+                vendor_id: PADDLE_VENDOR_ID,
+                vendor_auth_code: PADDLE_KEY,
+                product_id: options.productId.toString(),
+                customer_email: options.email,
+                customer_country: options.countryCode,
+                referring_domain: options.source,
+                ...priceParams
+            })
+        }
+    );
+
+    return response.url as string;
 }
