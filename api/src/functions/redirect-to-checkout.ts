@@ -3,8 +3,10 @@ initSentry();
 
 import type { PricedSKU } from '../../../module/src/types';
 
-import { getPaddleIdForSku } from '../paddle';
+import { createCheckout, getPaddleIdForSku } from '../paddle';
 import { PricedSKUs } from '../products';
+import { getAllPrices } from '../pricing';
+import { getIpData } from '../ip-geolocate';
 
 export const handler = catchErrors(async (event) => {
     const {
@@ -16,6 +18,9 @@ export const handler = catchErrors(async (event) => {
         sku?: PricedSKU,
         source?: string
     };
+
+    const sourceIp = event.headers['x-nf-client-connection-ip']
+        ?? event.requestContext.identity.sourceIp;
 
     if (!email || !sku || !PricedSKUs.includes(sku)) return {
         statusCode: 400,
@@ -31,14 +36,22 @@ export const handler = catchErrors(async (event) => {
         }`
     };
 
+    const ipData = await getIpData(sourceIp);
+    const productPrices = await getAllPrices(ipData);
+
+    const checkoutUrl = await createCheckout({
+        email,
+        productId: getPaddleIdForSku(sku),
+        countryCode: ipData?.countryCode,
+        currency: productPrices.currency,
+        price: productPrices[sku],
+        source: source || 'unknown'
+    });
+
     return {
         statusCode: 302,
         headers: {
-            location: `https://pay.paddle.com/checkout/${
-                getPaddleIdForSku(sku)
-            }?guest_email=${
-                encodeURIComponent(email)
-            }&referring_domain=${source || 'unknown'}`
+            location: checkoutUrl
         },
         body: ''
     };

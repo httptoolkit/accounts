@@ -79,6 +79,28 @@ export const ipApiServer = getLocal({
     }
 });
 
+export const EXCHANGE_RATE_API_PORT = 9094;
+process.env.EXCHANGE_RATE_BASE_URL = `http://localhost:${EXCHANGE_RATE_API_PORT}`;
+
+export const exchangeRateServer = getLocal({
+    https: {
+        keyPath: path.join(__dirname, 'fixtures', 'test-ca.key'),
+        certPath: path.join(__dirname, 'fixtures', 'test-ca.pem'),
+        keyLength: 2048
+    }
+});
+
+export function givenExchangeRate(currency: string, rate: number) {
+    return exchangeRateServer.forGet('/latest')
+        .withQuery({ 'base': 'EUR' })
+        .thenJson(200, {
+            success: true,
+            rates: {
+                [currency]: rate
+            }
+        })
+}
+
 export function givenUser(userId: string, email: string, appMetadata = {}) {
     return auth0Server
         .forGet('/api/v2/users-by-email')
