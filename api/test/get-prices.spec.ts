@@ -52,7 +52,7 @@ describe('/get-prices', () => {
 
     afterEach(async () => {
         await new Promise((resolve) => functionServer.stop(resolve));
-        await await ipApiServer.stop();
+        await ipApiServer.stop();
     });
 
     it("can return a price successfully without IP data", async () => {
@@ -70,6 +70,7 @@ describe('/get-prices', () => {
     it("can get the prices with correct metdata", async () => {
         await ipApiServer.forGet(`/json/${SPAIN_IP}`).thenJson(200, {
             status: 'success',
+            countryCode: 'ES',
             countryCode3: 'ESP',
             continentCode: 'EU',
             currency: 'EUR'
@@ -106,6 +107,7 @@ describe('/get-prices', () => {
     it("can get prices for the US", async () => {
         await ipApiServer.forGet(`/json/${US_IP}`).thenJson(200, {
             status: 'success',
+            countryCode: 'US',
             countryCode3: 'USA',
             continentCode: 'NA',
             currency: 'USD'
@@ -130,6 +132,7 @@ describe('/get-prices', () => {
     it("can get prices for the UK", async () => {
         await ipApiServer.forGet(`/json/${UK_IP}`).thenJson(200, {
             status: 'success',
+            countryCode: 'GB',
             countryCode3: 'GBR',
             continentCode: 'EU',
             currency: 'GBP'
@@ -154,6 +157,7 @@ describe('/get-prices', () => {
     it("can get prices within the EU", async () => {
         await ipApiServer.forGet(`/json/${SPAIN_IP}`).thenJson(200, {
             status: 'success',
+            countryCode: 'FR',
             countryCode3: 'FRA',
             continentCode: 'EU',
             currency: 'EUR'
@@ -178,6 +182,7 @@ describe('/get-prices', () => {
     it("can get prices for Brazil", async () => {
         await ipApiServer.forGet(`/json/${BRAZIL_IP}`).thenJson(200, {
             status: 'success',
+            countryCode: 'BR',
             countryCode3: 'BRA',
             continentCode: 'SA',
             currency: 'BRL'
@@ -202,6 +207,7 @@ describe('/get-prices', () => {
     it("can get prices for countries without specific pricing", async () => {
         await ipApiServer.forGet(`/json/${FIJI_IP}`).thenJson(200, {
             status: 'success',
+            countryCode: 'FJ',
             countryCode3: 'FJI',
             continentCode: 'OC',
             currency: 'FJD'

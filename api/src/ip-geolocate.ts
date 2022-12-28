@@ -10,6 +10,7 @@ export interface IpData {
     status: 'success' | 'fail',
     message?: string,
 
+    countryCode: string,
     countryCode3: string,
     continentCode: string,
     currency: string,
@@ -38,6 +39,7 @@ export async function getIpData(ip: string) {
             }?key=${IP_API_KEY}&fields=${[
                 'status',
                 'message',
+                'countryCode',
                 'countryCode3',
                 'continentCode',
                 'currency',

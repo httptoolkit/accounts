@@ -7,7 +7,12 @@ import Serialize from 'php-serialize';
 
 import { reportError, StatusError } from './errors';
 import { getLatestEurRates } from './exchange-rates';
-import { SKU, SubscriptionStatus, TransactionData } from '../../module/src/types';
+import {
+    SKU,
+    SubscriptionPricing,
+    SubscriptionStatus,
+    TransactionData
+} from '../../module/src/types';
 
 const PADDLE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 ${process.env.PADDLE_PUBLIC_KEY}
@@ -190,7 +195,7 @@ async function makePaddleApiRequest(url: string, options: RequestInit = {}) {
     return data.response;
 }
 
-export async function getPrices(productIds: string[], sourceIp: string): Promise<any[]> {
+export async function getPrices(productIds: string[], sourceIp: string): Promise<SubscriptionPricing[]> {
     const response = await makePaddleApiRequest(`https://checkout.paddle.com/api/2.0/prices?product_ids=${
         productIds.join(',')
     }&quantity=1&customer_ip=${
@@ -301,7 +306,7 @@ const PADDLE_CURRENCIES = [
 export async function createCheckout(options: {
     productId: number,
     email: string,
-    countryCode: string,
+    countryCode?: string,
     currency: string,
     price: number,
     source: string
