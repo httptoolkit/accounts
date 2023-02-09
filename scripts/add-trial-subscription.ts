@@ -20,11 +20,14 @@ import { mgmtClient } from '../api/src/auth0';
 
     let userId: string;
     if (users.length === 1) {
+        const metadata = users[0].app_metadata;
         if (
-            users[0].app_metadata?.subscription_status &&
-            users[0].app_metadata?.subscription_status !== 'deleted'
+            metadata?.subscription_status &&
+            metadata?.subscription_status !== 'deleted' &&
+            metadata?.subscription_expiry >= Date.now() // Trials may just expire, without deletion
         ) {
-            console.log("User already has subscription", users[0].app_metadata);
+            console.error("User already has subscription", users[0].app_metadata);
+            process.exit(1);
         }
 
         userId = users[0].user_id!;
