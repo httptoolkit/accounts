@@ -24,7 +24,7 @@
     "@types/node": "^14.14.22",
     "async-mutex": "^0.2.6",
     "dedent": "^0.7.0",
-    "jsonwebtoken": "^9.0.0",
+    "jsonwebtoken": "^8.5.1",
     "lodash": "^4.17.21",
     "typed-error": "^3.2.1"
   }
