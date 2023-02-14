@@ -29,7 +29,11 @@ const ipCache = new NodeCache({
     stdTTL: 60 * 60 // Cached for 6h
 });
 
-export async function getIpData(ip: string) {
+export async function getIpData(ip: string | undefined) {
+    if (!ip) {
+        reportError('No client IP data available');
+        return undefined;
+    }
     if (ipCache.has(ip)) return ipCache.get(ip) as IpData;
 
     try {
@@ -54,7 +58,7 @@ export async function getIpData(ip: string) {
 
         ipCache.set(ip, ipData);
         return ipData;
-    } catch (e) {
+    } catch (e: any) {
         reportError(e);
         return undefined;
     }
