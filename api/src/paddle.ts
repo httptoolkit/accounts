@@ -327,11 +327,12 @@ export async function createCheckout(options: {
     // We include the currency only if Paddle understands it - otherwise
     // we drop it - we'll send it converted as EUR anyway.
     if (PADDLE_CURRENCIES.includes(options.currency)) {
-        // We do report this though - it shouldn't happen normally, but we allow
-        // it just for special cases (e.g. fallback for other providers in future)
-        reportError(`Opening unsupported ${options.currency} Paddle checkout`);
-
         prices[options.currency] = options.price;
+    } else {
+        // We do report this though - it shouldn't happen normally, but we don't fail
+        // hard here so we can support special cases later on (e.g. fallback from other
+        // providers with different supported currencies, in emergencies)
+        reportError(`Opening unsupported ${options.currency} Paddle checkout`);
     }
 
     if (options.currency !== 'EUR') {
