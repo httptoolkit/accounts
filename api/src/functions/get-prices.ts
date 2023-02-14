@@ -18,7 +18,7 @@ export const handler = catchErrors(async (event) => {
     }
 
     const sourceIp = event.headers['x-nf-client-connection-ip']
-        ?? event.requestContext.identity.sourceIp;
+        ?? event.requestContext?.identity.sourceIp;
 
     try {
         const ipData = await getIpData(sourceIp);

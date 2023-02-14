@@ -20,7 +20,7 @@ export const handler = catchErrors(async (event) => {
     };
 
     const sourceIp = event.headers['x-nf-client-connection-ip']
-        ?? event.requestContext.identity.sourceIp;
+        ?? event.requestContext?.identity.sourceIp;
 
     if (!email || !sku || !PricedSKUs.includes(sku)) return {
         statusCode: 400,

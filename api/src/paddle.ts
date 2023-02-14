@@ -367,7 +367,10 @@ export async function createCheckout(options: {
                 vendor_auth_code: PADDLE_KEY,
                 product_id: options.productId.toString(),
                 customer_email: options.email,
-                customer_country: options.countryCode,
+                ...(options.countryCode
+                    ? { customer_country: options.countryCode }
+                    : {}
+                ),
                 referring_domain: options.source,
                 ...priceParams
             })
