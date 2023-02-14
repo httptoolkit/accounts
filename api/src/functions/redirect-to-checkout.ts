@@ -51,6 +51,13 @@ export const handler = catchErrors(async (event) => {
     return {
         statusCode: 302,
         headers: {
+            // Very briefly cache this, to tighten up checkout loading performance:
+            'cache-control': 'max-age=60',
+
+            // Explicitly depend on the IP (though it doesn't matter much, given short
+            // caching, since the user email in the URL should avoid any confusion):
+            'vary': 'x-nf-client-connection-ip',
+
             location: checkoutUrl
         },
         body: ''
