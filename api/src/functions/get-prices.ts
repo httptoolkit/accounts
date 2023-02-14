@@ -20,13 +20,14 @@ export const handler = catchErrors(async (event) => {
     const sourceIp = event.headers['x-nf-client-connection-ip']
         ?? event.requestContext?.identity.sourceIp;
 
+
     // Only sent by old clients, parsed here for backward compat:
     const { product_ids } = event.queryStringParameters as { product_ids?: string };
     const productIds = product_ids?.split(',');
 
     try {
         const ipData = await getIpData(sourceIp);
-        const productPrices = await getAllPrices(ipData);
+        const productPrices = getAllPrices(ipData);
 
         const pricingResult: Array<SubscriptionPricing> = PricedSKUs
         .map((sku) => ({
