@@ -223,7 +223,7 @@ export const PRICING: { [key: string]: Prices } = {
 export async function getAllPrices(ipData: IpData | undefined) {
     let result: Prices;
 
-    if (!ipData || ipData.proxy || ipData.hosting) {
+    if (!ipData) {
         result = PRICING['default'];
     } else {
         // Use the most specific pricing configuration we have:
