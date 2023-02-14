@@ -20,6 +20,10 @@ export const handler = catchErrors(async (event) => {
     const sourceIp = event.headers['x-nf-client-connection-ip']
         ?? event.requestContext?.identity.sourceIp;
 
+    // Only sent by old clients, parsed here for backward compat:
+    const { product_ids } = event.queryStringParameters as { product_ids?: string };
+    const productIds = product_ids?.split(',');
+
     try {
         const ipData = await getIpData(sourceIp);
         const productPrices = await getAllPrices(ipData);
@@ -32,7 +36,20 @@ export const handler = catchErrors(async (event) => {
             currency: productPrices.currency,
             price: { net: productPrices[sku] },
             subscription: { interval: ProductDetails[sku].interval }
-        }))
+        }));
+
+        if (productIds?.includes("599788")) {
+            // This is a hack, we basically return bad data, but no code (even old code)
+            // should ever be using the pricing data here, so that's OK:
+            pricingResult.push({
+                sku: 'pro-perpetual',
+                product_id: 599788,
+                product_title: 'HTTP Toolkit Pro (perpetual)',
+                currency: pricingResult[0].currency,
+                price: { net: Infinity },
+                subscription: { interval: 'perpetual' as any }
+            })
+        }
 
         return {
             statusCode: 200,
