@@ -37,7 +37,7 @@ export const handler = catchErrors(async (event) => {
     };
 
     const ipData = await getIpData(sourceIp);
-    const productPrices = await getAllPrices(ipData);
+    const productPrices = getAllPrices(ipData);
 
     const checkoutUrl = await createCheckout({
         email,

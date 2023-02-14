@@ -4,6 +4,7 @@ import { URLSearchParams } from 'url';
 
 import fetch, { RequestInit } from 'node-fetch';
 import Serialize from 'php-serialize';
+import NodeCache from 'node-cache';
 
 import { reportError, StatusError } from './errors';
 import { getLatestEurRates } from './exchange-rates';
@@ -303,6 +304,13 @@ const PADDLE_CURRENCIES = [
     "USD"
 ];
 
+// We cache checkouts, so that we can send requests to pre-calculate them, and
+// thereby drop ~500ms in checkout time (probably good for conversion) and make
+// ourselves a tiny bit more resilient to checkout blips.
+const checkoutCache = new NodeCache({
+    stdTTL: 60 // Cached for 1h
+});
+
 export async function createCheckout(options: {
     productId: number,
     email: string,
@@ -311,6 +319,9 @@ export async function createCheckout(options: {
     price: number,
     source: string
 }) {
+    const cacheKey = JSON.stringify(options);
+    if (checkoutCache.has(cacheKey)) return checkoutCache.get<string>(cacheKey)!;
+
     const prices: { [currency: string]: number } = {};
 
     // We include the currency only if Paddle understands it - otherwise
@@ -376,6 +387,8 @@ export async function createCheckout(options: {
             })
         }
     );
+
+    checkoutCache.set<string>(cacheKey, response.url);
 
     return response.url as string;
 }

@@ -220,7 +220,7 @@ export const PRICING: { [key: string]: Prices } = {
 /**
  * Returns the prices for all plans available, for the given IP location.
  */
-export async function getAllPrices(ipData: IpData | undefined) {
+export function getAllPrices(ipData: IpData | undefined) {
     let result: Prices;
 
     if (!ipData) {
