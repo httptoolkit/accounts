@@ -317,7 +317,8 @@ export async function createCheckout(options: {
     countryCode?: string,
     currency: string,
     price: number,
-    source: string
+    source: string,
+    returnUrl?: string
 }) {
     const cacheKey = JSON.stringify(options);
     if (checkoutCache.has(cacheKey)) return checkoutCache.get<string>(cacheKey)!;
@@ -384,6 +385,10 @@ export async function createCheckout(options: {
                     : {}
                 ),
                 referring_domain: options.source,
+                ...(options.returnUrl
+                    ? { return_url: options.returnUrl }
+                    : {}
+                ),
                 ...priceParams
             })
         }
