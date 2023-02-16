@@ -64,7 +64,9 @@ export const handler = catchErrors(async (event) => {
             // caching, since the user email in the URL should avoid any confusion):
             'vary': 'x-nf-client-connection-ip',
 
-            location: checkoutUrl
+            location: checkoutUrl.includes('?')
+                ? checkoutUrl
+                : checkoutUrl + '?x' // Stop Netlify re-appending our original query params
         },
         body: ''
     };
