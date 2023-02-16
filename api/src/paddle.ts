@@ -318,7 +318,8 @@ export async function createCheckout(options: {
     currency: string,
     price: number,
     source: string,
-    returnUrl?: string
+    returnUrl?: string,
+    passthrough?: string
 }) {
     const cacheKey = JSON.stringify(options);
     if (checkoutCache.has(cacheKey)) return checkoutCache.get<string>(cacheKey)!;
@@ -372,25 +373,33 @@ export async function createCheckout(options: {
             return priceParams;
         }, {} as { [key: string]: string })
 
+    const checkoutParams = new URLSearchParams({
+        vendor_id: PADDLE_VENDOR_ID,
+        vendor_auth_code: PADDLE_KEY,
+        product_id: options.productId.toString(),
+        customer_email: options.email,
+        ...(options.countryCode
+            ? { customer_country: options.countryCode }
+            : {}
+        ),
+        referring_domain: options.source,
+        ...(options.returnUrl
+            ? { return_url: options.returnUrl }
+            : {}
+        ),
+        ...(options.passthrough
+            ? { passthrough: options.passthrough }
+            : {}
+        ),
+        ...priceParams
+    });
+
+    console.log('CHECKOUT PARAMS', checkoutParams.toString)
+
     const response = await makePaddleApiRequest(
         `/api/2.0/product/generate_pay_link`, {
             method: 'POST',
-            body: new URLSearchParams({
-                vendor_id: PADDLE_VENDOR_ID,
-                vendor_auth_code: PADDLE_KEY,
-                product_id: options.productId.toString(),
-                customer_email: options.email,
-                ...(options.countryCode
-                    ? { customer_country: options.countryCode }
-                    : {}
-                ),
-                referring_domain: options.source,
-                ...(options.returnUrl
-                    ? { return_url: options.returnUrl }
-                    : {}
-                ),
-                ...priceParams
-            })
+            body: checkoutParams
         }
     );
 
