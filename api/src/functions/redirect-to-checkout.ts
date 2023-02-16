@@ -12,11 +12,15 @@ export const handler = catchErrors(async (event) => {
     const {
         email,
         sku,
-        source
+        source,
+        returnUrl,
+        passthrough
     } = event.queryStringParameters as {
         email?: string,
         sku?: PricedSKU,
-        source?: string
+        source?: string,
+        returnUrl?: string,
+        passthrough?: string
     };
 
     const sourceIp = event.headers['x-nf-client-connection-ip']
@@ -45,7 +49,9 @@ export const handler = catchErrors(async (event) => {
         countryCode: ipData?.countryCode,
         currency: productPrices.currency,
         price: productPrices[sku],
-        source: source || 'unknown'
+        source: source || 'unknown',
+        returnUrl,
+        passthrough
     });
 
     return {
