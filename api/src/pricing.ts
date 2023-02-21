@@ -140,6 +140,14 @@ export const PRICING: { [key: string]: Prices } = {
         'team-annual': 1008
     },
 
+    'country:TUR': {
+        currency: 'TRY',
+        'pro-monthly': 100,
+        'pro-annual': 816,
+        'team-monthly': 140,
+        'team-annual': 1152
+    },
+
     'country:UKR': {
         currency: 'UAH',
         'pro-monthly': 180,
