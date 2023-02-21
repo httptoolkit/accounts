@@ -229,8 +229,9 @@ describe('/get-prices', () => {
         ]);
     });
 
-    it("defines prices following sensible pricing invariants", () => {
-        Object.entries(PRICING).forEach(([_key, pricing]) => {
+
+    Object.entries(PRICING).forEach(([key, pricing]) => {
+        it(`defines ${key} prices with sensible pricing invariants`, () => {
             expect(pricing.currency).have.lengthOf(3);
 
             expect(pricing['pro-monthly']).to.be.greaterThan(0);
