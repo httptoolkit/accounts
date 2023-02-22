@@ -116,6 +116,14 @@ export const PRICING: { [key: string]: Prices } = {
         'team-annual': 528
     },
 
+    'country:JPN': {
+        currency: 'JPY',
+        'pro-monthly': 1000,
+        'pro-annual': 8400,
+        'team-monthly': 1400,
+        'team-annual': 13200
+    },
+
     'country:MEX': {
         currency: 'MXN',
         'pro-monthly': 80,
