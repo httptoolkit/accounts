@@ -394,7 +394,7 @@ export async function createCheckout(options: {
         ...priceParams
     });
 
-    console.log('CHECKOUT PARAMS', checkoutParams.toString)
+    console.log('CHECKOUT PARAMS', checkoutParams.toString());
 
     const response = await makePaddleApiRequest(
         `/api/2.0/product/generate_pay_link`, {
