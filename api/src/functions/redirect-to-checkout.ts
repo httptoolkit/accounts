@@ -14,7 +14,7 @@ export const handler = catchErrors(async (event) => {
         sku,
         source,
         returnUrl,
-        passthrough
+        passthrough: passthroughParameter
     } = event.queryStringParameters as {
         email?: string,
         sku?: PricedSKU,
@@ -42,6 +42,28 @@ export const handler = catchErrors(async (event) => {
 
     const ipData = await getIpData(sourceIp);
     const productPrices = getAllPrices(ipData);
+
+    // We pass through data to Paddle, so that we can easily check where the pricing that was
+    // used came from, and debug any issues that pop up:
+    let providedPassthroughData: any;
+    try {
+        providedPassthroughData = JSON.parse(passthroughParameter || '{}');
+    } catch (e) {
+        throw new Error(`Could not parse passthrough parameter: ${passthroughParameter}`);
+    }
+
+    const ipPassthrough = {
+        country: ipData?.countryCode3 ?? 'unknown',
+        continent: ipData?.continentCode ?? 'unknown',
+        hosting: ipData?.hosting || undefined,
+        proxy: ipData?.hosting || undefined,
+    };
+
+    const passthrough = JSON.stringify(
+        providedPassthroughData
+        ? { ...providedPassthroughData, ...ipPassthrough }
+        : ipPassthrough
+    );
 
     const checkoutUrl = await createCheckout({
         email,

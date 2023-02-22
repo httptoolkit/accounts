@@ -18,13 +18,18 @@ const getCheckoutUrl = (
     server: net.Server,
     email: string,
     sku: SKU,
-    ip: string = '1.1.1.1'
+    options: {
+        ip?: string,
+        passthrough?: string
+    } = {}
 ) => fetch(
     `http://localhost:${
         (server.address() as net.AddressInfo).port
-    }/redirect-to-checkout?sku=${sku}&email=${email}&source=site.example`, {
+    }/redirect-to-checkout?sku=${sku}&email=${email}&source=site.example${
+        options.passthrough ? `&passthrough=${encodeURIComponent(options.passthrough)}` : ''
+    }`, {
         headers: {
-            'x-nf-client-connection-ip': ip
+            'x-nf-client-connection-ip': options.ip ?? '1.1.1.1'
         },
         redirect: 'manual'
     }
@@ -47,12 +52,16 @@ describe('/redirect-to-checkout', () => {
                     .filter(([key]) => key.startsWith('prices'))
                     .map(([_, value]) => value);
 
+                const passthrough = params!['passthrough'] as string | undefined;
+
                 return {
                     status: 200,
                     json: {
                         success: true,
                         response: {
-                            url: `https://paddle.example?prices=${prices.join(',')}`
+                            url: `https://paddle.example?prices=${prices.join(',')}&passthrough=${
+                                passthrough ? encodeURIComponent(passthrough) : '<undefined>'
+                            }`
                         }
                     }
                 };
@@ -76,7 +85,7 @@ describe('/redirect-to-checkout', () => {
         );
 
         expect(response.status).to.equal(302);
-        expect(response.headers.get('location')).to.equal(
+        expect(response.headers.get('location')).to.include(
             'https://paddle.example/?prices=USD:7,EUR:3.5'
         );
     });
@@ -90,9 +99,50 @@ describe('/redirect-to-checkout', () => {
         );
 
         expect(response.status).to.equal(302);
-        expect(response.headers.get('location')).to.equal(
+        expect(response.headers.get('location')).to.include(
             'https://paddle.example/?prices=USD:60,EUR:30'
         );
+    });
+
+    it("includes IP source data in passthrough by default", async () => {
+        await givenExchangeRate('USD', 2);
+        const response = await getCheckoutUrl(
+            functionServer,
+            'test@email.example',
+            'pro-monthly'
+        );
+
+        expect(response.status).to.equal(302);
+
+        const redirectTarget = response.headers.get('location');
+        const targetUrl = new URL(redirectTarget!);
+
+        const passthroughParams = JSON.parse(targetUrl.searchParams.get('passthrough')!);
+        expect(passthroughParams).to.deep.equal({
+            country: 'unknown',
+            continent: 'unknown',
+        });
+    });
+
+    it("combines provided & IP-based passthrough data", async () => {
+        await givenExchangeRate('USD', 2);
+        const response = await getCheckoutUrl(
+            functionServer,
+            'test@email.example',
+            'pro-monthly',
+            { passthrough: JSON.stringify({ testParam: 'testValue' }) }
+        );
+
+        expect(response.status).to.equal(302);
+        const redirectTarget = response.headers.get('location');
+        const targetUrl = new URL(redirectTarget!);
+
+        const passthroughParams = JSON.parse(targetUrl.searchParams.get('passthrough')!);
+        expect(passthroughParams).to.deep.equal({
+            testParam: 'testValue',
+            country: 'unknown',
+            continent: 'unknown',
+        });
     });
 
     it("fails if no SKU is provided", async () => {
