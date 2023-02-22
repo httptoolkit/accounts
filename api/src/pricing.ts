@@ -132,6 +132,14 @@ export const PRICING: { [key: string]: Prices } = {
         'team-annual': 5400
     },
 
+    'country:SGP': {
+        currency: 'SGD',
+        'pro-monthly': 10,
+        'pro-annual': 84,
+        'team-monthly': 14,
+        'team-annual': 132
+    },
+
     'country:SWE': {
         currency: 'SEK',
         'pro-monthly': 80,
