@@ -207,12 +207,12 @@ export const PRICING: { [key: string]: Prices } = {
         'team-annual': 60
     },
 
-    'continent:NA': { // North America
+    'continent:NA': { // North America (but not US/Canada)
         currency: 'USD',
-        'pro-monthly': 10,
-        'pro-annual': 96,
-        'team-monthly': 16,
-        'team-annual': 168
+        'pro-monthly': 5,
+        'pro-annual': 36,
+        'team-monthly': 7,
+        'team-annual': 60
     },
 
     'continent:SA': { // South America
