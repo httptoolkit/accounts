@@ -3,7 +3,7 @@ initSentry();
 
 import type { PricedSKU } from '../../../module/src/types';
 
-import { createCheckout, getPaddleIdForSku } from '../paddle';
+import { createCheckout } from '../paddle';
 import { PricedSKUs } from '../products';
 import { getAllPrices } from '../pricing';
 import { getIpData } from '../ip-geolocate';
@@ -67,7 +67,7 @@ export const handler = catchErrors(async (event) => {
 
     const checkoutUrl = await createCheckout({
         email,
-        productId: getPaddleIdForSku(sku),
+        sku,
         countryCode: ipData?.countryCode,
         currency: productPrices.currency,
         price: productPrices[sku],

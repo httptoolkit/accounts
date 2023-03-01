@@ -312,7 +312,7 @@ const checkoutCache = new NodeCache({
 });
 
 export async function createCheckout(options: {
-    productId: number,
+    sku: SKU,
     email: string,
     countryCode?: string,
     currency: string,
@@ -323,6 +323,8 @@ export async function createCheckout(options: {
 }) {
     const cacheKey = JSON.stringify(options);
     if (checkoutCache.has(cacheKey)) return checkoutCache.get<string>(cacheKey)!;
+
+    const productId = getPaddleIdForSku(options.sku);
 
     const prices: { [currency: string]: number } = {};
 
@@ -376,7 +378,7 @@ export async function createCheckout(options: {
     const checkoutParams = new URLSearchParams({
         vendor_id: PADDLE_VENDOR_ID,
         vendor_auth_code: PADDLE_KEY,
-        product_id: options.productId.toString(),
+        product_id: productId.toString(),
         customer_email: options.email,
         ...(options.countryCode
             ? { customer_country: options.countryCode }
