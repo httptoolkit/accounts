@@ -7,7 +7,7 @@ import Serialize from 'php-serialize';
 import NodeCache from 'node-cache';
 
 import { reportError, StatusError } from './errors';
-import { getLatestEurRates } from './exchange-rates';
+import { getLatestRates } from './exchange-rates';
 import {
     SKU,
     SubscriptionPricing,
@@ -343,7 +343,7 @@ export async function createCheckout(options: {
         // checkout. We always use the direct conversion to EUR, so that
         // the price they pay is the same - just the currency can vary.
 
-        const exchangeRates = await getLatestEurRates();
+        const exchangeRates = await getLatestRates('EUR');
         const eurRate = exchangeRates[options.currency];
 
         if (!eurRate) throw new Error(
