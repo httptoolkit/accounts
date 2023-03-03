@@ -345,11 +345,11 @@ export async function createCheckout(options: {
         // checkout. We always use the direct conversion to EUR, so that
         // the price they pay is the same - just the currency can vary.
 
-        const exchangeRates = await getLatestRates('EUR');
-        const eurRate = exchangeRates[options.currency];
+        const allEurRates = await getLatestRates('EUR');
+        const eurRate = allEurRates[options.currency];
 
         if (!eurRate) throw new Error(
-            `Can't show checkout for currency ${
+            `Can't show Paddle checkout for currency ${
                 options.currency
             } with no EUR rate available`
         );

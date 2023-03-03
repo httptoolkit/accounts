@@ -6,10 +6,20 @@ const IP_API_KEY = process.env.IP_API_KEY;
 const IP_API_BASE_URL = process.env.IP_API_BASE_URL
     ?? 'https://pro.ip-api.com';
 
-export interface IpData {
+interface IpApiResponse {
     status: 'success' | 'fail',
     message?: string,
 
+    countryCode: string,
+    countryCode3: string,
+    continentCode: string,
+    currency: string,
+
+    hosting: boolean,
+    proxy: boolean
+}
+
+export interface IpData {
     countryCode: string,
     countryCode3: string,
     continentCode: string,
@@ -37,7 +47,7 @@ export async function getIpData(ip: string | undefined) {
     if (ipCache.has(ip)) return ipCache.get(ip) as IpData;
 
     try {
-        const ipData: IpData = await (await fetch(
+        const ipData: IpApiResponse = await (await fetch(
             `${IP_API_BASE_URL}/json/${
                 ip
             }?key=${IP_API_KEY}&fields=${[

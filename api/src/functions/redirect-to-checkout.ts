@@ -3,7 +3,9 @@ initSentry();
 
 import type { PricedSKU } from '../../../module/src/types';
 
-import { createCheckout } from '../paddle';
+import * as Paddle from '../paddle';
+import * as PayPro from '../paypro';
+
 import { PricedSKUs } from '../products';
 import { getAllPrices } from '../pricing';
 import { getIpData } from '../ip-geolocate';
@@ -14,13 +16,15 @@ export const handler = catchErrors(async (event) => {
         sku,
         source,
         returnUrl,
-        passthrough: passthroughParameter
+        passthrough: passthroughParameter,
+        payProTestMode
     } = event.queryStringParameters as {
         email?: string,
         sku?: PricedSKU,
         source?: string,
         returnUrl?: string,
-        passthrough?: string
+        passthrough?: string,
+        payProTestMode?: string
     };
 
     const sourceIp = event.headers['x-nf-client-connection-ip']
@@ -65,7 +69,11 @@ export const handler = catchErrors(async (event) => {
         : ipPassthrough
     );
 
-    const checkoutUrl = await createCheckout({
+    const checkoutFactory = payProTestMode === 'true'
+        ? PayPro.createCheckout
+        : Paddle.createCheckout;
+
+    const checkoutUrl = await checkoutFactory({
         email,
         sku,
         countryCode: ipData?.countryCode,
