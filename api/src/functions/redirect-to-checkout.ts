@@ -95,6 +95,7 @@ export const handler = catchErrors(async (event) => {
             $geoip_continent_code: ipData?.continentCode
         }
     });
+    const metricsPromise = flushMetrics(); // Flush, but async to avoid delays
 
     const checkoutFactory = paymentProvider === 'paypro'
         ? PayPro.createCheckout
@@ -111,7 +112,7 @@ export const handler = catchErrors(async (event) => {
         passthrough
     });
 
-    await flushMetrics(); // Make sure we log our overall checkout metrics
+    await metricsPromise; // Make sure we log our overall checkout metrics
 
     return {
         statusCode: 302,
