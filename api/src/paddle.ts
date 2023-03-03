@@ -80,6 +80,7 @@ export interface NewSubscriptionHookData extends BaseWebhookData {
     alert_name: 'subscription_created';
     quantity: string; // \d+
     next_bill_date: string; // YYYY-MM-DD
+    passthrough?: string; // JSON with checkout metadata (by our convention)
 }
 
 export interface UpdatedSubscriptionHookData extends BaseWebhookData {

@@ -9,14 +9,20 @@ import * as PayPro from '../paypro';
 import { PricedSKUs } from '../products';
 import { getAllPrices } from '../pricing';
 import { getIpData } from '../ip-geolocate';
+import { flushMetrics, generateSessionId, trackEvent } from '../metrics';
 
 export const handler = catchErrors(async (event) => {
     const {
+        // Both required:
         email,
         sku,
+        // Domain (app or website) opening this checkout:
         source,
+        // Thank you page URL:
         returnUrl,
+        // Metadata to pass through:
         passthrough: passthroughParameter,
+        // Temporary test-only PayPro mode (not yet functional)
         payProTestMode
     } = event.queryStringParameters as {
         email?: string,
@@ -56,7 +62,8 @@ export const handler = catchErrors(async (event) => {
         throw new Error(`Could not parse passthrough parameter: ${passthroughParameter}`);
     }
 
-    const ipPassthrough = {
+    const basePassthroughData = {
+        id: generateSessionId(), // Random id unique to this checkout flow
         country: ipData?.countryCode3 ?? 'unknown',
         continent: ipData?.continentCode ?? 'unknown',
         hosting: ipData?.hosting || undefined,
@@ -65,11 +72,31 @@ export const handler = catchErrors(async (event) => {
 
     const passthrough = JSON.stringify(
         providedPassthroughData
-        ? { ...providedPassthroughData, ...ipPassthrough }
-        : ipPassthrough
+        ? { ...providedPassthroughData, ...basePassthroughData }
+        : basePassthroughData
     );
 
-    const checkoutFactory = payProTestMode === 'true'
+    const paymentProvider = payProTestMode === 'true'
+        ? 'paypro'
+        : 'paddle';
+
+    trackEvent(basePassthroughData.id, 'Checkout', 'Creation', {
+        sku,
+        paymentProvider,
+
+        $set: {
+            // Metadata for the checkout session in general:
+            initial_referring_domain: source,
+            country: ipData?.countryCode3 ?? 'unknown',
+            continent: ipData?.continentCode ?? 'unknown',
+
+            // Special keys that allow mapping in Posthog:
+            $geoip_country_code: ipData?.countryCode,
+            $geoip_continent_code: ipData?.continentCode
+        }
+    });
+
+    const checkoutFactory = paymentProvider === 'paypro'
         ? PayPro.createCheckout
         : Paddle.createCheckout;
 
@@ -83,6 +110,8 @@ export const handler = catchErrors(async (event) => {
         returnUrl,
         passthrough
     });
+
+    await flushMetrics(); // Make sure we log our overall checkout metrics
 
     return {
         statusCode: 302,

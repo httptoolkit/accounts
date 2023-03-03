@@ -118,6 +118,10 @@ describe('/redirect-to-checkout', () => {
         const targetUrl = new URL(redirectTarget!);
 
         const passthroughParams = JSON.parse(targetUrl.searchParams.get('passthrough')!);
+
+        expect(passthroughParams.id.length).to.equal(16);
+        delete passthroughParams.id; // Random, so ignore this below
+
         expect(passthroughParams).to.deep.equal({
             country: 'unknown',
             continent: 'unknown',
@@ -138,6 +142,10 @@ describe('/redirect-to-checkout', () => {
         const targetUrl = new URL(redirectTarget!);
 
         const passthroughParams = JSON.parse(targetUrl.searchParams.get('passthrough')!);
+
+        expect(passthroughParams.id.length).to.equal(16);
+        delete passthroughParams.id; // Random, so ignore this below
+
         expect(passthroughParams).to.deep.equal({
             testParam: 'testValue',
             country: 'unknown',

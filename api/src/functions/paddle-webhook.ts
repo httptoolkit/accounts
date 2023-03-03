@@ -1,4 +1,4 @@
-import { initSentry, catchErrors } from '../errors';
+import { initSentry, catchErrors, reportError } from '../errors';
 initSentry();
 
 import _ from 'lodash';
@@ -23,6 +23,7 @@ import {
     isProSubscription,
     isTeamSubscription
 } from '../products';
+import { flushMetrics, trackEvent } from '../metrics';
 
 async function getOrCreateUserData(email: string): Promise<User> {
     const users = await mgmtClient.getUsersByEmail(email);
@@ -218,6 +219,33 @@ export const handler = catchErrors(async (event) => {
         await banUser(email);
     } else {
         console.log(`Ignoring ${paddleData.alert_name} event`);
+    }
+
+    // Add successful checkouts to our metrics:
+    if (paddleData.alert_name === 'subscription_created') {
+        let parsedPassthrough: Record<string, string | undefined> | undefined = undefined;
+        try {
+            if (!paddleData.passthrough) {
+                throw new Error('Passthrough was empty');
+            }
+
+            parsedPassthrough = JSON.parse(paddleData.passthrough) ?? {};
+
+            if (!Object.keys(parsedPassthrough!).length) {
+                throw new Error('Parsed passthrough data has no content');
+            }
+        } catch (e) {
+            console.log(e);
+            reportError(`Failed to parse passthrough data: ${(e as Error).message ?? e}`);
+            // We report errors here, but continue - we just skip metrics in this case
+        }
+
+        if (parsedPassthrough?.id) { // Set in redirect-to-checkout
+            const sessionId = parsedPassthrough.id;
+            // Track successes, so we can calculate checkout conversion rates:
+            trackEvent(sessionId, 'Checkout', 'Success');
+            await flushMetrics();
+        }
     }
 
     // All done
