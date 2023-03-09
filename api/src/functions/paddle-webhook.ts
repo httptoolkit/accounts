@@ -11,6 +11,7 @@ import {
     mgmtClient,
     PayingUserMetadata,
     TeamOwnerMetadata,
+    TeamMemberMetadata,
     User
 } from '../auth0';
 import {
@@ -49,9 +50,26 @@ function dropUndefinedValues(obj: { [key: string]: any }) {
 }
 
 async function updateProUserData(email: string, subscription: Partial<PayingUserMetadata>) {
-    const user = await getOrCreateUserData(email);
-
     dropUndefinedValues(subscription);
+
+    const user = await getOrCreateUserData(email);
+    const appData = user.app_metadata as AppMetadata;
+
+    // Is the user already a member of a team?
+    if ('subscription_owner_id' in appData) {
+        const owner = await mgmtClient.getUser({ id: appData.subscription_owner_id! });
+        const ownerData = owner.app_metadata as TeamOwnerMetadata;
+
+        if (ownerData.subscription_expiry > Date.now() && ownerData.subscription_status === 'active') {
+            throw new Error("Cannot create Pro account for a member of an active team");
+        }
+
+        // Otherwise, the owner's team subscription must have been cancelled now, so we just need to
+        // update the membership state on both sides:
+        const updatedTeamMembers = ownerData.team_member_ids.filter(id => id !== user.user_id);
+        await mgmtClient.updateAppMetadata({ id: appData.subscription_owner_id! }, { team_member_ids: updatedTeamMembers });
+        (subscription as Partial<TeamMemberMetadata>).subscription_owner_id = null as any; // Setting to null deletes the property
+    }
 
     if (!_.isEmpty(subscription)) {
         await mgmtClient.updateAppMetadata({ id: user.user_id! }, subscription);

@@ -102,7 +102,8 @@ export function givenExchangeRate(currency: string, rate: number) {
 }
 
 export function givenUser(userId: string, email: string, appMetadata = {}) {
-    return auth0Server
+    return Promise.all([
+        auth0Server
         .forGet('/api/v2/users-by-email')
         .withQuery({ email })
         .thenJson(200, [
@@ -111,7 +112,15 @@ export function givenUser(userId: string, email: string, appMetadata = {}) {
                 user_id: userId,
                 app_metadata: appMetadata
             }
-        ]);
+        ]),
+        auth0Server
+        .forGet(`/api/v2/users/${userId}`)
+        .thenJson(200, {
+            email: email,
+            user_id: userId,
+            app_metadata: appMetadata
+        })
+    ]);
 }
 
 export function givenNoUser(email: string) {
@@ -187,6 +196,7 @@ export async function givenTeam(
 
     // Return the owner subscription data for the team:
     await auth0Server.forGet('/api/v2/users/' + ownerId)
+        .always()
         .thenCallback(() => ({
             status: 200,
             json: {

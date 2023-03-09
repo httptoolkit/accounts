@@ -158,6 +158,74 @@ describe('Paddle webhooks', () => {
             });
         });
 
+        it('successfully handle new Pro subscriptions for an ex-Team user', async () => {
+            const ownerId = "team-owner";
+            const ownerEmail = 'owner@example.com';
+            const memberId = "team-member";
+            const memberEmail = 'member@example.com';
+
+            givenUser(ownerId, ownerEmail, {
+                subscription_sku: 'team-annual',
+                team_member_ids: [
+                    'other-member-id',
+                    memberId
+                ],
+
+                // Cancelled and expired:
+                subscription_status: 'cancelled',
+                subscription_expiry: Date.now() - 1
+            })
+
+            givenUser(memberId, memberEmail, {
+                subscription_owner_id: ownerId
+            });
+
+            const ownerUpdate = await auth0Server
+                .forPatch('/api/v2/users/' + ownerId)
+                .thenReply(200);
+
+            const memberUpdate = await auth0Server
+                .forPatch('/api/v2/users/' + memberId)
+                .thenReply(200);
+
+            const nextRenewal = moment('2025-01-01');
+
+            await triggerWebhook(functionServer, {
+                alert_name: 'subscription_created',
+                status: 'active',
+                email: memberEmail,
+                user_id: '123',
+                subscription_id: '456',
+                subscription_plan_id: '550382', // Pro-annual
+                next_bill_date: nextRenewal.format('YYYY-MM-DD'),
+                quantity: '1'
+            });
+
+            const ownerUpdateRequests = await ownerUpdate.getSeenRequests();
+            expect(ownerUpdateRequests.length).to.equal(1);
+            expect(await ownerUpdateRequests[0].body.getJson()).to.deep.equal({
+                app_metadata: {
+                    team_member_ids: ['other-member-id']
+                }
+            });
+
+            const memberUpdateRequests = await memberUpdate.getSeenRequests();
+            expect(memberUpdateRequests.length).to.equal(1);
+            expect(await memberUpdateRequests[0].body.getJson()).to.deep.equal({
+                app_metadata: {
+                    subscription_owner_id: null,
+
+                    subscription_status: 'active',
+                    paddle_user_id: 123,
+                    subscription_id: 456,
+                    subscription_sku: 'pro-annual',
+                    subscription_plan_id: 550382,
+                    subscription_quantity: 1,
+                    subscription_expiry: nextRenewal.add(1, 'days').valueOf()
+                }
+            });
+        });
+
         it('successfully renew subscriptions', async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';

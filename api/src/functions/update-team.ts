@@ -136,7 +136,7 @@ export const handler = catchErrors(async (event) => {
         } as TeamOwnerMetadata);
 
         return { statusCode: 200, headers, body: 'success' };
-    } catch (e) {
+    } catch (e: any) {
         await reportError(e);
 
         return {
