@@ -56,7 +56,7 @@ async function updateProUserData(email: string, subscription: Partial<PayingUser
     const appData = user.app_metadata as AppMetadata;
 
     // Is the user already a member of a team?
-    if ('subscription_owner_id' in appData) {
+    if (appData && 'subscription_owner_id' in appData) {
         const owner = await mgmtClient.getUser({ id: appData.subscription_owner_id! });
         const ownerData = owner.app_metadata as TeamOwnerMetadata;
 
