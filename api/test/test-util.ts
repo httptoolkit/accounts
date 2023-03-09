@@ -101,7 +101,7 @@ export function givenExchangeRate(currency: string, rate: number) {
         })
 }
 
-export function givenUser(userId: string, email: string, appMetadata = {}) {
+export function givenUser(userId: string, email: string, appMetadata: {} | undefined = undefined) {
     return Promise.all([
         auth0Server
         .forGet('/api/v2/users-by-email')
