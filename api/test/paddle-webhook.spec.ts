@@ -41,7 +41,11 @@ const getPaddleWebhookData = (unsignedBody: Partial<WebhookData>) => {
     };
 }
 
-const triggerWebhook = async (server: net.Server, unsignedBody: Partial<WebhookData>) => {
+const triggerWebhook = async (
+    server: net.Server,
+    unsignedBody: Partial<WebhookData>,
+    options: { expectedStatus: number } = { expectedStatus: 200 }
+) => {
     const functionServerUrl = `http://localhost:${(server.address() as net.AddressInfo).port}`;
 
     const result = await fetch(
@@ -49,7 +53,7 @@ const triggerWebhook = async (server: net.Server, unsignedBody: Partial<WebhookD
         getPaddleWebhookData(unsignedBody)
     );
 
-    expect(result.status).to.equal(200);
+    expect(result.status).to.equal(options.expectedStatus);
 }
 describe('Paddle webhooks', () => {
 
@@ -158,7 +162,7 @@ describe('Paddle webhooks', () => {
             });
         });
 
-        it('successfully handle new Pro subscriptions for an ex-Team user', async () => {
+        it('should accept new Pro subscriptions for an ex-Team user', async () => {
             const ownerId = "team-owner";
             const ownerEmail = 'owner@example.com';
             const memberId = "team-member";
@@ -224,6 +228,58 @@ describe('Paddle webhooks', () => {
                     subscription_expiry: nextRenewal.add(1, 'days').valueOf()
                 }
             });
+        });
+
+        it('should reject new Pro subscriptions for an active Team user', async () => {
+            const ownerId = "team-owner";
+            const ownerEmail = 'owner@example.com';
+            const memberId = "team-member";
+            const memberEmail = 'member@example.com';
+
+            givenUser(ownerId, ownerEmail, {
+                subscription_sku: 'team-annual',
+                team_member_ids: [
+                    'other-member-id',
+                    memberId
+                ],
+
+                // Active and unexpired:
+                subscription_status: 'active',
+                subscription_expiry: Date.now() + 10000
+            })
+
+            givenUser(memberId, memberEmail, {
+                subscription_owner_id: ownerId
+            });
+
+            const ownerUpdate = await auth0Server
+                .forPatch('/api/v2/users/' + ownerId)
+                .thenReply(200);
+
+            const memberUpdate = await auth0Server
+                .forPatch('/api/v2/users/' + memberId)
+                .thenReply(200);
+
+            const nextRenewal = moment('2025-01-01');
+
+            await triggerWebhook(functionServer, {
+                alert_name: 'subscription_created',
+                status: 'active',
+                email: memberEmail,
+                user_id: '123',
+                subscription_id: '456',
+                subscription_plan_id: '550382', // Pro-annual
+                next_bill_date: nextRenewal.format('YYYY-MM-DD'),
+                quantity: '1'
+            }, {
+                expectedStatus: 409
+            });
+
+            const ownerUpdateRequests = await ownerUpdate.getSeenRequests();
+            expect(ownerUpdateRequests.length).to.equal(0);
+
+            const memberUpdateRequests = await memberUpdate.getSeenRequests();
+            expect(memberUpdateRequests.length).to.equal(0);
         });
 
         it('successfully renew subscriptions', async () => {

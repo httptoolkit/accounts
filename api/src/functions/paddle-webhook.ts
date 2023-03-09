@@ -1,4 +1,4 @@
-import { initSentry, catchErrors, reportError } from '../errors';
+import { initSentry, catchErrors, reportError, StatusError } from '../errors';
 initSentry();
 
 import _ from 'lodash';
@@ -61,7 +61,8 @@ async function updateProUserData(email: string, subscription: Partial<PayingUser
         const ownerData = owner.app_metadata as TeamOwnerMetadata;
 
         if (ownerData.subscription_expiry > Date.now() && ownerData.subscription_status === 'active') {
-            throw new Error("Cannot create Pro account for a member of an active team");
+            reportError(`Rejected Pro signup for ${email} because they're an active Team member`);
+            throw new StatusError(409, "Cannot create Pro account for a member of an active team");
         }
 
         // Otherwise, the owner's team subscription must have been cancelled now, so we just need to

@@ -88,10 +88,19 @@ export function catchErrors(handler: ApiHandler): ApiHandler {
         context.callbackWaitsForEmptyEventLoop = false;
         try {
             return await (handler.call as any)(this, ...arguments);
-        } catch (e) {
+        } catch (e: any) {
             // Catches sync errors & promise rejections, because we're async
             await reportError(e, event);
-            throw e;
+
+            if (e instanceof StatusError) {
+                return {
+                    statusCode: e.statusCode,
+                    headers: { 'Cache-Control': 'no-store' },
+                    body: e.message
+                }
+            } else {
+                throw e;
+            }
         }
     };
 }
