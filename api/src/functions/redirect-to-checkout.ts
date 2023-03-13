@@ -14,7 +14,7 @@ import { flushMetrics, generateSessionId, trackEvent } from '../metrics';
 export const handler = catchErrors(async (event) => {
     const {
         // Both required:
-        email,
+        email, // But email can be * to explicitly let the user enter their own
         sku,
         // Domain (app or website) opening this checkout:
         source,
@@ -102,7 +102,9 @@ export const handler = catchErrors(async (event) => {
         : Paddle.createCheckout;
 
     const checkoutUrl = await checkoutFactory({
-        email,
+        email: email === '*'
+            ? undefined
+            : email,
         sku,
         countryCode: ipData?.countryCode,
         currency: productPrices.currency,

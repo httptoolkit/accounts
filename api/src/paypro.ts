@@ -121,7 +121,7 @@ const PAYPRO_CURRENCIES = [
 
 export async function createCheckout(options: {
     sku: SKU,
-    email: string,
+    email?: string, // Almost always set, except manual purchase links
     countryCode?: string,
     currency: string,
     price: number,
@@ -131,9 +131,9 @@ export async function createCheckout(options: {
 }) {
     const checkoutParams = new URLSearchParams();
 
-    checkoutParams.set('billing-email', options.email);
     checkoutParams.set('currency', options.currency);
 
+    if (options.email) checkoutParams.set('billing-email', options.email);
     if (options.countryCode) checkoutParams.set('billing-country', options.countryCode);
     if (options.source) checkoutParams.set('x-source', options.source);
     if (options.passthrough) checkoutParams.set('x-passthrough', options.passthrough);

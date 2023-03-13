@@ -54,12 +54,18 @@ describe('/redirect-to-checkout', () => {
 
                 const passthrough = params!['passthrough'] as string | undefined;
 
+                const emailParam = params?.['customer_email']
+                    ? `&email=${params['customer_email']}`
+                    : '';
+
                 return {
                     status: 200,
                     json: {
                         success: true,
                         response: {
-                            url: `https://paddle.example?prices=${prices.join(',')}&passthrough=${
+                            url: `https://paddle.example?prices=${prices.join(',')}${
+                                emailParam
+                            }&passthrough=${
                                 passthrough ? encodeURIComponent(passthrough) : '<undefined>'
                             }`
                         }
@@ -88,6 +94,7 @@ describe('/redirect-to-checkout', () => {
         expect(response.headers.get('location')).to.include(
             'https://paddle.example/?prices=USD:7,EUR:3.5'
         );
+        expect(response.headers.get('location')).to.include('&email=test@email.example');
     });
 
     it("redirects to Paddle by default for Pro-Annual", async () => {
@@ -102,6 +109,7 @@ describe('/redirect-to-checkout', () => {
         expect(response.headers.get('location')).to.include(
             'https://paddle.example/?prices=USD:60,EUR:30'
         );
+        expect(response.headers.get('location')).to.include('&email=annual-test@email.example');
     });
 
     it("includes IP source data in passthrough by default", async () => {
@@ -154,6 +162,7 @@ describe('/redirect-to-checkout', () => {
     });
 
     it("fails if no SKU is provided", async () => {
+        await givenExchangeRate('USD', 2);
         const response = await getCheckoutUrl(
             functionServer,
             'test@email.example',
@@ -164,6 +173,7 @@ describe('/redirect-to-checkout', () => {
     });
 
     it("fails if no email is provided", async () => {
+        await givenExchangeRate('USD', 2);
         const response = await getCheckoutUrl(
             functionServer,
             '',
@@ -171,6 +181,23 @@ describe('/redirect-to-checkout', () => {
         );
 
         expect(response.status).to.equal(400);
+    });
+
+    it("doesn't fail if the email is explicitly not provided", async () => {
+        await givenExchangeRate('USD', 2);
+
+        const response = await getCheckoutUrl(
+            functionServer,
+            '*',
+            'pro-monthly'
+        );
+
+        expect(response.status).to.equal(302);
+
+        expect(response.headers.get('location')).to.include(
+            'https://paddle.example/?prices=USD:7,EUR:3.5'
+        );
+        expect(response.headers.get('location')).not.to.include('email=');
     });
 
     // TODO: For now this always redirects to Paddle - later it will
