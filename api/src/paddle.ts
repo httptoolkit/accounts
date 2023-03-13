@@ -349,11 +349,14 @@ export async function createCheckout(options: {
         const allEurRates = await getLatestRates('EUR');
         const eurRate = allEurRates[options.currency];
 
-        if (!eurRate) throw new Error(
-            `Can't show Paddle checkout for currency ${
-                options.currency
-            } with no EUR rate available`
-        );
+        if (!eurRate) {
+            console.log(`Missing rate for ${options.currency}, available rates are:`, allEurRates);
+            throw new Error(
+                `Can't show Paddle checkout for currency ${
+                    options.currency
+                } with no EUR rate available`
+            );
+        }
 
         const eurPrice = options.price / eurRate;
         prices['EUR'] = eurPrice;

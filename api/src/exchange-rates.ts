@@ -11,10 +11,11 @@ export interface ExchangeRates {
 type SUPPORTED_TARGET_CURRENCY = 'EUR' | 'USD';
 
 async function getRates(currency: SUPPORTED_TARGET_CURRENCY) {
+    console.log(`Updating ${currency} exchange rates`);
     const response = await fetch(`${EXCHANGE_RATE_BASE_URL}/latest?base=${currency}`);
     const data = await response.json();
-    if (!response.ok || !data.success || !data.rates) {
-        console.log(JSON.stringify(data));
+    if (!response.ok || !data.success || !data.rates || !Object.keys(data.rates).length) {
+        console.log(response.status, JSON.stringify(data));
         throw new Error(`Unsuccessful result from exchange rate API`);
     }
 
@@ -37,8 +38,8 @@ export function getLatestRates(currency: SUPPORTED_TARGET_CURRENCY) {
         // If the first request fails, we reset (to try again on next
         // request) and then fail for real:
         latestRates[currency] = undefined;
+        console.warn(`Exchange rates initial lookup failed with ${e.message ?? e}`);
         reportError(e);
-        throw e;
     });
 
     const ratesUpdateInterval = setInterval(() => {
@@ -48,7 +49,10 @@ export function getLatestRates(currency: SUPPORTED_TARGET_CURRENCY) {
         .then((rates) => {
             latestRates[currency] = Promise.resolve(rates);
         })
-        .catch(reportError);
+        .catch((e) => {
+            console.warn(`Exchange rates async update failed with ${e.message ?? e}`);
+            reportError(e);
+        });
     }, 1000 * 60 * 60);
     ratesUpdateInterval.unref(); // We never need to block shutdown for this
 
