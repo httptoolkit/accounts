@@ -122,6 +122,7 @@ const PAYPRO_CURRENCIES = [
 export async function createCheckout(options: {
     sku: SKU,
     email?: string, // Almost always set, except manual purchase links
+    quantity?: number, // Always set for team accounts
     countryCode?: string,
     currency: string,
     price: number,
@@ -174,6 +175,7 @@ export async function createCheckout(options: {
     const encryptedParams = cipher.output;
 
     checkoutParams.set('products[1][id]', SKU_TO_PAYPRO_ID[options.sku].toString());
+    if (options.quantity) checkoutParams.set('products[1][qty]', options.quantity.toString());
     checkoutParams.set('products[1][data]', forge.util.encode64(encryptedParams.bytes()));
 
     return `https://store.payproglobal.com/checkout?${checkoutParams.toString()}`;

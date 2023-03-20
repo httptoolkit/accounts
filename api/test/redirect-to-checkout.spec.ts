@@ -20,13 +20,16 @@ const getCheckoutUrl = (
     sku: SKU,
     options: {
         ip?: string,
-        passthrough?: string
+        passthrough?: string,
+        quantity?: number
     } = {}
 ) => fetch(
     `http://localhost:${
         (server.address() as net.AddressInfo).port
     }/redirect-to-checkout?sku=${sku}&email=${email}&source=site.example${
         options.passthrough ? `&passthrough=${encodeURIComponent(options.passthrough)}` : ''
+    }${
+        options.quantity !== undefined ? `&quantity=${options.quantity}` : ''
     }`, {
         headers: {
             'x-nf-client-connection-ip': options.ip ?? '1.1.1.1'
@@ -58,6 +61,10 @@ describe('/redirect-to-checkout', () => {
                     ? `&email=${params['customer_email']}`
                     : '';
 
+                const quantityParam = params?.['quantity']
+                    ? `&quantity=${params['quantity']}`
+                    : '';
+
                 return {
                     status: 200,
                     json: {
@@ -65,6 +72,8 @@ describe('/redirect-to-checkout', () => {
                         response: {
                             url: `https://paddle.example?prices=${prices.join(',')}${
                                 emailParam
+                            }${
+                                quantityParam
                             }&passthrough=${
                                 passthrough ? encodeURIComponent(passthrough) : '<undefined>'
                             }`
@@ -91,10 +100,12 @@ describe('/redirect-to-checkout', () => {
         );
 
         expect(response.status).to.equal(302);
-        expect(response.headers.get('location')).to.include(
-            'https://paddle.example/?prices=USD:7,EUR:3.5'
-        );
-        expect(response.headers.get('location')).to.include('&email=test@email.example');
+
+        const redirectTarget = response.headers.get('location');
+        const targetUrl = new URL(redirectTarget!);
+        expect(targetUrl.searchParams.get('prices')).to.equal('USD:7,EUR:3.5');
+        expect(targetUrl.searchParams.get('email')).to.equal('test@email.example');
+        expect(targetUrl.searchParams.get('quantity')).to.equal(null);
     });
 
     it("redirects to Paddle by default for Pro-Annual", async () => {
@@ -198,6 +209,37 @@ describe('/redirect-to-checkout', () => {
             'https://paddle.example/?prices=USD:7,EUR:3.5'
         );
         expect(response.headers.get('location')).not.to.include('email=');
+    });
+
+    it("redirects to Paddle by default for Team-Annual", async () => {
+        await givenExchangeRate('USD', 2);
+        const response = await getCheckoutUrl(
+            functionServer,
+            'test@email.example',
+            'team-annual',
+            { quantity: 5 }
+        );
+
+        expect(response.status).to.equal(302);
+
+        const redirectTarget = response.headers.get('location');
+        const targetUrl = new URL(redirectTarget!);
+        expect(targetUrl.searchParams.get('prices')).to.equal('USD:96,EUR:48');
+        expect(targetUrl.searchParams.get('email')).to.equal('test@email.example');
+        expect(targetUrl.searchParams.get('quantity')).to.equal('5');
+    });
+
+    it("fails for team SKUs if no quantity is provided", async () => {
+        await givenExchangeRate('USD', 2);
+        const response = await getCheckoutUrl(
+            functionServer,
+            'test@email.example',
+            'team-annual'
+        );
+
+        expect(response.status).to.equal(400);
+        const responseBody = await response.text()
+        expect(responseBody).to.equal('Quantity parameter is required for team SKUs');
     });
 
     // TODO: For now this always redirects to Paddle - later it will

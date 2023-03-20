@@ -315,6 +315,7 @@ const checkoutCache = new NodeCache({
 export async function createCheckout(options: {
     sku: SKU,
     email?: string, // Almost always set, except manual purchase links
+    quantity?: number, // Always set for team accounts
     countryCode?: string,
     currency: string,
     price: number,
@@ -383,6 +384,7 @@ export async function createCheckout(options: {
         vendor_id: PADDLE_VENDOR_ID,
         vendor_auth_code: PADDLE_KEY,
         product_id: productId.toString(),
+
         ...(options.email
             ? { customer_email: options.email }
             : {}
@@ -391,6 +393,15 @@ export async function createCheckout(options: {
             ? { customer_country: options.countryCode }
             : {}
         ),
+
+        ...(options.quantity !== undefined
+            ? {
+                quantity: options.quantity.toString(),
+                allowQuantity: 'false' // If set, don't let them change it
+            }
+            : {}
+        ),
+
         referring_domain: options.source,
         ...(options.returnUrl
             ? { return_url: options.returnUrl }

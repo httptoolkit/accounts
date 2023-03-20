@@ -1,4 +1,4 @@
-import { initSentry, catchErrors } from '../errors';
+import { initSentry, catchErrors, StatusError } from '../errors';
 initSentry();
 
 import type { PricedSKU } from '../../../module/src/types';
@@ -6,7 +6,7 @@ import type { PricedSKU } from '../../../module/src/types';
 import * as Paddle from '../paddle';
 import * as PayPro from '../paypro';
 
-import { PricedSKUs } from '../products';
+import { isTeamSubscription, PricedSKUs } from '../products';
 import { getAllPrices } from '../pricing';
 import { getIpData } from '../ip-geolocate';
 import { flushMetrics, generateSessionId, trackEvent } from '../metrics';
@@ -16,6 +16,7 @@ export const handler = catchErrors(async (event) => {
         // Both required:
         email, // But email can be * to explicitly let the user enter their own
         sku,
+        quantity: quantityString, // Required for all Team SKUs, must not be set for Pro SKUs
         // Domain (app or website) opening this checkout:
         source,
         // Thank you page URL:
@@ -27,6 +28,7 @@ export const handler = catchErrors(async (event) => {
     } = event.queryStringParameters as {
         email?: string,
         sku?: PricedSKU,
+        quantity?: string,
         source?: string,
         returnUrl?: string,
         passthrough?: string,
@@ -36,9 +38,8 @@ export const handler = catchErrors(async (event) => {
     const sourceIp = event.headers['x-nf-client-connection-ip']
         ?? event.requestContext?.identity.sourceIp;
 
-    if (!email || !sku || !PricedSKUs.includes(sku)) return {
-        statusCode: 400,
-        body: `Checkout requires specifying ${
+    if (!email || !sku || !PricedSKUs.includes(sku)) throw new StatusError(400,
+        `Checkout requires specifying ${
             (!email && !sku)
                 ? 'an email address and plan SKU'
             : !email
@@ -48,7 +49,17 @@ export const handler = catchErrors(async (event) => {
             // Unrecognized SKU:
                 : 'a valid subscription plan SKU'
         }`
-    };
+    );
+
+    let quantity: number | undefined;
+    if (isTeamSubscription(sku)) {
+        if (!quantityString) throw new StatusError(400, 'Quantity parameter is required for team SKUs');
+
+        quantity = parseInt(quantityString);
+        if (Number.isNaN(quantity)) throw new StatusError(400, `Could not parse provided quantity (${quantityString})`);
+        if (quantity < 1) throw new StatusError(400, `Quantity must be >= 1 (was ${quantity})`);
+        if (quantity % 1 !== 0) throw new StatusError(400, `Quantity must be an integer (was ${quantity})`);
+    }
 
     const ipData = await getIpData(sourceIp);
     const productPrices = getAllPrices(ipData);
@@ -106,6 +117,7 @@ export const handler = catchErrors(async (event) => {
             ? undefined
             : email,
         sku,
+        quantity,
         countryCode: ipData?.countryCode,
         currency: productPrices.currency,
         price: productPrices[sku],
