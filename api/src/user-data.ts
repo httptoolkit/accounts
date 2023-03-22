@@ -86,6 +86,7 @@ async function getRawUserData(userId: string): Promise<Partial<UserAppData>> {
 const SUBSCRIPTION_PROPERTIES = [
     'subscription_status',
     'subscription_id',
+    'subscription_sku',
     'subscription_plan_id',
     'subscription_expiry',
     'subscription_quantity',
@@ -102,6 +103,7 @@ const SUBSCRIPTION_PROPERTIES = [
 const EXTRACTED_TEAM_SUBSCRIPTION_PROPERTIES = [
     'subscription_status',
     'subscription_id',
+    'subscription_sku',
     'subscription_plan_id',
     'subscription_expiry',
     'subscription_quantity',
@@ -115,6 +117,7 @@ const DELEGATED_TEAM_SUBSCRIPTION_PROPERTIES = [
     'subscription_id',
     'subscription_status',
     'subscription_expiry',
+    'subscription_sku',
     'subscription_plan_id'
 ] as const;
 

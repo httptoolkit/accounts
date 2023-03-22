@@ -99,6 +99,7 @@ describe('/get-app-data', () => {
                     app_metadata: {
                         subscription_expiry: subExpiry,
                         subscription_id: 2,
+                        subscription_sku: 'pro-monthly',
                         subscription_plan_id: 550380,
                         subscription_status: "active"
                     }
@@ -112,6 +113,7 @@ describe('/get-app-data', () => {
                 email: userEmail,
                 subscription_expiry: subExpiry,
                 subscription_id: 2,
+                subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
                 subscription_status: "active"
             });
@@ -133,6 +135,7 @@ describe('/get-app-data', () => {
                     app_metadata: {
                         subscription_expiry: subExpiry,
                         subscription_id: 2,
+                        subscription_sku: 'pro-monthly',
                         subscription_plan_id: 550380,
                         subscription_status: "active"
                     }
@@ -173,6 +176,7 @@ describe('/get-app-data', () => {
                         feature_flags: ['test_flag'],
                         subscription_expiry: subExpiry,
                         subscription_id: 2,
+                        subscription_sku: 'pro-monthly',
                         subscription_plan_id: 550380,
                         subscription_status: "active"
                     }
@@ -187,6 +191,7 @@ describe('/get-app-data', () => {
                 feature_flags: ['test_flag'],
                 subscription_expiry: subExpiry,
                 subscription_id: 2,
+                subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
                 subscription_status: "active"
             });
@@ -210,6 +215,7 @@ describe('/get-app-data', () => {
                         feature_flags: ['test_flag'],
                         subscription_expiry: subExpiry,
                         subscription_id: 2,
+                        subscription_sku: 'pro-monthly',
                         subscription_plan_id: 550380,
                         subscription_status: "active"
                     }
@@ -249,6 +255,7 @@ describe('/get-app-data', () => {
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
                     subscription_quantity: 3,
+                    subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_status: "active",
                     last_receipt_url: 'lru',
@@ -266,6 +273,7 @@ describe('/get-app-data', () => {
                 subscription_owner_id: billingUserId,
                 subscription_expiry: subExpiry,
                 subscription_id: 2,
+                subscription_sku: 'team-monthly',
                 subscription_plan_id: 550789,
                 subscription_status: "active"
             });
@@ -288,6 +296,7 @@ describe('/get-app-data', () => {
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
                     subscription_quantity: 2,
+                    subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_status: "active",
                     last_receipt_url: 'lru',
@@ -308,6 +317,7 @@ describe('/get-app-data', () => {
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
                     subscription_quantity: 2,
+                    subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_status: "active",
                     last_receipt_url: 'lru',
@@ -335,6 +345,7 @@ describe('/get-app-data', () => {
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
                     subscription_quantity: 2,
+                    subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_status: "active",
                     last_receipt_url: 'lru',
@@ -354,6 +365,7 @@ describe('/get-app-data', () => {
 
                 subscription_expiry: subExpiry,
                 subscription_id: 2,
+                subscription_sku: 'team-monthly',
                 subscription_plan_id: 550789,
                 subscription_status: "active",
 
@@ -362,6 +374,7 @@ describe('/get-app-data', () => {
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
                     subscription_quantity: 2,
+                    subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_status: "active",
                     last_receipt_url: 'lru',
@@ -393,6 +406,7 @@ describe('/get-app-data', () => {
                     subscription_quantity: 2, // <-- 2 allowed, but we're 3rd in the ids above
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
+                    subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_status: "active",
                     last_receipt_url: 'lru',
@@ -433,6 +447,7 @@ describe('/get-app-data', () => {
                     subscription_quantity: 3, // <-- 3 allowed, OK except for the locked license
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
+                    subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_status: "active",
                     last_receipt_url: 'lru',
@@ -471,6 +486,7 @@ describe('/get-app-data', () => {
                     team_member_ids: [], // <-- doesn't include this user
                     subscription_expiry: subExpiry,
                     subscription_id: 2,
+                    subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_status: "active",
                     last_receipt_url: 'lru',
