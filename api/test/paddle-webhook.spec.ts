@@ -55,6 +55,7 @@ const triggerWebhook = async (
 
     expect(result.status).to.equal(options.expectedStatus);
 }
+
 describe('Paddle webhooks', () => {
 
     let functionServer: stoppable.StoppableServer;
@@ -99,6 +100,7 @@ describe('Paddle webhooks', () => {
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
+                    payment_provider: 'paddle',
                     paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_sku: 'pro-annual',
@@ -152,6 +154,7 @@ describe('Paddle webhooks', () => {
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
+                    payment_provider: 'paddle',
                     paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_sku: 'pro-annual',
@@ -220,6 +223,7 @@ describe('Paddle webhooks', () => {
                     subscription_owner_id: null,
 
                     subscription_status: 'active',
+                    payment_provider: 'paddle',
                     paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_sku: 'pro-annual',
@@ -316,6 +320,7 @@ describe('Paddle webhooks', () => {
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
+                    payment_provider: 'paddle',
                     paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_sku: 'pro-annual',
@@ -358,6 +363,7 @@ describe('Paddle webhooks', () => {
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'deleted',
+                    payment_provider: 'paddle',
                     paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_sku: 'pro-annual',
@@ -415,6 +421,7 @@ describe('Paddle webhooks', () => {
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'past_due',
+                    payment_provider: 'paddle',
                     paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_sku: 'pro-annual',
@@ -426,6 +433,7 @@ describe('Paddle webhooks', () => {
             expect(await updateRequests[1].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'past_due',
+                    payment_provider: 'paddle',
                     paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_sku: 'pro-annual',
@@ -460,6 +468,7 @@ describe('Paddle webhooks', () => {
             expect(await updateRequests[2].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'deleted',
+                    payment_provider: 'paddle',
                     paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_sku: 'pro-annual',
@@ -469,6 +478,7 @@ describe('Paddle webhooks', () => {
             expect(await updateRequests[3].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'deleted',
+                    payment_provider: 'paddle',
                     paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_sku: 'pro-annual',
@@ -508,6 +518,7 @@ describe('Paddle webhooks', () => {
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
+                    payment_provider: 'paddle',
                     paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_sku: 'team-monthly',
@@ -563,6 +574,7 @@ describe('Paddle webhooks', () => {
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
+                    payment_provider: 'paddle',
                     paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_sku: 'team-monthly',
@@ -604,6 +616,7 @@ describe('Paddle webhooks', () => {
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
+                    payment_provider: 'paddle',
                     paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_sku: 'team-monthly',
@@ -649,6 +662,7 @@ describe('Paddle webhooks', () => {
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
                     subscription_status: 'active',
+                    payment_provider: 'paddle',
                     paddle_user_id: 123,
                     subscription_id: 456,
                     subscription_sku: 'team-monthly',

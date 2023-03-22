@@ -48,7 +48,9 @@ export interface TrialUserMetadata extends BaseMetadata {
 }
 
 export interface PayingUserMetadata extends TrialUserMetadata {
-    paddle_user_id?: number, // Optional just because it's new
+    payment_provider?: 'paddle' | 'paypro'; // Not set for old subscriptions only
+    paddle_user_id?: number;
+
     subscription_id: number;
     subscription_quantity: number,
     last_receipt_url?: string, // Set after first successful payment

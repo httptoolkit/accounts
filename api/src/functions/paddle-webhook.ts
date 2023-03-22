@@ -42,6 +42,7 @@ function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<Payin
 
         return {
             subscription_status: hookData.status,
+            payment_provider: 'paddle',
             paddle_user_id: parseInt(hookData.user_id, 10),
             subscription_id: parseInt(hookData.subscription_id, 10),
             subscription_sku: getSkuForPaddleId(planId),
@@ -62,6 +63,7 @@ function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<Payin
 
         return {
             subscription_status: 'deleted',
+            payment_provider: 'paddle',
             paddle_user_id: parseInt(hookData.user_id, 10),
             subscription_id: parseInt(hookData.subscription_id, 10),
             subscription_sku: getSkuForPaddleId(planId),
@@ -80,6 +82,7 @@ function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<Payin
 
         return {
             subscription_status: hookData.status,
+            payment_provider: 'paddle',
             paddle_user_id: parseInt(hookData.user_id, 10),
             subscription_id: parseInt(hookData.subscription_id, 10),
             subscription_sku: getSkuForPaddleId(planId),
@@ -101,6 +104,7 @@ function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<Payin
 
         return {
             subscription_status: hookData.next_retry_date ? 'past_due' : 'deleted',
+            payment_provider: 'paddle',
             paddle_user_id: parseInt(hookData.user_id, 10),
             subscription_id: parseInt(hookData.subscription_id, 10),
             subscription_sku: getSkuForPaddleId(planId),
