@@ -116,7 +116,7 @@ export interface DisputeCreatedData extends BaseWebhookData {
     alert_name: 'payment_dispute_created';
 }
 
-export type WebhookData =
+export type PaddleWebhookData =
     | NewSubscriptionHookData
     | UpdatedSubscriptionHookData
     | CancellationHookData
@@ -125,7 +125,7 @@ export type WebhookData =
     | PaymentFailedHookData
     | DisputeCreatedData;
 
-export type UnsignedWebhookData = Omit<WebhookData, 'p_signature'>;
+export type UnsignedWebhookData = Omit<PaddleWebhookData, 'p_signature'>;
 
 function ksort<T extends {}>(obj: T): T {
     let keys = Object.keys(obj).sort() as Array<keyof T>;
@@ -157,9 +157,9 @@ export function serializeWebhookData(webhookData: UnsignedWebhookData) {
 }
 
 // Closely based on code from https://paddle.com/docs/reference-verifying-webhooks
-export function validateWebhook(webhookData: WebhookData) {
+export function validatePaddleWebhook(webhookData: PaddleWebhookData) {
     const mySig = Buffer.from(webhookData.p_signature, 'base64');
-    delete (webhookData as Partial<WebhookData>).p_signature;
+    delete (webhookData as Partial<PaddleWebhookData>).p_signature;
 
     // Do some normalization & serializing, to make this data match Paddle's signed form
     const serializedData = serializeWebhookData(webhookData);

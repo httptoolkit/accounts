@@ -14,7 +14,7 @@ import {
     givenUser,
     givenNoUsers
 } from './test-util';
-import { serializeWebhookData, WebhookData, UnsignedWebhookData } from '../src/paddle';
+import { serializeWebhookData, PaddleWebhookData, UnsignedWebhookData } from '../src/paddle';
 
 const signBody = (body: UnsignedWebhookData) => {
     const serializedData = serializeWebhookData(body);
@@ -25,10 +25,10 @@ const signBody = (body: UnsignedWebhookData) => {
     return signer.sign(privateKey, 'base64');
 }
 
-const getPaddleWebhookData = (unsignedBody: Partial<WebhookData>) => {
+const getPaddleWebhookData = (unsignedBody: Partial<PaddleWebhookData>) => {
     const body = Object.assign({
-        p_signature: signBody(unsignedBody as WebhookData)
-    }, unsignedBody) as WebhookData;
+        p_signature: signBody(unsignedBody as PaddleWebhookData)
+    }, unsignedBody) as PaddleWebhookData;
 
     return {
         method: 'POST',
@@ -43,7 +43,7 @@ const getPaddleWebhookData = (unsignedBody: Partial<WebhookData>) => {
 
 const triggerWebhook = async (
     server: net.Server,
-    unsignedBody: Partial<WebhookData>,
+    unsignedBody: Partial<PaddleWebhookData>,
     options: { expectedStatus: number } = { expectedStatus: 200 }
 ) => {
     const functionServerUrl = `http://localhost:${(server.address() as net.AddressInfo).port}`;
