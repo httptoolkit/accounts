@@ -19,12 +19,17 @@ import {
     LICENSE_LOCK_DURATION_MS,
     AppMetadata,
     TeamOwnerMetadata,
-    TeamMemberMetadata
+    TeamMemberMetadata,
+    PayingUserMetadata
 } from './auth0';
 import {
     getSku,
     isTeamSubscription
 } from './products';
+
+type RawMetadata = Partial<AppMetadata> & {
+    email: string;
+};
 
 // User app data is the effective subscription of the user. For Pro that's easy,
 // for teams: team members have the subscription of the team owner. Team owners
@@ -70,11 +75,11 @@ export async function getUserId(accessToken: string): Promise<string> {
     }
 }
 
-async function getRawUserData(userId: string): Promise<Partial<UserAppData>> {
+async function getRawUserData(userId: string): Promise<RawMetadata> {
     // getUser is full live data for the user (/users/{id} - 15 req/second)
     const userData = await mgmtClient.getUser({ id: userId });
 
-    const metadata = userData.app_metadata as AppMetadata;
+    const metadata = userData.app_metadata;
 
     return {
         email: userData.email!,
@@ -123,8 +128,10 @@ const DELEGATED_TEAM_SUBSCRIPTION_PROPERTIES = [
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-async function buildUserAppData(userId: string, userMetadata: Partial<UserAppData>) {
-    const sku = getSku(userMetadata);
+async function buildUserAppData(userId: string, rawMetadata: RawMetadata) {
+    const userMetadata: Partial<UserAppData> =_.cloneDeep(rawMetadata);
+
+    const sku = getSku(rawMetadata);
     if (isTeamSubscription(sku)) {
         // If you have a team subscription, you're the *owner* of a team, not a member.
         // That means your subscription data isn't actually for *you*, it's for
@@ -132,8 +139,8 @@ async function buildUserAppData(userId: string, userMetadata: Partial<UserAppDat
         userMetadata.team_subscription = {};
         delete (userMetadata as TeamOwnerMetadata)['locked_licenses'];
         EXTRACTED_TEAM_SUBSCRIPTION_PROPERTIES.forEach((key) => {
-            const teamSub = userMetadata!.team_subscription! as any;
-            teamSub[key] = userMetadata![key];
+            const teamSub = userMetadata.team_subscription as any;
+            teamSub[key] = userMetadata[key];
             delete userMetadata![key];
         });
     }
@@ -196,25 +203,25 @@ function countLockedLicenses(userMetadata: TeamOwnerMetadata) {
 
 async function getBillingData(
     userId: string,
-    userMetadata: Partial<UserAppData>
+    rawMetadata: RawMetadata
 ): Promise<UserBillingData> {
     // Load transactions, team members and team owner in parallel:
     const [transactions, teamMembers, owner, lockedLicenseExpiries] = await Promise.all([
-        getTransactions(userMetadata),
-        getTeamMembers(userId, userMetadata),
-        getTeamOwner(userId, userMetadata),
-        getLockedLicenseExpiries(userMetadata)
+        getTransactions(rawMetadata),
+        getTeamMembers(userId, rawMetadata),
+        getTeamOwner(userId, rawMetadata),
+        getLockedLicenseExpiries(rawMetadata)
     ]);
 
     return {
-        ..._.omit(userMetadata, [
+        ..._.cloneDeep(_.omit(rawMetadata, [
             // Filter to just billing related non-duplicated data
             'feature_flags',
             'subscription_owner_id',
             'team_member_ids',
             'locked_licenses'
-        ]),
-        email: userMetadata.email!,
+        ])),
+        email: rawMetadata.email!,
         transactions,
         team_members: teamMembers,
         team_owner: owner,
@@ -229,16 +236,18 @@ const paddleTransactionsCache = new NodeCache({
     stdTTL: 60 * 60 // Cached for 1h
 });
 
-async function getTransactions(userMetadata: Partial<UserAppData>) {
-    const paddleUserId = userMetadata.paddle_user_id
-        // Read
-        ?? paddleUserIdCache[userMetadata.subscription_id!]
-        // Older user metadata doesn't include the user id:
-        ?? await getPaddleUserIdFromSubscription(userMetadata.subscription_id);
+async function getTransactions(rawMetadata: RawMetadata) {
+    const billingMetadata = rawMetadata as PayingUserMetadata;
+
+    const paddleUserId = billingMetadata.paddle_user_id
+        // If not set, read from the cache, from previous user id lookups:
+        ?? paddleUserIdCache[billingMetadata.subscription_id!]
+        // Otherwise, for older user metadata that doesn't include the user id, we look it up:
+        ?? await getPaddleUserIdFromSubscription(billingMetadata.subscription_id);
 
     // Cache this id for faster lookup next time:
-    if (!userMetadata.paddle_user_id) {
-        paddleUserIdCache[userMetadata.subscription_id!] = paddleUserId;
+    if (!billingMetadata.paddle_user_id) {
+        paddleUserIdCache[billingMetadata.subscription_id!] = paddleUserId;
     }
 
     if (!paddleUserId) return [];
@@ -260,21 +269,21 @@ async function getTransactions(userMetadata: Partial<UserAppData>) {
     }
 }
 
-async function getTeamMembers(userId: string, userMetadata: Partial<UserAppData>) {
-    const sku = getSku(userMetadata);
-    if (!isTeamSubscription(sku)) {
-        return undefined;
-    }
+async function getTeamMembers(userId: string, rawMetadata: RawMetadata) {
+    const teamOwnerMetadata = rawMetadata as TeamOwnerMetadata;
+
+    const sku = getSku(teamOwnerMetadata);
+    if (!isTeamSubscription(sku)) return undefined;
 
     // Sort to match their configured id order (so that if the quantities change,
     // we can consistently see who is now past the end of the list).
     const usersOwnedByTeam = _.sortBy(await getTeamMemberData(userId), (member) => {
-        const memberIndex = userMetadata.team_member_ids?.indexOf(member.user_id!);
+        const memberIndex = teamOwnerMetadata.team_member_ids?.indexOf(member.user_id!);
         if (memberIndex === -1) return Infinity;
         else return memberIndex;
     });
 
-    const maxTeamSize = getMaxTeamSize(userMetadata as TeamOwnerMetadata);
+    const maxTeamSize = getMaxTeamSize(teamOwnerMetadata);
 
     // If you currently have a team subscription, we need the basic data about your team
     // members included here too, so can you see and manage them:
@@ -284,7 +293,7 @@ async function getTeamMembers(userId: string, userMetadata: Partial<UserAppData>
         locked: ( // Was the user added super recently, so removing them will lock the license?
             (member.app_metadata as TeamMemberMetadata)?.joined_team_at || 0
         ) + LICENSE_LOCK_DURATION_MS > Date.now(),
-        error: !userMetadata.team_member_ids?.includes(member.user_id!)
+        error: !teamOwnerMetadata.team_member_ids?.includes(member.user_id!)
                 ? 'inconsistent-member-data'
             : i >= maxTeamSize
                 ? 'member-beyond-team-limit'
@@ -300,7 +309,7 @@ async function getTeamMembers(userId: string, userMetadata: Partial<UserAppData>
         )
     );
 
-    if (teamMembers.length !== userMetadata.team_member_ids?.length) {
+    if (teamMembers.length !== teamOwnerMetadata.team_member_ids?.length) {
         await reportError(`Missing team members for team ${userId}`);
     }
 
@@ -316,15 +325,16 @@ export async function getTeamMemberData(teamOwnerId: string) {
     });
 }
 
-async function getTeamOwner(userId: string, userMetadata: Partial<UserAppData>) {
-    if (!userMetadata.subscription_owner_id) return undefined;
+async function getTeamOwner(userId: string, rawMetadata: RawMetadata) {
+    const teamMemberData = rawMetadata as TeamMemberMetadata;
+    if (!teamMemberData.subscription_owner_id) return undefined;
 
-    const ownerId = userMetadata.subscription_owner_id;
+    const ownerId = teamMemberData.subscription_owner_id;
 
     // We're a member of somebody else's team: get the owner
     try {
-        const ownerData = (userMetadata.subscription_owner_id === userId
-            ? userMetadata // If we're in our own team, use that data directly:
+        const ownerData = (teamMemberData.subscription_owner_id === userId
+            ? teamMemberData // If we're in our own team, use that data directly:
             : await getRawUserData(ownerId)
         ) as TeamOwnerMetadata & { email: string };
 
@@ -350,7 +360,7 @@ async function getTeamOwner(userId: string, userMetadata: Partial<UserAppData>) 
             name: ownerData.email,
             error
         };
-    } catch (e) {
+    } catch (e: any) {
         await reportError(e);
         return {
             id: ownerId,
@@ -359,8 +369,11 @@ async function getTeamOwner(userId: string, userMetadata: Partial<UserAppData>) 
     }
 }
 
-function getLockedLicenseExpiries(userMetadata: Partial<TeamOwnerMetadata>) {
-    return userMetadata
+function getLockedLicenseExpiries(rawMetadata: RawMetadata) {
+    const teamOwnerMetadata = rawMetadata as TeamOwnerMetadata;
+    if (!teamOwnerMetadata.locked_licenses) return;
+
+    return teamOwnerMetadata
         .locked_licenses
         ?.map((lockStartTime) =>
             lockStartTime + LICENSE_LOCK_DURATION_MS
