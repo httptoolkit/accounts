@@ -11,7 +11,8 @@ import type {
 
 import {
     getPaddleUserIdFromSubscription,
-    getPaddleUserTransactions
+    getPaddleUserTransactions,
+    getSkuForPaddleId
 } from './paddle';
 import {
     authClient,
@@ -81,13 +82,37 @@ async function getRawUserData(userId: string): Promise<RawMetadata> {
 
     const metadata = userData.app_metadata;
 
-    return {
+    return migrateOldUserData({
         email: userData.email!,
         ...metadata
-    };
+    });
 }
 
-// All subscription-related properties:
+function migrateOldUserData(data: RawMetadata): RawMetadata {
+    if ('subscription_plan_id' in data && !data.subscription_sku) {
+        data.subscription_sku = getSkuForPaddleId(data.subscription_plan_id);
+    }
+
+    // All subscription & paddle ids should be strings now
+    if ('subscription_id' in data && _.isNumber(data.subscription_id)) {
+        data.subscription_id = data.subscription_id.toString();
+    }
+    if ('paddle_user_id' in data && _.isNumber(data.paddle_user_id)) {
+        data.paddle_user_id = data.paddle_user_id.toString();
+    }
+
+    return data;
+}
+
+// We use these internally for some processing, but they're not useful
+// externally so we should avoid returning them from the API:
+const INTERNAL_FIELDS =[
+    'subscription_id',
+    'paddle_user_id'
+] as const;
+
+// All subscription-related properties, which are hidden if the user's
+// subscription data has expired:
 const SUBSCRIPTION_PROPERTIES = [
     'subscription_status',
     'subscription_id',
@@ -103,11 +128,11 @@ const SUBSCRIPTION_PROPERTIES = [
     'locked_licenses',
     'subscription_owner_id',
     'joined_team_at'
-];
+] as const;
 
+// The subscription properties extracted from team owners and delegated to members:
 const EXTRACTED_TEAM_SUBSCRIPTION_PROPERTIES = [
     'subscription_status',
-    'subscription_id',
     'subscription_sku',
     'subscription_plan_id',
     'subscription_expiry',
@@ -119,7 +144,6 @@ const EXTRACTED_TEAM_SUBSCRIPTION_PROPERTIES = [
 ] as const;
 
 const DELEGATED_TEAM_SUBSCRIPTION_PROPERTIES = [
-    'subscription_id',
     'subscription_status',
     'subscription_expiry',
     'subscription_sku',
@@ -129,7 +153,7 @@ const DELEGATED_TEAM_SUBSCRIPTION_PROPERTIES = [
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 async function buildUserAppData(userId: string, rawMetadata: RawMetadata) {
-    const userMetadata: Partial<UserAppData> =_.cloneDeep(rawMetadata);
+    const userMetadata: Partial<UserAppData> =_.cloneDeep(_.omit(rawMetadata, INTERNAL_FIELDS));
 
     const sku = getSku(rawMetadata);
     if (isTeamSubscription(sku)) {
@@ -176,6 +200,15 @@ async function buildUserAppData(userId: string, rawMetadata: RawMetadata) {
         }
     }
 
+    // Annoyingly due to an old implementation issue in the UI
+    // (https://github.com/httptoolkit/httptoolkit-ui/commit/acb42aa9e4c05659beae2039854598c982083ffe)
+    // we need to return some subscription_id in all paid cases, even though it's never used.
+    // We can remove this later (e.g. May 2023) - it will effectively make subscribed users
+    // appear unsubscribed until their UI updates. Most UIs update fairly quickly though.
+    if ('subscription_id' in rawMetadata) { // For paid users only (raw data because this is stripped)
+        (userMetadata as any).subscription_id = -1;
+    }
+
     const metadataExpiry = userMetadata.subscription_expiry
         // No expiry = never expire (shouldn't happen, but just in case):
         ?? Number.POSITIVE_INFINITY;
@@ -219,7 +252,8 @@ async function getBillingData(
             'feature_flags',
             'subscription_owner_id',
             'team_member_ids',
-            'locked_licenses'
+            'locked_licenses',
+            ...INTERNAL_FIELDS
         ])),
         email: rawMetadata.email!,
         transactions,
@@ -230,7 +264,7 @@ async function getBillingData(
 }
 
 // We cache paddle subscription to user id map, which never changes
-const paddleUserIdCache: { [subscriptionId: number]: number } = {};
+const paddleUserIdCache: { [subscriptionId: string | number]: string | number } = {};
 // We temporarily cache per-user paddle transactions, since the lookup is *super* slow
 const paddleTransactionsCache = new NodeCache({
     stdTTL: 60 * 60 // Cached for 1h

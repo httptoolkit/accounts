@@ -395,7 +395,6 @@ function parseBillingData(userJwt: string | null): BillingAccount {
 
 function parseSubscriptionData(rawData: SubscriptionData) {
     const subscription = {
-        id: rawData.subscription_id,
         status: rawData.subscription_status,
         plan: getSubscriptionPlanCode(rawData.subscription_plan_id),
         quantity: rawData.subscription_quantity,

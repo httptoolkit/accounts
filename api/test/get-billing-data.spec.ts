@@ -139,7 +139,6 @@ describe('/get-billing-data', () => {
             expect(data).to.deep.equal({
                 email: userEmail,
                 subscription_expiry: subExpiry,
-                subscription_id: subId,
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
                 subscription_status: "active",
@@ -321,7 +320,6 @@ describe('/get-billing-data', () => {
                 email: billingUserEmail,
 
                 subscription_expiry: subExpiry,
-                subscription_id: subId,
                 locked_license_expiries: [
                     // Locked for ~30 years
                     new Date(2050, 0, 0).getTime() + LICENSE_LOCK_DURATION_MS
@@ -405,7 +403,6 @@ describe('/get-billing-data', () => {
                 email: billingUserEmail,
 
                 subscription_expiry: subExpiry,
-                subscription_id: subId,
                 subscription_quantity: 1,
                 subscription_sku: 'team-monthly',
                 subscription_plan_id: 550789,

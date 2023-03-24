@@ -222,7 +222,7 @@ export async function getPrices(productIds: string[], sourceIp: string): Promise
 }
 
 export async function getPaddleUserIdFromSubscription(
-    subscriptionId: number | undefined
+    subscriptionId: number | string | undefined
 ): Promise<number | undefined> {
     if (!subscriptionId) return undefined;
 
@@ -248,7 +248,7 @@ export async function getPaddleUserIdFromSubscription(
 }
 
 export async function getPaddleUserTransactions(
-    userId: number
+    userId: string | number
 ): Promise<TransactionData[]> {
     const response = await makePaddleApiRequest(
         `/api/2.0/user/${userId}/transactions`, {

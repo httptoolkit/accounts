@@ -112,10 +112,10 @@ describe('/get-app-data', () => {
             expect(data).to.deep.equal({
                 email: userEmail,
                 subscription_expiry: subExpiry,
-                subscription_id: 2,
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
-                subscription_status: "active"
+                subscription_status: "active",
+                subscription_id: -1
             });
         });
 
@@ -190,10 +190,10 @@ describe('/get-app-data', () => {
                 email: userEmail,
                 feature_flags: ['test_flag'],
                 subscription_expiry: subExpiry,
-                subscription_id: 2,
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
-                subscription_status: "active"
+                subscription_status: "active",
+                subscription_id: -1
             });
         });
 
@@ -272,7 +272,6 @@ describe('/get-app-data', () => {
                 email: teamUserEmail,
                 subscription_owner_id: billingUserId,
                 subscription_expiry: subExpiry,
-                subscription_id: 2,
                 subscription_sku: 'team-monthly',
                 subscription_plan_id: 550789,
                 subscription_status: "active"
@@ -312,10 +311,10 @@ describe('/get-app-data', () => {
             expect(data).to.deep.equal({
                 email: billingUserEmail,
                 feature_flags: ['a flag'],
+                subscription_id: -1,
                 team_subscription: {
                     team_member_ids: ['123', '456'],
                     subscription_expiry: subExpiry,
-                    subscription_id: 2,
                     subscription_quantity: 2,
                     subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
@@ -364,15 +363,14 @@ describe('/get-app-data', () => {
                 feature_flags: ['a flag'],
 
                 subscription_expiry: subExpiry,
-                subscription_id: 2,
                 subscription_sku: 'team-monthly',
                 subscription_plan_id: 550789,
                 subscription_status: "active",
+                subscription_id: -1,
 
                 team_subscription: {
                     team_member_ids: [billingUserId],
                     subscription_expiry: subExpiry,
-                    subscription_id: 2,
                     subscription_quantity: 2,
                     subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,

@@ -447,8 +447,8 @@ describe('/update-team', () => {
             const existingUserEmail = 'existing@example.com';
 
             await givenUser(existingUserId, existingUserEmail, {
-                paddle_user_id: 123,
-                subscription_id: 234,
+                paddle_user_id: '123',
+                subscription_id: '234',
                 subscription_quantity: 1,
                 subscription_plan_id: 550380,
                 update_url: 'uu',
@@ -483,8 +483,8 @@ describe('/update-team', () => {
             const existingUserEmail = 'existing@example.com';
 
             await givenUser(existingUserId, existingUserEmail, {
-                paddle_user_id: 123,
-                subscription_id: 234,
+                paddle_user_id: '123',
+                subscription_id: '234',
                 subscription_quantity: 1,
                 subscription_plan_id: 550380,
                 update_url: 'uu',
@@ -549,8 +549,8 @@ describe('/update-team', () => {
             const existingUserEmail = 'existing@example.com';
 
             await givenUser(existingUserId, existingUserEmail, {
-                paddle_user_id: 123,
-                subscription_id: 234,
+                paddle_user_id: '123',
+                subscription_id: '234',
                 subscription_quantity: 1,
                 subscription_plan_id: 550380,
                 update_url: 'uu',

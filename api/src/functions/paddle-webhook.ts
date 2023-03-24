@@ -43,8 +43,8 @@ function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<Payin
         return {
             subscription_status: hookData.status,
             payment_provider: 'paddle',
-            paddle_user_id: parseInt(hookData.user_id, 10),
-            subscription_id: parseInt(hookData.subscription_id, 10),
+            paddle_user_id: hookData.user_id,
+            subscription_id: hookData.subscription_id,
             subscription_sku: getSkuForPaddleId(planId),
             subscription_plan_id: planId,
             subscription_quantity: parseInt(quantity, 10),
@@ -64,8 +64,8 @@ function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<Payin
         return {
             subscription_status: 'deleted',
             payment_provider: 'paddle',
-            paddle_user_id: parseInt(hookData.user_id, 10),
-            subscription_id: parseInt(hookData.subscription_id, 10),
+            paddle_user_id: hookData.user_id,
+            subscription_id: hookData.subscription_id,
             subscription_sku: getSkuForPaddleId(planId),
             subscription_plan_id: planId,
             subscription_expiry: endDate,
@@ -83,8 +83,8 @@ function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<Payin
         return {
             subscription_status: hookData.status,
             payment_provider: 'paddle',
-            paddle_user_id: parseInt(hookData.user_id, 10),
-            subscription_id: parseInt(hookData.subscription_id, 10),
+            paddle_user_id: hookData.user_id,
+            subscription_id: hookData.subscription_id,
             subscription_sku: getSkuForPaddleId(planId),
             subscription_plan_id: planId,
             subscription_expiry: endDate,
@@ -105,8 +105,8 @@ function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<Payin
         return {
             subscription_status: hookData.next_retry_date ? 'past_due' : 'deleted',
             payment_provider: 'paddle',
-            paddle_user_id: parseInt(hookData.user_id, 10),
-            subscription_id: parseInt(hookData.subscription_id, 10),
+            paddle_user_id: hookData.user_id,
+            subscription_id: hookData.subscription_id,
             subscription_sku: getSkuForPaddleId(planId),
             subscription_plan_id: planId,
             subscription_expiry: endDate,

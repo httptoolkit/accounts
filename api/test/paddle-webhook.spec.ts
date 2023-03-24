@@ -101,8 +101,8 @@ describe('Paddle webhooks', () => {
                 app_metadata: {
                     subscription_status: 'active',
                     payment_provider: 'paddle',
-                    paddle_user_id: 123,
-                    subscription_id: 456,
+                    paddle_user_id: '123',
+                    subscription_id: '456',
                     subscription_sku: 'pro-annual',
                     subscription_plan_id: 550382,
                     subscription_quantity: 1,
@@ -155,8 +155,8 @@ describe('Paddle webhooks', () => {
                 app_metadata: {
                     subscription_status: 'active',
                     payment_provider: 'paddle',
-                    paddle_user_id: 123,
-                    subscription_id: 456,
+                    paddle_user_id: '123',
+                    subscription_id: '456',
                     subscription_sku: 'pro-annual',
                     subscription_plan_id: 550382,
                     subscription_quantity: 1,
@@ -224,8 +224,8 @@ describe('Paddle webhooks', () => {
 
                     subscription_status: 'active',
                     payment_provider: 'paddle',
-                    paddle_user_id: 123,
-                    subscription_id: 456,
+                    paddle_user_id: '123',
+                    subscription_id: '456',
                     subscription_sku: 'pro-annual',
                     subscription_plan_id: 550382,
                     subscription_quantity: 1,
@@ -321,8 +321,8 @@ describe('Paddle webhooks', () => {
                 app_metadata: {
                     subscription_status: 'active',
                     payment_provider: 'paddle',
-                    paddle_user_id: 123,
-                    subscription_id: 456,
+                    paddle_user_id: '123',
+                    subscription_id: '456',
                     subscription_sku: 'pro-annual',
                     subscription_plan_id: 550382,
                     subscription_quantity: 1,
@@ -364,8 +364,8 @@ describe('Paddle webhooks', () => {
                 app_metadata: {
                     subscription_status: 'deleted',
                     payment_provider: 'paddle',
-                    paddle_user_id: 123,
-                    subscription_id: 456,
+                    paddle_user_id: '123',
+                    subscription_id: '456',
                     subscription_sku: 'pro-annual',
                     subscription_plan_id: 550382,
                     subscription_expiry: cancellationDate.valueOf()
@@ -422,8 +422,8 @@ describe('Paddle webhooks', () => {
                 app_metadata: {
                     subscription_status: 'past_due',
                     payment_provider: 'paddle',
-                    paddle_user_id: 123,
-                    subscription_id: 456,
+                    paddle_user_id: '123',
+                    subscription_id: '456',
                     subscription_sku: 'pro-annual',
                     subscription_plan_id: 550382,
                     subscription_quantity: 1,
@@ -434,8 +434,8 @@ describe('Paddle webhooks', () => {
                 app_metadata: {
                     subscription_status: 'past_due',
                     payment_provider: 'paddle',
-                    paddle_user_id: 123,
-                    subscription_id: 456,
+                    paddle_user_id: '123',
+                    subscription_id: '456',
                     subscription_sku: 'pro-annual',
                     subscription_plan_id: 550382,
                     subscription_expiry: finalDate.add(1, 'days').valueOf()
@@ -469,8 +469,8 @@ describe('Paddle webhooks', () => {
                 app_metadata: {
                     subscription_status: 'deleted',
                     payment_provider: 'paddle',
-                    paddle_user_id: 123,
-                    subscription_id: 456,
+                    paddle_user_id: '123',
+                    subscription_id: '456',
                     subscription_sku: 'pro-annual',
                     subscription_plan_id: 550382
                 }
@@ -479,8 +479,8 @@ describe('Paddle webhooks', () => {
                 app_metadata: {
                     subscription_status: 'deleted',
                     payment_provider: 'paddle',
-                    paddle_user_id: 123,
-                    subscription_id: 456,
+                    paddle_user_id: '123',
+                    subscription_id: '456',
                     subscription_sku: 'pro-annual',
                     subscription_plan_id: 550382,
                     subscription_expiry: finalDate.valueOf()
@@ -519,8 +519,8 @@ describe('Paddle webhooks', () => {
                 app_metadata: {
                     subscription_status: 'active',
                     payment_provider: 'paddle',
-                    paddle_user_id: 123,
-                    subscription_id: 456,
+                    paddle_user_id: '123',
+                    subscription_id: '456',
                     subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_quantity: 5,
@@ -575,8 +575,8 @@ describe('Paddle webhooks', () => {
                 app_metadata: {
                     subscription_status: 'active',
                     payment_provider: 'paddle',
-                    paddle_user_id: 123,
-                    subscription_id: 456,
+                    paddle_user_id: '123',
+                    subscription_id: '456',
                     subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_quantity: 5,
@@ -617,8 +617,8 @@ describe('Paddle webhooks', () => {
                 app_metadata: {
                     subscription_status: 'active',
                     payment_provider: 'paddle',
-                    paddle_user_id: 123,
-                    subscription_id: 456,
+                    paddle_user_id: '123',
+                    subscription_id: '456',
                     subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_quantity: 5,
@@ -663,8 +663,8 @@ describe('Paddle webhooks', () => {
                 app_metadata: {
                     subscription_status: 'active',
                     payment_provider: 'paddle',
-                    paddle_user_id: 123,
-                    subscription_id: 456,
+                    paddle_user_id: '123',
+                    subscription_id: '456',
                     subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_expiry: nextRenewal.add(1, 'days').valueOf(),

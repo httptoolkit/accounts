@@ -70,14 +70,18 @@ export type UserBillingData = {
 // Subscription data as returned by the API
 export interface SubscriptionData {
     subscription_status?: SubscriptionStatus;
-    paddle_user_id?: number;
-    subscription_id?: number;
     subscription_sku?: SKU;
-    subscription_plan_id?: number;
     subscription_expiry?: number;
     update_url?: string;
     cancel_url?: string;
     last_receipt_url?: string;
+
+    /**
+     * Deprecated in favour of sub_sku. We can't remove this for a while, as old UIs (pre-3/2023)
+     * will not understand subs without it, and will treat them as no subscription at all.
+     * @deprecated
+     **/
+    subscription_plan_id?: number;
 
     // Team subs only:
     subscription_quantity?: number;
