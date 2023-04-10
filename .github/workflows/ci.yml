@@ -9,10 +9,10 @@ jobs:
       run:
         working-directory: module
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       # Install Node 14
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v3
         with:
           node-version: 14
 
@@ -26,10 +26,10 @@ jobs:
     runs-on: ubuntu-latest
     container: httptoolkit/act-build-base:v2.0.0
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       # Install Node 14
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v3
         with:
           node-version: 14
 
