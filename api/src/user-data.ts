@@ -12,7 +12,7 @@ import type {
 import {
     getPaddleIdForSku,
     getPaddleUserIdFromSubscription,
-    getPaddleUserTransactions,
+    lookupPaddleUserTransactions,
     getSkuForPaddleId
 } from './paddle';
 import {
@@ -270,16 +270,53 @@ async function getBillingData(
     };
 }
 
-// We cache paddle subscription to user id map, which never changes
-const paddleUserIdCache: { [subscriptionId: string | number]: string | number } = {};
-// We temporarily cache per-user paddle transactions, since the lookup is *super* slow
-const paddleTransactionsCache = new NodeCache({
+// We temporarily cache per-user transactions for performance (Paddle can be *very* slow)
+const transactionsCache = new NodeCache({
     stdTTL: 60 * 60 // Cached for 1h
 });
 
 async function getTransactions(rawMetadata: RawMetadata) {
     const billingMetadata = rawMetadata as PayingUserMetadata;
 
+    let transactionsRequest: Promise<TransactionData[]>;
+    let transactionsCacheKey: string;
+
+    if (
+        billingMetadata.payment_provider === 'paddle' ||
+        !billingMetadata.payment_provider // Subscriptions that predate multiple providers
+    ) {
+        const paddleUserId = await getPaddleUserId(billingMetadata);
+        if (!paddleUserId) return [];
+
+        transactionsCacheKey = `paddle-${paddleUserId}`
+
+        // We always query for fresh transaction data (even if we might return cached data
+        // below in the meantime)
+        transactionsRequest = lookupPaddleUserTransactions(paddleUserId);
+    } else {
+        throw new Error(`Could not get transactions for unknown payment provider: ${
+            billingMetadata.payment_provider
+        }`);
+    }
+
+    // When the lookup completes, cache the result:
+    transactionsRequest.then((transactions) => {
+        transactionsCache.set(transactionsCacheKey, transactions);
+    });
+
+    if (transactionsCache.has(transactionsCacheKey)) {
+        // If we already have a cache result, we return that for now (transactions will
+        // still update the cache in the background though).
+        return transactionsCache.get<TransactionData[]>(transactionsCacheKey)!;
+    } else {
+        // If there's no cached data, we just wait until the full request is done, like normal:
+        return transactionsRequest;
+    }}
+
+// We cache paddle subscription to user id map, which never changes
+const paddleUserIdCache: { [subscriptionId: string | number]: string | number } = {};
+
+async function getPaddleUserId(billingMetadata: PayingUserMetadata) {
     const paddleUserId = billingMetadata.paddle_user_id
         // If not set, read from the cache, from previous user id lookups:
         ?? paddleUserIdCache[billingMetadata.subscription_id!]
@@ -291,23 +328,7 @@ async function getTransactions(rawMetadata: RawMetadata) {
         paddleUserIdCache[billingMetadata.subscription_id!] = paddleUserId;
     }
 
-    if (!paddleUserId) return [];
-
-    // If you have a Paddle account at all, we always query for your transaction data:
-    const transactionsRequest = getPaddleUserTransactions(paddleUserId)
-        .then((transactions) => {
-            paddleTransactionsCache.set(paddleUserId, transactions);
-            return transactions;
-        });
-
-    if (paddleTransactionsCache.has(paddleUserId)) {
-        // If we already have a cache result, we return that for now (transactions will
-        // still update the cache in the background though).
-        return paddleTransactionsCache.get<TransactionData[]>(paddleUserId)!;
-    } else {
-        // If there's no cached data, we just wait until the request is done like normal:
-        return transactionsRequest;
-    }
+    return paddleUserId;
 }
 
 async function getTeamMembers(userId: string, rawMetadata: RawMetadata) {

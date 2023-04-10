@@ -247,7 +247,7 @@ export async function getPaddleUserIdFromSubscription(
     }
 }
 
-export async function getPaddleUserTransactions(
+export async function lookupPaddleUserTransactions(
     userId: string | number
 ): Promise<TransactionData[]> {
     const response = await makePaddleApiRequest(
