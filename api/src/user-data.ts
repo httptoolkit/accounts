@@ -10,6 +10,7 @@ import type {
 } from '../../module/src/types';
 
 import {
+    getPaddleIdForSku,
     getPaddleUserIdFromSubscription,
     getPaddleUserTransactions,
     getSkuForPaddleId
@@ -91,6 +92,12 @@ async function getRawUserData(userId: string): Promise<RawMetadata> {
 function migrateOldUserData(data: RawMetadata): RawMetadata {
     if ('subscription_plan_id' in data && !data.subscription_sku) {
         data.subscription_sku = getSkuForPaddleId(data.subscription_plan_id);
+    }
+
+    // Just temporarily (remove after May 2023) we return a synthetic subscription_plan_id
+    // even if not present, as a quick hack to avoid breaking old UI implementations:
+    if ('subscription_sku' in data && !data.subscription_plan_id) {
+        data.subscription_plan_id = getPaddleIdForSku(data.subscription_sku ?? 'pro-monthly');
     }
 
     // All subscription & paddle ids should be strings now

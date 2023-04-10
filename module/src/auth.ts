@@ -396,7 +396,8 @@ function parseBillingData(userJwt: string | null): BillingAccount {
 function parseSubscriptionData(rawData: SubscriptionData) {
     const subscription = {
         status: rawData.subscription_status,
-        plan: getSubscriptionPlanCode(rawData.subscription_plan_id),
+        plan: rawData.subscription_sku
+            ?? getSubscriptionPlanCode(rawData.subscription_plan_id),
         quantity: rawData.subscription_quantity,
         expiry: rawData.subscription_expiry ? new Date(rawData.subscription_expiry) : undefined,
         updateBillingDetailsUrl: rawData.update_url,
