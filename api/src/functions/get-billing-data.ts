@@ -54,7 +54,7 @@ export const handler = catchErrors(async (event) => {
             headers,
             body: signedAppData
         };
-    } catch (e) {
+    } catch (e: any) {
         await reportError(e);
 
         return {

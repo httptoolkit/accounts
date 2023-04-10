@@ -62,7 +62,7 @@ export const handler = catchErrors(async (event) => {
                 response: { products: pricingResult }
             })
         };
-    } catch (e) {
+    } catch (e: any) {
         await reportError(e);
         return {
             statusCode: e.statusCode ?? 502,

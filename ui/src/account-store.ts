@@ -81,7 +81,7 @@ export class AccountStore {
         try {
             this.user = yield getBillingData();
             loginEvents.emit('user_data_loaded');
-        } catch (e) {
+        } catch (e: any) {
             console.log("Failed to load user data");
             reportError(e);
             this.user = undefined;
