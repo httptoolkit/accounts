@@ -50,6 +50,7 @@ export interface TrialUserMetadata extends BaseMetadata {
 export interface PayingUserMetadata extends TrialUserMetadata {
     payment_provider?: 'paddle' | 'paypro'; // Not set for old subscriptions only
     paddle_user_id?: number | string; // New ids should all be strings
+    paypro_user_id?: string;
 
     // Paddle-specific, only used to find the paddle_user_id in cases
     // where that wasn't previously recorded.
