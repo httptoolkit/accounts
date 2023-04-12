@@ -36,9 +36,6 @@ export const handler = catchErrors(async (event) => {
         // If 'Manual', the subscription is implicitly cancelled straight away
         const isSubscriptionActive = eventData.SUBSCRIPTION_RENEWAL_TYPE === 'Auto';
 
-        const userId = eventData.CUSTOMER_ID;
-        if (!userId) throw new Error(`Received webhook with no customer id`);
-
         const subscriptionId = eventData.SUBSCRIPTION_ID;
         if (!subscriptionId) throw new Error(`Received webhook with no subscription id`);
 
@@ -51,8 +48,7 @@ export const handler = catchErrors(async (event) => {
             subscription_expiry: endDate.valueOf(),
 
             payment_provider: 'paypro',
-            paypro_user_id: userId,
-            subscription_id: subscriptionId
+            subscription_id: subscriptionId // Useful for API requests later
         });
     } else {
         console.log(`Ignoring ${eventType} event`);

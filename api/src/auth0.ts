@@ -49,12 +49,13 @@ export interface TrialUserMetadata extends BaseMetadata {
 
 export interface PayingUserMetadata extends TrialUserMetadata {
     payment_provider?: 'paddle' | 'paypro'; // Not set for old subscriptions only
-    paddle_user_id?: number | string; // New ids should all be strings
-    paypro_user_id?: string;
 
-    // Paddle-specific, only used to find the paddle_user_id in cases
-    // where that wasn't previously recorded.
-    subscription_id: number | string; // New ids should all be strings
+    // Only set for Paddle customers. Used for transaction lookup API requests.
+    paddle_user_id?: number | string; // New ids should all be strings.
+
+    // Set for Paddle & PayPro customers. Paddle uses only for older accounts
+    // where paddle_user_id isn't set. PayPro uses for API requests.
+    subscription_id: number | string; // New ids should all be strings.
 
     subscription_quantity: number,
     last_receipt_url?: string, // Set after first successful payment

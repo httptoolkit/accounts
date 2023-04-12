@@ -154,7 +154,6 @@ describe('PayPro webhooks', () => {
                 app_metadata: {
                     subscription_status: 'active',
                     payment_provider: 'paypro',
-                    paypro_user_id: '123',
                     subscription_id: '456',
                     subscription_sku: 'pro-monthly',
                     subscription_quantity: 1,
