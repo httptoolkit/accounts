@@ -212,6 +212,7 @@ export interface PayProWebhookData {
     CUSTOMER_ID: string;
     SUBSCRIPTION_ID: string; // Number as string.
     ORDER_PLACED_TIME_UTC: string; // Like "03/01/2023 19:02:59"
+    INVOICE_URL?: string;
 
     SUBSCRIPTION_STATUS_NAME: 'Active' | 'Suspended' | 'Terminated' | 'Finished';
     SUBSCRIPTION_NEXT_CHARGE_DATE: string; // Like "4/21/2023 1:45 PM" (UTC)

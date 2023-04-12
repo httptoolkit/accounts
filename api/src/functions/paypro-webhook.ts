@@ -45,7 +45,8 @@ export const handler = catchErrors(async (event) => {
                 : 'deleted',
             subscription_sku: sku,
             subscription_quantity: quantity,
-            subscription_expiry: endDate.valueOf(),
+            subscription_expiry: endDate?.valueOf(),
+            last_receipt_url: eventData.INVOICE_URL,
 
             payment_provider: 'paypro',
             subscription_id: subscriptionId // Useful for API requests later

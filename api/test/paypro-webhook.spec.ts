@@ -107,6 +107,7 @@ describe('PayPro webhooks', () => {
             SUBSCRIPTION_RENEWAL_TYPE: 'Auto',
             SUBSCRIPTION_NEXT_CHARGE_DATE: formatRenewalDate(moment('2025-01-01')),
             ORDER_PLACED_TIME_UTC: formatOrderDate(moment()),
+            INVOICE_URL: "https://store.payproglobal.com/Invoice?Id=MY_UUID",
             PRODUCT_QUANTITY: '1',
             TEST_MODE: '0',
             CUSTOMER_EMAIL: 'test@email.com',
@@ -143,6 +144,7 @@ describe('PayPro webhooks', () => {
                 SUBSCRIPTION_RENEWAL_TYPE: 'Auto',
                 SUBSCRIPTION_NEXT_CHARGE_DATE: formatRenewalDate(nextRenewal),
                 ORDER_PLACED_TIME_UTC: formatOrderDate(moment()),
+                INVOICE_URL: "https://store.payproglobal.com/Invoice?Id=MY_UUID",
                 PRODUCT_QUANTITY: '1',
                 TEST_MODE: '0',
                 CUSTOMER_EMAIL: userEmail
@@ -157,7 +159,8 @@ describe('PayPro webhooks', () => {
                     subscription_id: '456',
                     subscription_sku: 'pro-monthly',
                     subscription_quantity: 1,
-                    subscription_expiry: nextRenewal.valueOf()
+                    subscription_expiry: nextRenewal.valueOf(),
+                    last_receipt_url: "https://store.payproglobal.com/Invoice?Id=MY_UUID"
                 }
             });
         });
