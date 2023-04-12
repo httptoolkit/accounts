@@ -20,21 +20,30 @@ export const handler = catchErrors(async (event) => {
     if (!email) throw new Error('Received PayPro webhook with no customer email');
 
     if ([
-        'OrderCharged' // Initial charge for a new subscription
+        'OrderCharged', // Initial charge for a new subscription
+        'SubscriptionChargeSucceed', // Successful renewal
+        'SubscriptionTerminated' // Subscription cancelled
     ].includes(eventType)) {
         console.log(`Updating user data from ${eventType} event`);
 
         const sku = eventData.ORDER_ITEM_SKU;
         if (!SKUs.includes(sku)) throw new Error(`Received webhook for unrecognized SKU: ${sku}`);
 
-        const endDate = moment.utc(eventData.SUBSCRIPTION_NEXT_CHARGE_DATE, PayProRenewalDateFormat);
-        if (endDate.isBefore(moment())) throw new Error(`Received webhook with invalid renewal date: ${endDate}`);
+        const isSubscriptionActive = eventData.SUBSCRIPTION_STATUS_NAME === 'Active' &&
+            // If 'Manual', the subscription is implicitly cancelled, so renewal date is actually expiry
+            eventData.SUBSCRIPTION_RENEWAL_TYPE === 'Auto';
+
+        const endDate = eventData.SUBSCRIPTION_NEXT_CHARGE_DATE
+            ? moment.utc(eventData.SUBSCRIPTION_NEXT_CHARGE_DATE, PayProRenewalDateFormat)
+            : undefined;
+        if (isSubscriptionActive && (!endDate || endDate.isBefore(moment()))) {
+            throw new Error(`Received webhook with invalid renewal date: ${
+                eventData.SUBSCRIPTION_NEXT_CHARGE_DATE
+            }`);
+        }
 
         const quantity = parseInt(eventData.PRODUCT_QUANTITY, 10);
         if (isNaN(quantity) || quantity < 1) throw new Error(`Received webhook for invalid quantity: ${quantity}`);
-
-        // If 'Manual', the subscription is implicitly cancelled straight away
-        const isSubscriptionActive = eventData.SUBSCRIPTION_RENEWAL_TYPE === 'Auto';
 
         const subscriptionId = eventData.SUBSCRIPTION_ID;
         if (!subscriptionId) throw new Error(`Received webhook with no subscription id`);

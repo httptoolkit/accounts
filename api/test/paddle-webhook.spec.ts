@@ -286,14 +286,15 @@ describe('Paddle webhooks', () => {
             expect(memberUpdateRequests.length).to.equal(0);
         });
 
-        it('successfully renew subscriptions', async () => {
+        it('should successfully renew subscriptions', async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
             const nextRenewal = moment('2025-01-01');
 
             givenUser(userId, userEmail, {
                 subscription_status: 'active',
-                paddle_user_id: 123,
+                payment_provider: 'paddle',
+                paddle_user_id: '123',
                 subscription_id: 456,
                 subscription_sku: 'pro-annual',
                 subscription_plan_id: 550382,

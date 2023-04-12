@@ -98,7 +98,6 @@ describe('PayPro webhooks', () => {
             .asPriority(100)
             .thenReply(200);
 
-
         await triggerWebhook(functionServer, {
             IPN_TYPE_NAME: 'OrderCharged',
             ORDER_ITEM_SKU: 'pro-monthly',
@@ -126,6 +125,63 @@ describe('PayPro webhooks', () => {
     describe("for Pro subscriptions", () => {
 
         it('successfully handle new subscriptions for an existing user', async () => {
+            const userEmail = 'user@example.com';
+            givenNoUsers();
+
+            const userId = "qwe";
+            const userCreate = await auth0Server
+                .forPost('/api/v2/users')
+                .thenJson(201, {
+                    user_id: userId,
+                    app_metadata: {}
+                });
+
+            const userUpdate = await auth0Server
+                .forPatch('/api/v2/users/' + userId)
+                .thenReply(200);
+
+            const nextRenewal = moment('2025-01-01');
+
+            await triggerWebhook(functionServer, {
+                IPN_TYPE_NAME: 'OrderCharged',
+                ORDER_ITEM_SKU: 'pro-monthly',
+                CUSTOMER_ID: '123',
+                SUBSCRIPTION_ID: '456',
+                SUBSCRIPTION_STATUS_NAME: 'Active',
+                SUBSCRIPTION_RENEWAL_TYPE: 'Auto',
+                SUBSCRIPTION_NEXT_CHARGE_DATE: formatRenewalDate(nextRenewal),
+                ORDER_PLACED_TIME_UTC: formatOrderDate(moment()),
+                INVOICE_URL: "https://store.payproglobal.com/Invoice?Id=MY_UUID",
+                PRODUCT_QUANTITY: '1',
+                TEST_MODE: '0',
+                CUSTOMER_EMAIL: userEmail
+            });
+
+            const createRequests = await userCreate.getSeenRequests();
+            expect(createRequests.length).to.equal(1);
+            expect(await createRequests[0].body.getJson()).to.deep.equal({
+                email: userEmail,
+                connection: 'email',
+                email_verified: true,
+                app_metadata: {}
+            });
+
+            const updateRequests = await userUpdate.getSeenRequests();
+            expect(updateRequests.length).to.equal(1);
+            expect(await updateRequests[0].body.getJson()).to.deep.equal({
+                app_metadata: {
+                    subscription_status: 'active',
+                    payment_provider: 'paypro',
+                    subscription_id: '456',
+                    subscription_sku: 'pro-monthly',
+                    subscription_quantity: 1,
+                    subscription_expiry: nextRenewal.valueOf(),
+                    last_receipt_url: "https://store.payproglobal.com/Invoice?Id=MY_UUID"
+                }
+            });
+        });
+
+        it('successfully handle new subscriptions for an existing user', async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
             givenUser(userId, userEmail);
@@ -141,6 +197,7 @@ describe('PayPro webhooks', () => {
                 ORDER_ITEM_SKU: 'pro-monthly',
                 CUSTOMER_ID: '123',
                 SUBSCRIPTION_ID: '456',
+                SUBSCRIPTION_STATUS_NAME: 'Active',
                 SUBSCRIPTION_RENEWAL_TYPE: 'Auto',
                 SUBSCRIPTION_NEXT_CHARGE_DATE: formatRenewalDate(nextRenewal),
                 ORDER_PLACED_TIME_UTC: formatOrderDate(moment()),
@@ -161,6 +218,88 @@ describe('PayPro webhooks', () => {
                     subscription_quantity: 1,
                     subscription_expiry: nextRenewal.valueOf(),
                     last_receipt_url: "https://store.payproglobal.com/Invoice?Id=MY_UUID"
+                }
+            });
+        });
+
+        it('should successfully renew subscriptions', async () => {
+            const userId = "abc";
+            const userEmail = 'user@example.com';
+            const nextRenewal = moment('2025-01-01');
+
+            givenUser(userId, userEmail, {
+                subscription_status: 'active',
+                subscription_sku: 'pro-annual',
+                subscription_expiry: nextRenewal.subtract(30, 'days').valueOf()
+            });
+
+            const userUpdate = await auth0Server
+                .forPatch('/api/v2/users/' + userId)
+                .thenReply(200);
+
+            await triggerWebhook(functionServer, {
+                IPN_TYPE_NAME: 'SubscriptionChargeSucceed',
+                ORDER_ITEM_SKU: 'pro-annual',
+                SUBSCRIPTION_ID: '456',
+                SUBSCRIPTION_RENEWAL_TYPE: 'Auto',
+                SUBSCRIPTION_STATUS_NAME: 'Active',
+                SUBSCRIPTION_NEXT_CHARGE_DATE: formatRenewalDate(nextRenewal),
+                PRODUCT_QUANTITY: '1',
+                TEST_MODE: '0',
+                CUSTOMER_EMAIL: userEmail
+            });
+
+            const updateRequests = await userUpdate.getSeenRequests();
+            expect(updateRequests.length).to.equal(1);
+            expect(await updateRequests[0].body.getJson()).to.deep.equal({
+                app_metadata: {
+                    subscription_status: 'active',
+                    payment_provider: 'paypro',
+                    subscription_id: '456',
+                    subscription_sku: 'pro-annual',
+                    subscription_quantity: 1,
+                    subscription_expiry: nextRenewal.valueOf()
+                }
+            });
+        });
+
+        it('should cancel terminated subscriptions', async () => {
+            const userId = "abc";
+            const userEmail = 'user@example.com';
+            const nextRenewal = moment('2025-01-01');
+
+            givenUser(userId, userEmail, {
+                subscription_status: 'active',
+                subscription_sku: 'pro-annual',
+                subscription_expiry: nextRenewal.subtract(30, 'days').valueOf()
+            });
+
+            const userUpdate = await auth0Server
+                .forPatch('/api/v2/users/' + userId)
+                .thenReply(200);
+
+            await triggerWebhook(functionServer, {
+                IPN_TYPE_NAME: 'SubscriptionTerminated',
+                ORDER_ITEM_SKU: 'pro-annual',
+                SUBSCRIPTION_ID: '456',
+                SUBSCRIPTION_RENEWAL_TYPE: 'Auto',
+                SUBSCRIPTION_STATUS_NAME: 'Terminated',
+                SUBSCRIPTION_NEXT_CHARGE_DATE: "",
+                PRODUCT_QUANTITY: '1',
+                TEST_MODE: '0',
+                CUSTOMER_EMAIL: userEmail
+            });
+
+            const updateRequests = await userUpdate.getSeenRequests();
+            expect(updateRequests.length).to.equal(1);
+            expect(await updateRequests[0].body.getJson()).to.deep.equal({
+                app_metadata: {
+                    subscription_status: 'deleted',
+                    payment_provider: 'paypro',
+                    subscription_id: '456',
+                    subscription_sku: 'pro-annual',
+                    subscription_quantity: 1
+                    // Expiry is left unmodified - it should be the existing renewal date.
                 }
             });
         });

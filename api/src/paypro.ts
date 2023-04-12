@@ -192,8 +192,8 @@ export type PayProIPNTypes =
     | 'SubscriptionRenewed' // Renewal
     | 'SubscriptionTerminated' // Cancellation
     | 'SubscriptionFinished' // Post-cancellation it's-really-over
-    | 'SubscriptionChargeSucceed' // Any (recurring + initial?) subscription charge
-    | 'SubscriptionChargeFailed' // Any (ditto?) failure
+    | 'SubscriptionChargeSucceed' // Recurring subscription charge
+    | 'SubscriptionChargeFailed' // Subscription renewal charge failure
     | 'SubscriptionSuspended'; // Subscription paused
 
 export interface PayProWebhookData {
@@ -215,7 +215,7 @@ export interface PayProWebhookData {
     INVOICE_URL?: string;
 
     SUBSCRIPTION_STATUS_NAME: 'Active' | 'Suspended' | 'Terminated' | 'Finished';
-    SUBSCRIPTION_NEXT_CHARGE_DATE: string; // Like "4/21/2023 1:45 PM" (UTC)
+    SUBSCRIPTION_NEXT_CHARGE_DATE: string; // Like "4/21/2023 1:45 PM" (UTC). "" once terminated.
     SUBSCRIPTION_RENEWAL_TYPE: 'Auto' | 'Manual';
 
     ORDER_ID: string;
