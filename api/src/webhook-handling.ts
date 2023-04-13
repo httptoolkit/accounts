@@ -11,7 +11,6 @@ import {
 } from './auth0';
 import { reportError, StatusError } from './errors';
 import { flushMetrics, trackEvent } from './metrics';
-import { setRevenueTraits } from './accounting';
 
 async function getOrCreateUserData(email: string): Promise<User> {
     const users = await mgmtClient.getUsersByEmail(email);
@@ -93,7 +92,7 @@ export async function updateTeamData(email: string, subscription: Partial<Paying
     }
 }
 
-function parsePassthrough(passthroughData: string | undefined) {
+export function parseCheckoutPassthrough(passthroughData: string | undefined) {
     try {
         if (!passthroughData) {
             throw new Error('Passthrough was empty');
@@ -113,45 +112,11 @@ function parsePassthrough(passthroughData: string | undefined) {
     }
 }
 
-// Webhooks should call this any time a subscription changes, and it'll ensure that
-// the resulting accounting data gets updated (primarily in Profitwell) so we can
-// see how many subscriptions there are in which provider etc.
-export async function updateAccountingStats(
-    provider: 'paddle' | 'paypro',
-    event: 'subscribe' | 'update' | 'cancel',
-    email: string,
-    passthroughData: string | undefined
-) {
-    try {
-        const parsedPassthrough = parsePassthrough(passthroughData);
-        const countryCode = parsedPassthrough?.country;
-
-        if (provider === 'paddle') {
-            // Paddle metrics go directly to Profitwell automatically (because they bought
-            // the entire company), so we can skip tracking events in most cases, but we do
-            // still want to add overall metadata for initial subscriptions.
-            if (event !== 'subscribe') return;
-
-            setRevenueTraits(email, {
-                "Payment provider": 'paddle',
-                "Country code": countryCode
-            });
-        } else {
-            reportError(`Can't track revenue for unrecognized payment provider: ${provider}`);
-        }
-    } catch (e: any) {
-        reportError(e);
-    }
-}
-
 // Independently of overall stats, we also log checkout events so we can measure failures:
-export async function reportSuccessfulCheckout(passthroughData: string | undefined) {
-    const parsedPassthrough = parsePassthrough(passthroughData);
+export async function reportSuccessfulCheckout(checkoutId: string | undefined) {
+    if (!checkoutId) return; // Set in redirect-to-checkout, so may not exist for manual checkouts
 
-    if (parsedPassthrough?.id) { // Set in redirect-to-checkout
-        const sessionId = parsedPassthrough.id;
-        // Track successes, so we can calculate checkout conversion rates:
-        trackEvent(sessionId, 'Checkout', 'Success');
-        await flushMetrics();
-    }
+    // Track successes, so we can calculate checkout conversion rates:
+    trackEvent(checkoutId, 'Checkout', 'Success');
+    await flushMetrics();
 }

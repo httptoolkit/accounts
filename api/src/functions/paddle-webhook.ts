@@ -23,8 +23,9 @@ import {
     reportSuccessfulCheckout,
     updateProUserData,
     updateTeamData,
-    updateAccountingStats
+    parseCheckoutPassthrough
 } from '../webhook-handling';
+import { setRevenueTraits } from '../accounting';
 
 function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<PayingUserMetadata> {
     if (
@@ -164,10 +165,22 @@ export const handler = catchErrors(async (event) => {
         console.log(`Ignoring ${paddleData.alert_name} event`);
     }
 
-    // Add successful checkouts to our metrics:
+    // Record successful checkouts in our accounting backend & metrics:
     if (paddleData.alert_name === 'subscription_created') {
-        updateAccountingStats('paddle', 'subscribe', email, paddleData.passthrough);
-        await reportSuccessfulCheckout(paddleData.passthrough);
+        try {
+            const parsedPassthrough = parseCheckoutPassthrough(paddleData.passthrough);
+            const countryCode = parsedPassthrough?.country;
+            await Promise.all([
+                setRevenueTraits(email, {
+                    "Payment provider": 'paddle',
+                    "Country code": countryCode
+                }),
+                reportSuccessfulCheckout(parsedPassthrough?.id)
+            ]);
+        } catch (e: any) {
+            console.log(e);
+            reportError('Failed to record new Paddle subscription');
+        }
     }
 
     // All done
