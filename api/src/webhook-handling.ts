@@ -11,6 +11,7 @@ import {
 } from './auth0';
 import { reportError, StatusError } from './errors';
 import { flushMetrics, trackEvent } from './metrics';
+import { setRevenueTraits } from './accounting';
 
 async function getOrCreateUserData(email: string): Promise<User> {
     const users = await mgmtClient.getUsersByEmail(email);
@@ -92,23 +93,60 @@ export async function updateTeamData(email: string, subscription: Partial<Paying
     }
 }
 
-export async function reportSuccessfulCheckout(passthroughData: string | undefined) {
-    let parsedPassthrough: Record<string, string | undefined> | undefined = undefined;
+function parsePassthrough(passthroughData: string | undefined) {
     try {
         if (!passthroughData) {
             throw new Error('Passthrough was empty');
         }
 
-        parsedPassthrough = JSON.parse(passthroughData) ?? {};
+        const parsedPassthrough = JSON.parse(passthroughData) ?? {};
 
         if (!Object.keys(parsedPassthrough!).length) {
             throw new Error('Parsed passthrough data has no content');
         }
+
+        return parsedPassthrough as Record<string, string | undefined>;
     } catch (e) {
         console.log(e);
         reportError(`Failed to parse passthrough data: ${(e as Error).message ?? e}`);
-        // We report errors here, but continue - we just skip metrics in this case
+        // We report errors here, but continue - we'll just skip metrics in this case
     }
+}
+
+// Webhooks should call this any time a subscription changes, and it'll ensure that
+// the resulting accounting data gets updated (primarily in Profitwell) so we can
+// see how many subscriptions there are in which provider etc.
+export async function updateAccountingStats(
+    provider: 'paddle' | 'paypro',
+    event: 'subscribe' | 'update' | 'cancel',
+    email: string,
+    passthroughData: string | undefined
+) {
+    try {
+        const parsedPassthrough = parsePassthrough(passthroughData);
+        const countryCode = parsedPassthrough?.country;
+
+        if (provider === 'paddle') {
+            // Paddle metrics go directly to Profitwell automatically (because they bought
+            // the entire company), so we can skip tracking events in most cases, but we do
+            // still want to add overall metadata for initial subscriptions.
+            if (event !== 'subscribe') return;
+
+            setRevenueTraits(email, {
+                "Payment provider": 'paddle',
+                "Country code": countryCode
+            });
+        } else {
+            reportError(`Can't track revenue for unrecognized payment provider: ${provider}`);
+        }
+    } catch (e: any) {
+        reportError(e);
+    }
+}
+
+// Independently of overall stats, we also log checkout events so we can measure failures:
+export async function reportSuccessfulCheckout(passthroughData: string | undefined) {
+    const parsedPassthrough = parsePassthrough(passthroughData);
 
     if (parsedPassthrough?.id) { // Set in redirect-to-checkout
         const sessionId = parsedPassthrough.id;

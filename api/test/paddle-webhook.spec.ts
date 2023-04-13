@@ -11,6 +11,8 @@ import {
     privateKey,
     auth0Server,
     AUTH0_PORT,
+    profitwellApiServer,
+    PROFITWELL_API_PORT,
     givenUser,
     givenNoUsers
 } from './test-util';
@@ -62,13 +64,19 @@ describe('Paddle webhooks', () => {
 
     beforeEach(async () => {
         functionServer = await startServer();
+
         await auth0Server.start(AUTH0_PORT);
         await auth0Server.forPost('/oauth/token').thenReply(200);
+
+        // We don't test Profitwell for now, we just need it to not crash:
+        await profitwellApiServer.start(PROFITWELL_API_PORT);
+        await profitwellApiServer.forAnyRequest().thenReply(200);
     });
 
     afterEach(async () => {
         await new Promise((resolve) => functionServer.stop(resolve));
         await auth0Server.stop();
+        await profitwellApiServer.stop();
     });
 
     describe("for Pro subscriptions", () => {

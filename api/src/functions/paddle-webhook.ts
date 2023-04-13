@@ -22,7 +22,8 @@ import {
     banUser,
     reportSuccessfulCheckout,
     updateProUserData,
-    updateTeamData
+    updateTeamData,
+    updateAccountingStats
 } from '../webhook-handling';
 
 function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<PayingUserMetadata> {
@@ -125,6 +126,10 @@ export const handler = catchErrors(async (event) => {
 
     validatePaddleWebhook(paddleData);
 
+    // Paddle uses casing in emails, whilst it seems that auth0 does not:
+    // https://community.auth0.com/t/creating-a-user-converts-email-to-lowercase/6678/4
+    const email = paddleData.email.toLowerCase();
+
     if ([
         'subscription_created',
         'subscription_updated',
@@ -132,10 +137,6 @@ export const handler = catchErrors(async (event) => {
         'subscription_payment_succeeded',
         'subscription_payment_failed'
     ].includes(paddleData.alert_name)) {
-        // Paddle uses casing in emails, whilst it seems that auth0 does not:
-        // https://community.auth0.com/t/creating-a-user-converts-email-to-lowercase/6678/4
-        const email = paddleData.email.toLowerCase();
-
         const userData = getSubscriptionFromHookData(paddleData);
         const sku = getSku(userData);
 
@@ -158,7 +159,6 @@ export const handler = catchErrors(async (event) => {
         // to avoid paying for it (and cause us major existential problems in return).
         // In either case, this is abusive behaviour, and we ban them from the app. This results in an alert
         // at startup, telling them to contact support and then insta-closing the app.
-        const email = paddleData.email.toLowerCase();
         await banUser(email);
     } else {
         console.log(`Ignoring ${paddleData.alert_name} event`);
@@ -166,6 +166,7 @@ export const handler = catchErrors(async (event) => {
 
     // Add successful checkouts to our metrics:
     if (paddleData.alert_name === 'subscription_created') {
+        updateAccountingStats('paddle', 'subscribe', email, paddleData.passthrough);
         await reportSuccessfulCheckout(paddleData.passthrough);
     }
 

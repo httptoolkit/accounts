@@ -83,7 +83,18 @@ export const ipApiServer = getLocal({
     }
 });
 
-export const EXCHANGE_RATE_API_PORT = 9094;
+export const PROFITWELL_API_PORT = 9094;
+process.env.PROFITWELL_API_BASE_URL = `http://localhost:${PROFITWELL_API_PORT}`;
+
+export const profitwellApiServer = getLocal({
+    https: {
+        keyPath: path.join(__dirname, 'fixtures', 'test-ca.key'),
+        certPath: path.join(__dirname, 'fixtures', 'test-ca.pem'),
+        keyLength: 2048
+    }
+});
+
+export const EXCHANGE_RATE_API_PORT = 9095;
 process.env.EXCHANGE_RATE_BASE_URL = `http://localhost:${EXCHANGE_RATE_API_PORT}`;
 
 export const exchangeRateServer = getLocal({
