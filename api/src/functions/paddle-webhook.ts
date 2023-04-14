@@ -1,4 +1,4 @@
-import { initSentry, catchErrors } from '../errors';
+import { initSentry, catchErrors, reportError } from '../errors';
 initSentry();
 
 import _ from 'lodash';
