@@ -11,6 +11,8 @@ import {
     startServer,
     auth0Server,
     AUTH0_PORT,
+    profitwellApiServer,
+    PROFITWELL_API_PORT,
     givenUser,
     givenNoUsers,
     PAYPRO_IPN_VALIDATION_KEY
@@ -84,11 +86,14 @@ describe('PayPro webhooks', () => {
         functionServer = await startServer();
         await auth0Server.start(AUTH0_PORT);
         await auth0Server.forPost('/oauth/token').thenReply(200);
+
+        await profitwellApiServer.start(PROFITWELL_API_PORT);
     });
 
     afterEach(async () => {
         await new Promise((resolve) => functionServer.stop(resolve));
         await auth0Server.stop();
+        await profitwellApiServer.stop();
     });
 
     it('should reject invalid webhooks', async () => {
@@ -124,7 +129,7 @@ describe('PayPro webhooks', () => {
 
     describe("for Pro subscriptions", () => {
 
-        it('successfully handle new subscriptions for an existing user', async () => {
+        it('successfully handle new subscriptions for a new user', async () => {
             const userEmail = 'user@example.com';
             givenNoUsers();
 
@@ -302,6 +307,97 @@ describe('PayPro webhooks', () => {
                     // Expiry is left unmodified - it should be the existing renewal date.
                 }
             });
+        });
+
+        it('should log subscriptions in Profitwell', async () => {
+            const userId = "abc";
+            const userEmail = 'user@example.com';
+            givenUser(userId, userEmail);
+
+            await auth0Server
+                .forPatch('/api/v2/users/' + userId)
+                .thenReply(200);
+
+            const subscriptionId = '456';
+
+            const profitwellSubscriptionCreation = await profitwellApiServer
+                .forPost('/v2/subscriptions/')
+                .thenReply(200);
+
+            const profitwellSubscriptionTraits = await profitwellApiServer
+                .forPut('/v2/customer_traits/trait/')
+                .thenReply(200);
+
+            const profitwellSubscriptionDeletion = await profitwellApiServer
+                .forDelete(`/v2/subscriptions/${subscriptionId}`)
+                .thenReply(200);
+
+            const subscriptionCreation = moment.utc('2020-01-01');
+            const nextRenewal = moment.utc('2025-01-01');
+
+            await triggerWebhook(functionServer, {
+                IPN_TYPE_NAME: 'OrderCharged',
+                ORDER_ITEM_SKU: 'pro-monthly',
+                CUSTOMER_ID: '123',
+                SUBSCRIPTION_ID: subscriptionId,
+                SUBSCRIPTION_STATUS_NAME: 'Active',
+                SUBSCRIPTION_RENEWAL_TYPE: 'Auto',
+                SUBSCRIPTION_NEXT_CHARGE_DATE: formatRenewalDate(nextRenewal),
+                ORDER_PLACED_TIME_UTC: formatOrderDate(subscriptionCreation),
+                INVOICE_URL: "https://store.payproglobal.com/Invoice?Id=MY_UUID",
+                PRODUCT_QUANTITY: '1',
+                ORDER_CURRENCY_CODE: 'EUR',
+                ORDER_ITEM_TOTAL_AMOUNT: '10',
+                TEST_MODE: '0',
+                CUSTOMER_EMAIL: userEmail,
+                ORDER_CUSTOM_FIELDS: 'x-passthrough={"countryCode":"ABC"}'
+            });
+
+            givenUser(userId, userEmail, {
+                subscription_expiry: nextRenewal.valueOf()
+            });
+
+            await triggerWebhook(functionServer, {
+                IPN_TYPE_NAME: 'SubscriptionTerminated',
+                ORDER_ITEM_SKU: 'pro-annual',
+                SUBSCRIPTION_ID: '456',
+                SUBSCRIPTION_RENEWAL_TYPE: 'Auto',
+                SUBSCRIPTION_STATUS_NAME: 'Terminated',
+                SUBSCRIPTION_NEXT_CHARGE_DATE: "",
+                PRODUCT_QUANTITY: '1',
+                TEST_MODE: '0',
+                CUSTOMER_EMAIL: userEmail,
+                ORDER_CUSTOM_FIELDS: 'x-passthrough={"countryCode":"ABC"}'
+            });
+
+            const creationRequests = await profitwellSubscriptionCreation.getSeenRequests();
+            expect(creationRequests.length).to.equal(1);
+            expect(await creationRequests[0].body.getJson()).to.deep.equal({
+                email: userEmail,
+                user_alias: userEmail,
+                subscription_alias: subscriptionId,
+                plan_id: 550380, // Paddle's id for pro-monthly (used for data consistency)
+                plan_interval: 'month',
+                plan_currency: 'eur',
+                value: 1000, // €10 in cents
+                effective_date: Math.round(subscriptionCreation.valueOf() / 1000)
+            });
+
+            const customerTraitRequests = await profitwellSubscriptionTraits.getSeenRequests();
+            expect(customerTraitRequests.length).to.equal(2);
+            expect(
+                await Promise.all(customerTraitRequests.map(async (r) => await r.body.getJson()))
+            ).to.deep.equal([
+                { email: userEmail, category: 'Payment provider', trait: 'paypro' },
+                { email: userEmail, category: 'Country code', trait: 'ABC' }
+            ]);
+
+            const deletionRequests = await profitwellSubscriptionDeletion.getSeenRequests();
+            expect(deletionRequests.length).to.equal(1);
+            const deletionParams = new URL(deletionRequests[0].url).searchParams;
+            expect([...deletionParams.entries()]).to.deep.equal([
+                ['effective_date', (nextRenewal.valueOf() / 1000).toString()]
+            ]);
         });
 
     });

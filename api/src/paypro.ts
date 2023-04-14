@@ -208,10 +208,11 @@ export interface PayProWebhookData {
     PRODUCT_ID: string;
     ORDER_ITEM_SKU: SKU;
     PRODUCT_QUANTITY: string;
+    ORDER_ITEM_TOTAL_AMOUNT: string;
 
     CUSTOMER_ID: string;
     SUBSCRIPTION_ID: string; // Number as string.
-    ORDER_PLACED_TIME_UTC: string; // Like "03/01/2023 19:02:59"
+    ORDER_PLACED_TIME_UTC: string; // Like "03/21/2023 19:02:59". Set for subscribe & renewal.
     INVOICE_URL?: string;
 
     SUBSCRIPTION_STATUS_NAME: 'Active' | 'Suspended' | 'Terminated' | 'Finished';
@@ -221,6 +222,7 @@ export interface PayProWebhookData {
     ORDER_ID: string;
     ORDER_STATUS: string;
     ORDER_TOTAL_AMOUNT: string;
+    ORDER_CURRENCY_CODE: string; // E.g. EUR
     ORDER_CUSTOM_FIELDS: string; // a=b,b=c params, including x-passthrough=[JSON}
 }
 
@@ -254,4 +256,25 @@ export function validatePayProWebhook(data: PayProWebhookData) {
             data.SIGNATURE
         }`);
     }
+}
+
+export function parsePayProCustomFields(
+    customFieldsData: string
+) {
+    // This format is _extremely_ poorly defined, and maybe impossible to parse correctly?
+    // It's "k=v,k=v" but v can contain commas. Here's a best attempt at handling this:
+    const customFieldMatch = /x-(\w+)=(.*?)(?=$|,x-\w+)/g;
+
+    const result: Record<string, string> = {};
+
+    while (true) {
+        const match = customFieldMatch.exec(customFieldsData);
+        if (!match) break;
+
+        const fieldName = match[1];
+        const fieldValue = match[2];
+        result[fieldName] = fieldValue;
+    }
+
+    return result;
 }

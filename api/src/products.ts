@@ -1,4 +1,4 @@
-import { SKU, PricedSKU } from "../../module/src/types";
+import { SKU, PricedSKU, Interval } from "../../module/src/types";
 
 import { AppMetadata, TrialUserMetadata } from "./auth0";
 import { getSkuForPaddleId } from "./paddle";
@@ -37,6 +37,15 @@ export const isProSubscription = (sku: string | undefined) =>
 
 export const isTeamSubscription = (sku: string | undefined) =>
     sku?.startsWith('team-');
+
+export const getSkuInterval = (sku: string): Interval => {
+    const interval = sku.split('-')[1];
+    if (interval !== 'annual' && interval !== 'monthly' && interval !== 'perpetual') {
+        throw new Error(`Unrecognized interval from SKU ${sku}`);
+    }
+
+    return interval;
+}
 
 export const getSku = (metadata: AppMetadata | undefined): SKU | undefined => {
     if (!metadata) return undefined;

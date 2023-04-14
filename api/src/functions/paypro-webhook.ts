@@ -1,12 +1,20 @@
-import { initSentry, catchErrors } from '../errors';
+import { initSentry, catchErrors, reportError } from '../errors';
 initSentry();
 
 import * as querystring from 'querystring';
 import moment from 'moment';
 
-import { PayProRenewalDateFormat, PayProWebhookData, validatePayProWebhook } from '../paypro';
-import { updateProUserData } from '../webhook-handling';
 import { SKUs } from '../products';
+import { recordCancellation, recordSubscription } from '../accounting';
+import { mgmtClient, PayingUserMetadata } from '../auth0';
+import { parseCheckoutPassthrough, updateProUserData } from '../webhook-handling';
+import {
+    parsePayProCustomFields,
+    PayProOrderDateFormat,
+    PayProRenewalDateFormat,
+    PayProWebhookData,
+    validatePayProWebhook
+} from '../paypro';
 
 export const handler = catchErrors(async (event) => {
     const eventData = querystring.parse(event.body || '') as unknown as PayProWebhookData;
@@ -60,6 +68,36 @@ export const handler = catchErrors(async (event) => {
             payment_provider: 'paypro',
             subscription_id: subscriptionId // Useful for API requests later
         });
+
+        try {
+            if (eventType === 'OrderCharged') {
+                const currency = eventData.ORDER_CURRENCY_CODE;
+                const price = parseFloat(eventData.ORDER_ITEM_TOTAL_AMOUNT);
+                const passthroughData = parsePayProCustomFields(eventData.ORDER_CUSTOM_FIELDS).passthrough;
+                const countryCode = parseCheckoutPassthrough(passthroughData)?.countryCode;
+
+                await recordSubscription(email, {
+                    id: subscriptionId,
+                    sku,
+                    currency,
+                    price,
+                    effectiveDate: moment.utc(eventData.ORDER_PLACED_TIME_UTC, PayProOrderDateFormat).toDate()
+                }, {
+                    "Payment provider": 'paypro',
+                    "Country code": countryCode
+                });
+            } else if (eventType === 'SubscriptionTerminated') {
+                const existingExpiry = await getExistingSubscriptionExpiry(email).catch(console.log);
+
+                await recordCancellation(
+                    subscriptionId,
+                    (existingExpiry ?? Date.now()) / 1000
+                )
+            }
+        } catch (e: any) {
+            console.log(e);
+            reportError('Failed to record PayPro subscription update');
+        }
     } else {
         console.log(`Ignoring ${eventType} event`);
     }
@@ -67,3 +105,11 @@ export const handler = catchErrors(async (event) => {
     // All done
     return { statusCode: 200, body: '' };
 });
+
+async function getExistingSubscriptionExpiry(email: string) {
+    const users = await mgmtClient.getUsersByEmail(email);
+    if (users.length !== 1) throw new Error(`${users.length} users with email ${email}`);
+    const user = users[0];
+
+    return (user.app_metadata as PayingUserMetadata)?.subscription_expiry;
+}

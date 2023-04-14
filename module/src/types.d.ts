@@ -15,6 +15,11 @@ export type SKU =
     | 'team-monthly'
     | 'team-annual';
 
+export type Interval =
+    | 'monthly'
+    | 'annual'
+    | 'perpetual';
+
 // We only support pro-perpetual for special cases - it's not priced
 // or shown on pricing/checkout pages:
 export type PricedSKU = Exclude<SKU, 'pro-perpetual'>;
