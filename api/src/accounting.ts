@@ -14,9 +14,11 @@ interface Traits {
     'Country code'?: string
 }
 
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 // Attempt to update the user to log subscription metadata (e.g. the provider used) so
 // we can work out where the actual money is later on.
-export async function setRevenueTraits(email: string, traits: Traits) {
+export async function setRevenueTraits(email: string, traits: Traits, retries = 3) {
     await Promise.all(Object.entries(traits).map(async ([category, trait]) => {
         if (!trait) return;
 
@@ -41,7 +43,17 @@ export async function setRevenueTraits(email: string, traits: Traits) {
             // Trait set OK, all good.
             return;
         }
-    }));
+    })).catch(async (e) => {
+        if (retries > 0) {
+            // Retry failures, to work around intermittent connection problems or race conditions
+            // where a parallel process (e.g. Paddle's Profitwell integration) or Profitwell's
+            // own processing hasn't completed yet and so the customer isn't recognized.
+            await delay(1000);
+            return setRevenueTraits(email, traits, retries - 1);
+        } else {
+            throw e;
+        }
+    });
 }
 
 export async function recordSubscription(
