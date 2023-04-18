@@ -119,6 +119,13 @@ export function givenExchangeRate(currency: string, rate: number) {
 export function givenUser(userId: string, email: string, appMetadata: {} | undefined = undefined) {
     return Promise.all([
         auth0Server
+        .forGet(`/api/v2/users/${userId}`)
+        .thenJson(200, {
+            email: email,
+            user_id: userId,
+            app_metadata: appMetadata
+        }),
+        auth0Server
         .forGet('/api/v2/users-by-email')
         .withQuery({ email })
         .thenJson(200, [
@@ -128,13 +135,6 @@ export function givenUser(userId: string, email: string, appMetadata: {} | undef
                 app_metadata: appMetadata
             }
         ]),
-        auth0Server
-        .forGet(`/api/v2/users/${userId}`)
-        .thenJson(200, {
-            email: email,
-            user_id: userId,
-            app_metadata: appMetadata
-        })
     ]);
 }
 
@@ -150,6 +150,13 @@ export function givenNoUsers() {
         .forGet('/api/v2/users-by-email')
         .thenJson(200, []);
 }
+
+export function givenAuthToken(authToken: string, userId: string) {
+    return auth0Server.forGet('/userinfo')
+        .withHeaders({ 'Authorization': 'Bearer ' + authToken })
+        .thenJson(200, { sub: userId });
+}
+
 export async function givenSubscription(subId: number) {
     const userId = id();
 

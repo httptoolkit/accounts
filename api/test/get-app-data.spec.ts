@@ -10,7 +10,9 @@ import {
     publicKey,
     auth0Server,
     AUTH0_PORT,
-    freshAuthToken
+    freshAuthToken,
+    givenUser,
+    givenAuthToken
 } from './test-util';
 import { TeamOwnerMetadata } from '../src/auth0';
 
@@ -67,13 +69,8 @@ describe('/get-app-data', () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
 
-            await auth0Server.forGet('/userinfo')
-                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
-                .thenJson(200, { sub: userId });
-            await auth0Server.forGet('/api/v2/users/' + userId).thenJson(200, {
-                email: userEmail,
-                app_metadata: { }
-            });
+            await givenAuthToken(authToken, userId);
+            await givenUser(userId, userEmail, {});
 
             const response = await getAppData(functionServer, authToken);
             expect(response.status).to.equal(200);
@@ -90,20 +87,14 @@ describe('/get-app-data', () => {
             const userEmail = 'user@example.com';
             const subExpiry = Date.now();
 
-            await auth0Server.forGet('/userinfo')
-                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
-                .thenJson(200, { sub: userId });
-            await auth0Server.forGet('/api/v2/users/' + userId)
-                .thenJson(200, {
-                    email: userEmail,
-                    app_metadata: {
-                        subscription_expiry: subExpiry,
-                        subscription_id: 2,
-                        subscription_sku: 'pro-monthly',
-                        subscription_plan_id: 550380,
-                        subscription_status: "active"
-                    }
-                });
+            await givenAuthToken(authToken, userId);
+            await givenUser(userId, userEmail, {
+                subscription_expiry: subExpiry,
+                subscription_id: 2,
+                subscription_sku: 'pro-monthly',
+                subscription_plan_id: 550380,
+                subscription_status: "active"
+            });
 
             const response = await getAppData(functionServer, authToken);
             expect(response.status).to.equal(200);
@@ -125,21 +116,14 @@ describe('/get-app-data', () => {
             const userEmail = 'user@example.com';
             const subExpiry = Date.now();
 
-            const userInfoLookup = await auth0Server.forGet('/userinfo')
-                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
-                .thenJson(200, { sub: userId });
-
-            const userDataLookup = await auth0Server.forGet('/api/v2/users/' + userId)
-                .thenJson(200, {
-                    email: userEmail,
-                    app_metadata: {
-                        subscription_expiry: subExpiry,
-                        subscription_id: 2,
-                        subscription_sku: 'pro-monthly',
-                        subscription_plan_id: 550380,
-                        subscription_status: "active"
-                    }
-                });
+            const userInfoLookup = await givenAuthToken(authToken, userId);
+            const [userDataLookup] = await givenUser(userId, userEmail, {
+                subscription_expiry: subExpiry,
+                subscription_id: 2,
+                subscription_sku: 'pro-monthly',
+                subscription_plan_id: 550380,
+                subscription_status: "active"
+            });
 
             const response1 = await getAppData(functionServer, authToken);
             expect(response1.status).to.equal(200);
@@ -166,21 +150,15 @@ describe('/get-app-data', () => {
             // Expire the data 23 hours ago:
             const subExpiry = Date.now() - (23 * 60 * 60 * 1000);
 
-            await auth0Server.forGet('/userinfo')
-                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
-                .thenJson(200, { sub: userId });
-            await auth0Server.forGet('/api/v2/users/' + userId)
-                .thenJson(200, {
-                    email: userEmail,
-                    app_metadata: {
-                        feature_flags: ['test_flag'],
-                        subscription_expiry: subExpiry,
-                        subscription_id: 2,
-                        subscription_sku: 'pro-monthly',
-                        subscription_plan_id: 550380,
-                        subscription_status: "active"
-                    }
-                });
+            await givenAuthToken(authToken, userId);
+            await givenUser(userId, userEmail, {
+                feature_flags: ['test_flag'],
+                subscription_expiry: subExpiry,
+                subscription_id: 2,
+                subscription_sku: 'pro-monthly',
+                subscription_plan_id: 550380,
+                subscription_status: "active"
+            });
 
             const response = await getAppData(functionServer, authToken);
             expect(response.status).to.equal(200);
@@ -205,21 +183,15 @@ describe('/get-app-data', () => {
             // Expire the data 25 hours ago:
             const subExpiry = Date.now() - (25 * 60 * 60 * 1000);
 
-            await auth0Server.forGet('/userinfo')
-                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
-                .thenJson(200, { sub: userId });
-            await auth0Server.forGet('/api/v2/users/' + userId)
-                .thenJson(200, {
-                    email: userEmail,
-                    app_metadata: {
-                        feature_flags: ['test_flag'],
-                        subscription_expiry: subExpiry,
-                        subscription_id: 2,
-                        subscription_sku: 'pro-monthly',
-                        subscription_plan_id: 550380,
-                        subscription_status: "active"
-                    }
-                });
+            await givenAuthToken(authToken, userId);
+            await givenUser(userId, userEmail, {
+                feature_flags: ['test_flag'],
+                subscription_expiry: subExpiry,
+                subscription_id: 2,
+                subscription_sku: 'pro-monthly',
+                subscription_plan_id: 550380,
+                subscription_status: "active"
+            });
 
             const response = await getAppData(functionServer, authToken);
             expect(response.status).to.equal(200);
@@ -241,27 +213,21 @@ describe('/get-app-data', () => {
             const teamUserEmail = 'teamuser@example.com';
             const subExpiry = Date.now();
 
-            await auth0Server.forGet('/userinfo')
-                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
-                .thenJson(200, { sub: teamUserId });
-            await auth0Server.forGet('/api/v2/users/' + teamUserId).thenJson(200, {
-                email: teamUserEmail,
-                app_metadata: { subscription_owner_id: billingUserId }
+            await givenAuthToken(authToken, teamUserId);
+            await givenUser(teamUserId, teamUserEmail, {
+                subscription_owner_id: billingUserId
             });
-            await auth0Server.forGet('/api/v2/users/' + billingUserId).thenJson(200, {
-                email: billingUserEmail,
-                app_metadata: {
-                    team_member_ids: ['123', '456', teamUserId],
-                    subscription_expiry: subExpiry,
-                    subscription_id: 2,
-                    subscription_quantity: 3,
-                    subscription_sku: 'team-monthly',
-                    subscription_plan_id: 550789,
-                    subscription_status: "active",
-                    last_receipt_url: 'lru',
-                    cancel_url: 'cu',
-                    update_url: 'uu',
-                }
+            await givenUser(billingUserId, billingUserEmail, {
+                team_member_ids: ['123', '456', teamUserId],
+                subscription_expiry: subExpiry,
+                subscription_id: 2,
+                subscription_quantity: 3,
+                subscription_sku: 'team-monthly',
+                subscription_plan_id: 550789,
+                subscription_status: "active",
+                last_receipt_url: 'lru',
+                cancel_url: 'cu',
+                update_url: 'uu',
             });
 
             const response = await getAppData(functionServer, authToken);
@@ -284,24 +250,19 @@ describe('/get-app-data', () => {
             const billingUserEmail = 'billinguser@example.com';
             const subExpiry = Date.now();
 
-            await auth0Server.forGet('/userinfo')
-                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
-                .thenJson(200, { sub: billingUserId });
-            await auth0Server.forGet('/api/v2/users/' + billingUserId).thenJson(200, {
-                email: billingUserEmail,
-                app_metadata: {
-                    feature_flags: ['a flag'],
-                    team_member_ids: ['123', '456'],
-                    subscription_expiry: subExpiry,
-                    subscription_id: 2,
-                    subscription_quantity: 2,
-                    subscription_sku: 'team-monthly',
-                    subscription_plan_id: 550789,
-                    subscription_status: "active",
-                    last_receipt_url: 'lru',
-                    cancel_url: 'cu',
-                    update_url: 'uu',
-                }
+            await givenAuthToken(authToken, billingUserId);
+            await givenUser(billingUserId, billingUserEmail, {
+                feature_flags: ['a flag'],
+                team_member_ids: ['123', '456'],
+                subscription_expiry: subExpiry,
+                subscription_id: 2,
+                subscription_quantity: 2,
+                subscription_sku: 'team-monthly',
+                subscription_plan_id: 550789,
+                subscription_status: "active",
+                last_receipt_url: 'lru',
+                cancel_url: 'cu',
+                update_url: 'uu',
             });
 
             const response = await getAppData(functionServer, authToken);
@@ -332,25 +293,20 @@ describe('/get-app-data', () => {
             const billingUserEmail = 'billinguser@example.com';
             const subExpiry = Date.now();
 
-            await auth0Server.forGet('/userinfo')
-                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
-                .thenJson(200, { sub: billingUserId });
-            await auth0Server.forGet('/api/v2/users/' + billingUserId).thenJson(200, {
-                email: billingUserEmail,
-                app_metadata: {
-                    subscription_owner_id: billingUserId, // Points to their own id
-                    feature_flags: ['a flag'],
-                    team_member_ids: [billingUserId], // Includes their own id
-                    subscription_expiry: subExpiry,
-                    subscription_id: 2,
-                    subscription_quantity: 2,
-                    subscription_sku: 'team-monthly',
-                    subscription_plan_id: 550789,
-                    subscription_status: "active",
-                    last_receipt_url: 'lru',
-                    cancel_url: 'cu',
-                    update_url: 'uu',
-                }
+            await givenAuthToken(authToken, billingUserId);
+            await givenUser(billingUserId, billingUserEmail, {
+                subscription_owner_id: billingUserId, // Points to their own id
+                feature_flags: ['a flag'],
+                team_member_ids: [billingUserId], // Includes their own id
+                subscription_expiry: subExpiry,
+                subscription_id: 2,
+                subscription_quantity: 2,
+                subscription_sku: 'team-monthly',
+                subscription_plan_id: 550789,
+                subscription_status: "active",
+                last_receipt_url: 'lru',
+                cancel_url: 'cu',
+                update_url: 'uu',
             });
 
             const response = await getAppData(functionServer, authToken);
@@ -390,27 +346,21 @@ describe('/get-app-data', () => {
             const teamUserEmail = 'teamuser@example.com';
             const subExpiry = Date.now();
 
-            await auth0Server.forGet('/userinfo')
-                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
-                .thenJson(200, { sub: teamUserId });
-            await auth0Server.forGet('/api/v2/users/' + teamUserId).thenJson(200, {
-                email: teamUserEmail,
-                app_metadata: { subscription_owner_id: billingUserId }
+            await givenAuthToken(authToken, teamUserId);
+            await givenUser(teamUserId, teamUserEmail, {
+                subscription_owner_id: billingUserId
             });
-            await auth0Server.forGet('/api/v2/users/' + billingUserId).thenJson(200, {
-                email: billingUserEmail,
-                app_metadata: {
-                    team_member_ids: ['123', '456', teamUserId],
-                    subscription_quantity: 2, // <-- 2 allowed, but we're 3rd in the ids above
-                    subscription_expiry: subExpiry,
-                    subscription_id: 2,
-                    subscription_sku: 'team-monthly',
-                    subscription_plan_id: 550789,
-                    subscription_status: "active",
-                    last_receipt_url: 'lru',
-                    cancel_url: 'cu',
-                    update_url: 'uu',
-                }
+            await givenUser(billingUserId, billingUserEmail, {
+                team_member_ids: ['123', '456', teamUserId],
+                subscription_quantity: 2, // <-- 2 allowed, but we're 3rd in the ids above
+                subscription_expiry: subExpiry,
+                subscription_id: 2,
+                subscription_sku: 'team-monthly',
+                subscription_plan_id: 550789,
+                subscription_status: "active",
+                last_receipt_url: 'lru',
+                cancel_url: 'cu',
+                update_url: 'uu',
             });
 
             const response = await getAppData(functionServer, authToken);
@@ -430,29 +380,23 @@ describe('/get-app-data', () => {
             const teamUserEmail = 'teamuser@example.com';
             const subExpiry = Date.now();
 
-            await auth0Server.forGet('/userinfo')
-                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
-                .thenJson(200, { sub: teamUserId });
-            await auth0Server.forGet('/api/v2/users/' + teamUserId).thenJson(200, {
-                email: teamUserEmail,
-                app_metadata: { subscription_owner_id: billingUserId }
+            await givenAuthToken(authToken, teamUserId);
+            await givenUser(teamUserId, teamUserEmail, {
+                subscription_owner_id: billingUserId
             });
-            await auth0Server.forGet('/api/v2/users/' + billingUserId).thenJson(200, {
-                email: billingUserEmail,
-                app_metadata: {
-                    team_member_ids: ['123', '456', teamUserId],
-                    locked_licenses: [new Date(2050, 0, 0).getTime()], // Locked for ~30 years
-                    subscription_quantity: 3, // <-- 3 allowed, OK except for the locked license
-                    subscription_expiry: subExpiry,
-                    subscription_id: 2,
-                    subscription_sku: 'team-monthly',
-                    subscription_plan_id: 550789,
-                    subscription_status: "active",
-                    last_receipt_url: 'lru',
-                    cancel_url: 'cu',
-                    update_url: 'uu',
-                } as TeamOwnerMetadata
-            });
+            await givenUser(billingUserId, billingUserEmail, {
+                team_member_ids: ['123', '456', teamUserId],
+                locked_licenses: [new Date(2050, 0, 0).getTime()], // Locked for ~30 years
+                subscription_quantity: 3, // <-- 3 allowed, OK except for the locked license
+                subscription_expiry: subExpiry,
+                subscription_id: 2,
+                subscription_sku: 'team-monthly',
+                subscription_plan_id: 550789,
+                subscription_status: "active",
+                last_receipt_url: 'lru',
+                cancel_url: 'cu',
+                update_url: 'uu',
+            } as TeamOwnerMetadata);
 
             const response = await getAppData(functionServer, authToken);
             expect(response.status).to.equal(200);
@@ -471,26 +415,20 @@ describe('/get-app-data', () => {
             const teamUserEmail = 'teamuser@example.com';
             const subExpiry = Date.now();
 
-            await auth0Server.forGet('/userinfo')
-                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
-                .thenJson(200, { sub: teamUserId });
-            await auth0Server.forGet('/api/v2/users/' + teamUserId).thenJson(200, {
-                email: teamUserEmail,
-                app_metadata: { subscription_owner_id: billingUserId }
+            await givenAuthToken(authToken, teamUserId);
+            await givenUser(teamUserId, teamUserEmail, {
+                subscription_owner_id: billingUserId
             });
-            await auth0Server.forGet('/api/v2/users/' + billingUserId).thenJson(200, {
-                email: billingUserEmail,
-                app_metadata: {
-                    team_member_ids: [], // <-- doesn't include this user
-                    subscription_expiry: subExpiry,
-                    subscription_id: 2,
-                    subscription_sku: 'team-monthly',
-                    subscription_plan_id: 550789,
-                    subscription_status: "active",
-                    last_receipt_url: 'lru',
-                    cancel_url: 'cu',
-                    update_url: 'uu',
-                }
+            await givenUser(billingUserId, billingUserEmail, {
+                team_member_ids: [], // <-- doesn't include this user
+                subscription_expiry: subExpiry,
+                subscription_id: 2,
+                subscription_sku: 'team-monthly',
+                subscription_plan_id: 550789,
+                subscription_status: "active",
+                last_receipt_url: 'lru',
+                cancel_url: 'cu',
+                update_url: 'uu',
             });
 
             const response = await getAppData(functionServer, authToken);
