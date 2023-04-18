@@ -427,3 +427,16 @@ export async function createCheckout(options: {
 
     return response.url as string;
 }
+
+export async function cancelSubscription(subscriptionId: string | number) {
+    await makePaddleApiRequest(
+        `/api/2.0/subscription/users_cancel`, {
+            method: 'POST',
+            body: new URLSearchParams({
+                vendor_id: PADDLE_VENDOR_ID,
+                vendor_auth_code: PADDLE_KEY,
+                subscription_id: subscriptionId.toString()
+            })
+        }
+    );
+}

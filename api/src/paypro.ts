@@ -1,10 +1,17 @@
 import * as _ from 'lodash';
 import * as crypto from 'crypto';
 import * as forge from 'node-forge';
+import fetch from 'node-fetch';
 
 import { reportError, StatusError } from './errors';
 import { SKU } from "../../module/src/types";
 import { getLatestRates } from './exchange-rates';
+
+const PAYPRO_API_BASE_URL = process.env.PAYPRO_API_BASE_URL
+    ?? 'https://store.payproglobal.com';
+
+const PAYPRO_ACCOUNT_ID = process.env.PAYPRO_ACCOUNT_ID;
+const PAYPRO_API_KEY = process.env.PAYPRO_API_KEY;
 
 const PAYPRO_PARAM_KEY = process.env.PAYPRO_PARAM_KEY!;
 const PAYPRO_PARAM_IV = process.env.PAYPRO_PARAM_IV!;
@@ -182,7 +189,7 @@ export async function createCheckout(options: {
     if (options.quantity) checkoutParams.set('products[1][qty]', options.quantity.toString());
     checkoutParams.set('products[1][data]', forge.util.encode64(encryptedParams.bytes()));
 
-    return `https://store.payproglobal.com/checkout?${checkoutParams.toString()}`;
+    return `${PAYPRO_API_BASE_URL}/checkout?${checkoutParams.toString()}`;
 }
 
 export type PayProIPNTypes =
@@ -277,4 +284,32 @@ export function parsePayProCustomFields(
     }
 
     return result;
+}
+
+export async function cancelSubscription(subscriptionId: string | number) {
+    const response = await fetch(`${PAYPRO_API_BASE_URL}/api/Subscriptions/Terminate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+            vendorAccountId: PAYPRO_ACCOUNT_ID,
+            apiSecretKey: PAYPRO_API_KEY,
+            reasonText: 'API cancellation',
+            sendCustomerNotification: true,
+            subscriptionId: subscriptionId
+        })
+    });
+
+    if (!response.ok) {
+        console.log(`${response.status} ${response.statusText}`,
+            response.headers,
+            await response.text().catch(() => '')
+        );
+        throw new Error(`Unexpected ${response.status} during PayPro cancellation`);
+    }
+
+    const responseBody = await response.json();
+    if (!responseBody.isSuccess) {
+        console.log('PayPro errors:', responseBody.errors);
+        throw new Error(`PayPro cancellation request failed`);
+    }
 }

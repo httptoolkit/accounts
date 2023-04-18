@@ -38,7 +38,7 @@ type RawMetadata = Partial<AppMetadata> & {
 // have no effective subscription (unless they are owner + member).
 export async function getUserAppData(accessToken: string): Promise<UserAppData> {
     const userId = await getUserId(accessToken);
-    const rawUserData = await getRawUserData(userId);
+    const rawUserData = await loadRawUserData(userId);
     return await buildUserAppData(userId, rawUserData) as UserAppData;
 }
 
@@ -47,8 +47,17 @@ export async function getUserAppData(accessToken: string): Promise<UserAppData> 
 // while owners have all their normal subscription state + a list of members.
 export async function getUserBillingData(accessToken: string) {
     const userId = await getUserId(accessToken);
-    const rawUserData = await getRawUserData(userId);
+    const rawUserData = await loadRawUserData(userId);
     return getBillingData(userId, rawUserData);
+}
+
+// User base data: the actual data linked to this user, with no extra processing.
+// This is useful when you need the basic subscription data for a user for internal
+// handling, not the full with-invoices with-team-members data that getUserBillingData
+// returns, and not the only-user-visible data that getUserAppData returns.
+export async function getUserBaseData(accessToken: string) {
+    const userId = await getUserId(accessToken);
+    return await loadRawUserData(userId);
 }
 
 // A cache to avoid hitting userinfo unnecessarily.
@@ -77,7 +86,7 @@ export async function getUserId(accessToken: string): Promise<string> {
     }
 }
 
-async function getRawUserData(userId: string): Promise<RawMetadata> {
+async function loadRawUserData(userId: string): Promise<RawMetadata> {
     // getUser is full live data for the user (/users/{id} - 15 req/second)
     const userData = await mgmtClient.getUser({ id: userId });
 
@@ -397,7 +406,7 @@ async function getTeamOwner(userId: string, rawMetadata: RawMetadata) {
     try {
         const ownerData = (teamMemberData.subscription_owner_id === userId
             ? teamMemberData // If we're in our own team, use that data directly:
-            : await getRawUserData(ownerId)
+            : await loadRawUserData(ownerId)
         ) as TeamOwnerMetadata & { email: string };
 
         const teamMemberIds = ownerData.team_member_ids ?? [];

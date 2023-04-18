@@ -94,7 +94,18 @@ export const profitwellApiServer = getLocal({
     }
 });
 
-export const EXCHANGE_RATE_API_PORT = 9095;
+export const PAYPRO_API_PORT = 9095;
+process.env.PAYPRO_API_BASE_URL = `http://localhost:${PAYPRO_API_PORT}`;
+
+export const payproApiServer = getLocal({
+    https: {
+        keyPath: path.join(__dirname, 'fixtures', 'test-ca.key'),
+        certPath: path.join(__dirname, 'fixtures', 'test-ca.pem'),
+        keyLength: 2048
+    }
+});
+
+export const EXCHANGE_RATE_API_PORT = 9096;
 process.env.EXCHANGE_RATE_BASE_URL = `http://localhost:${EXCHANGE_RATE_API_PORT}`;
 
 export const exchangeRateServer = getLocal({
