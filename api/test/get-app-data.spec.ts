@@ -106,7 +106,8 @@ describe('/get-app-data', () => {
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
                 subscription_status: "active",
-                subscription_id: -1
+                subscription_id: -1,
+                can_manage_subscription: true
             });
         });
 
@@ -171,7 +172,8 @@ describe('/get-app-data', () => {
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
                 subscription_status: "active",
-                subscription_id: -1
+                subscription_id: -1,
+                can_manage_subscription: true
             });
         });
 
@@ -240,7 +242,8 @@ describe('/get-app-data', () => {
                 subscription_expiry: subExpiry,
                 subscription_sku: 'team-monthly',
                 subscription_plan_id: 550789,
-                subscription_status: "active"
+                subscription_status: "active",
+                can_manage_subscription: false
             });
         });
 
@@ -323,6 +326,7 @@ describe('/get-app-data', () => {
                 subscription_plan_id: 550789,
                 subscription_status: "active",
                 subscription_id: -1,
+                can_manage_subscription: true,
 
                 team_subscription: {
                     team_member_ids: [billingUserId],

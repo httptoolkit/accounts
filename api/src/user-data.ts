@@ -144,7 +144,8 @@ const SUBSCRIPTION_PROPERTIES = [
     'team_member_ids',
     'locked_licenses',
     'subscription_owner_id',
-    'joined_team_at'
+    'joined_team_at',
+    'can_manage_subscription'
 ] as const;
 
 // The subscription properties extracted from team owners and delegated to members:
@@ -214,6 +215,14 @@ async function buildUserAppData(userId: string, rawMetadata: RawMetadata) {
                 delete userMetadata.subscription_owner_id;
             }
         }
+    }
+
+    if (userMetadata.subscription_status === 'active' || userMetadata.subscription_status === 'past_due') {
+        userMetadata.can_manage_subscription = userMetadata.subscription_owner_id
+            // If your sub has an owner, you can only manage the subscription if that's you:
+            ? userMetadata.subscription_owner_id === userId
+            // Otherwise, it must be your (Team or Pro) subscription, go wild:
+            : true
     }
 
     // Annoyingly due to an old implementation issue in the UI
@@ -320,7 +329,8 @@ async function getTransactions(rawMetadata: RawMetadata) {
     } else {
         // If there's no cached data, we just wait until the full request is done, like normal:
         return transactionsRequest;
-    }}
+    }
+}
 
 // We cache paddle subscription to user id map, which never changes
 const paddleUserIdCache: { [subscriptionId: string | number]: string | number } = {};

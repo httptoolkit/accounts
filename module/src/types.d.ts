@@ -94,6 +94,10 @@ export interface SubscriptionData {
 
     // Team members only:
     subscription_owner_id?: string;
+
+    // Team owners and Pro users can manage the subscription (cancel, update billing details, etc).
+    // Team members can see basic details, but can't manage them.
+    can_manage_subscription?: boolean;
 }
 
 export interface TransactionData {
