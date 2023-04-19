@@ -122,9 +122,10 @@ function migrateOldUserData(data: RawMetadata): RawMetadata {
 
 // We use these internally for some processing, but they're not useful
 // externally so we should avoid returning them from the API:
-const INTERNAL_FIELDS =[
+const INTERNAL_FIELDS = [
     'subscription_id',
-    'paddle_user_id'
+    'paddle_user_id',
+    'locked_licenses'
 ] as const;
 
 // All subscription-related properties, which are hidden if the user's
@@ -169,7 +170,7 @@ const DELEGATED_TEAM_SUBSCRIPTION_PROPERTIES = [
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 async function buildUserAppData(userId: string, rawMetadata: RawMetadata) {
-    const userMetadata: Partial<UserAppData> =_.cloneDeep(_.omit(rawMetadata, INTERNAL_FIELDS));
+    const userMetadata: Partial<UserAppData> = _.cloneDeep(_.omit(rawMetadata, INTERNAL_FIELDS));
 
     const sku = getSku(rawMetadata);
     if (isTeamSubscription(sku)) {
@@ -177,7 +178,6 @@ async function buildUserAppData(userId: string, rawMetadata: RawMetadata) {
         // That means your subscription data isn't actually for *you*, it's for
         // the actual team members. Move it into a separate team_subscription to make that clear.
         userMetadata.team_subscription = {};
-        delete (userMetadata as TeamOwnerMetadata)['locked_licenses'];
         EXTRACTED_TEAM_SUBSCRIPTION_PROPERTIES.forEach((key) => {
             const teamSub = userMetadata.team_subscription as any;
             teamSub[key] = userMetadata[key];
