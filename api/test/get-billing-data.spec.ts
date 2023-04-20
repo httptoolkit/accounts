@@ -91,7 +91,8 @@ describe('/get-billing-data', () => {
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
                 email: userEmail,
-                transactions: []
+                transactions: [],
+                can_manage_subscription: false
             });
         });
     });
@@ -142,7 +143,8 @@ describe('/get-billing-data', () => {
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
                 subscription_status: "active",
-                transactions: [transaction]
+                transactions: [transaction],
+                can_manage_subscription: true
             });
         });
 
@@ -235,7 +237,8 @@ describe('/get-billing-data', () => {
                     id: billingUserId,
                     name: billingUserEmail
                 },
-                transactions: []
+                transactions: [],
+                can_manage_subscription: false
             });
         });
 
@@ -331,6 +334,7 @@ describe('/get-billing-data', () => {
                 last_receipt_url: 'lru',
                 cancel_url: 'cu',
                 update_url: 'uu',
+                can_manage_subscription: true,
 
                 transactions: [transaction],
                 team_members: [
@@ -410,6 +414,7 @@ describe('/get-billing-data', () => {
                 last_receipt_url: 'lru',
                 cancel_url: 'cu',
                 update_url: 'uu',
+                can_manage_subscription: true,
 
                 transactions: [transaction],
                 team_owner: { id: billingUserId, name: billingUserEmail },
@@ -459,6 +464,7 @@ describe('/get-billing-data', () => {
             expect(data).to.deep.equal({
                 email: teamUserEmail,
                 transactions: [],
+                can_manage_subscription: false,
                 team_owner: {
                     id: billingUserId,
                     name: billingUserEmail,
@@ -506,6 +512,7 @@ describe('/get-billing-data', () => {
             expect(data).to.deep.equal({
                 email: teamUserEmail,
                 transactions: [],
+                can_manage_subscription: false,
                 team_owner: {
                     id: billingUserId,
                     name: billingUserEmail,
@@ -551,6 +558,7 @@ describe('/get-billing-data', () => {
             expect(data).to.deep.equal({
                 email: teamUserEmail,
                 transactions: [],
+                can_manage_subscription: false,
                 team_owner: {
                     id: billingUserId,
                     name: billingUserEmail,

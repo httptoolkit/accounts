@@ -48,7 +48,7 @@ export async function getUserAppData(accessToken: string): Promise<UserAppData> 
 export async function getUserBillingData(accessToken: string) {
     const userId = await getUserId(accessToken);
     const rawUserData = await loadRawUserData(userId);
-    return getBillingData(userId, rawUserData);
+    return buildUserBillingData(userId, rawUserData);
 }
 
 // User base data: the actual data linked to this user, with no extra processing.
@@ -259,9 +259,9 @@ function countLockedLicenses(userMetadata: TeamOwnerMetadata) {
         .length;
 }
 
-async function getBillingData(
+async function buildUserBillingData(
     userId: string,
-    rawMetadata: RawMetadata
+    rawMetadata: RawMetadata & Partial<PayingUserMetadata>
 ): Promise<UserBillingData> {
     // Load transactions, team members and team owner in parallel:
     const [transactions, teamMembers, owner, lockedLicenseExpiries] = await Promise.all([
@@ -270,6 +270,15 @@ async function getBillingData(
         getTeamOwner(userId, rawMetadata),
         getLockedLicenseExpiries(rawMetadata)
     ]);
+
+    let can_manage_subscription = false;
+    if (rawMetadata.subscription_status === 'active' || rawMetadata.subscription_status === 'past_due') {
+        can_manage_subscription = owner
+            // If your sub has an owner, you can only manage the subscription if that's you:
+            ? owner.id === userId
+            // Otherwise, it must be your (Team or Pro) subscription, go wild:
+            : true
+    }
 
     return {
         ..._.cloneDeep(_.omit(rawMetadata, [
@@ -280,6 +289,7 @@ async function getBillingData(
             'locked_licenses',
             ...INTERNAL_FIELDS
         ])),
+        can_manage_subscription,
         email: rawMetadata.email!,
         transactions,
         team_members: teamMembers,
