@@ -97,6 +97,8 @@ export interface SubscriptionData {
 
     // Team owners and Pro users can manage the subscription (cancel, update billing details, etc).
     // Team members can see basic details, but can't manage them.
+    // This isn't a security mechanism - it's more like an indicative check for UX to decide
+    // whether cancel/update buttons should show. Real check happens in API endpoints.
     can_manage_subscription?: boolean;
 }
 

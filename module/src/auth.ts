@@ -247,7 +247,6 @@ function getToken() {
 export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'deleted';
 
 interface Subscription {
-    id: number;
     status: SubscriptionStatus;
     plan: SubscriptionPlanCode;
     quantity: number;
@@ -255,6 +254,7 @@ interface Subscription {
     updateBillingDetailsUrl?: string;
     cancelSubscriptionUrl?: string;
     lastReceiptUrl?: string;
+    canManageSubscription: boolean;
 };
 
 interface BaseAccountData {
@@ -402,7 +402,8 @@ function parseSubscriptionData(rawData: SubscriptionData) {
         expiry: rawData.subscription_expiry ? new Date(rawData.subscription_expiry) : undefined,
         updateBillingDetailsUrl: rawData.update_url,
         cancelSubscriptionUrl: rawData.cancel_url,
-        lastReceiptUrl: rawData.last_receipt_url
+        lastReceiptUrl: rawData.last_receipt_url,
+        canManageSubscription: !!rawData.can_manage_subscription
     };
 
     if (_.some(subscription) && !subscription.plan) {
@@ -417,8 +418,13 @@ function parseSubscriptionData(rawData: SubscriptionData) {
         'cancelSubscriptionUrl'
     ];
 
+    const isCompleteSubscriptionData = _.every(
+        _.omit(subscription, ...optionalFields),
+        v => !_.isNil(v) // Not just truthy: canManageSubscription can be false on valid sub
+    );
+
     // Use undefined rather than {} or partial data when there's any missing required sub fields
-    return _.every(_.omit(subscription, ...optionalFields))
+    return isCompleteSubscriptionData
         ? subscription as Subscription
         : undefined
 }
@@ -449,7 +455,7 @@ export async function updateTeamMembers(
     emailsToAdd: string[]
 ): Promise<void> {
     const token = await getToken();
-    if (!token) throw new Error("Not authenticated");
+    if (!token) throw new Error("Can't update team without an auth token");
 
     const appDataResponse = await fetch(`${apiBase}/update-team`, {
         method: 'POST',
@@ -464,5 +470,21 @@ export async function updateTeamMembers(
         const responseBody = await appDataResponse.text();
         console.log(`Received ${appDataResponse.status} updating team members: ${responseBody}`);
         throw new Error(responseBody || `Failed to update team members`);
+    }
+}
+
+export async function cancelSubscription() {
+    const token = await getToken();
+    if (!token) throw new Error("Can't cancel account without an auth token");
+
+    const response = await fetch(`${apiBase}/cancel-subscription`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error(`Unexpected ${response.status} response cancelling subscription`);
     }
 }
