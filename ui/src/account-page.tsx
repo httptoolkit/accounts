@@ -2,10 +2,10 @@ import * as _ from 'lodash';
 import * as React from 'react';
 import { observer } from 'mobx-react-lite';
 import {
-    formatDistanceStrict, format
+    formatDistanceStrict, format, formatDistanceToNow
 } from 'date-fns';
 
-import { getPlanByCode } from '../../module/src/plans';
+import { getPlanByCode, SubscriptionPlans } from '../../module/src/plans';
 
 import { styled, media } from './styles';
 import { Icon } from './icons';
@@ -90,6 +90,13 @@ const AccountControls = styled.div`
     }
 `;
 
+const AccountUpdateSpinner = styled(Icon).attrs(() => ({
+    icon: ['fac', 'spinner-arc'],
+    spin: true
+}))`
+    margin: 0 0 0 10px;
+`;
+
 export const AccountPage = observer((props: {
     accountStore: AccountStore
 }) => {
@@ -99,6 +106,9 @@ export const AccountPage = observer((props: {
         user,
         userSubscription,
         updateTeamMembers,
+        isAccountUpdateInProcess,
+        canManageSubscription,
+        cancelSubscription,
         logOut
     } = accountStore;
 
@@ -111,6 +121,40 @@ export const AccountPage = observer((props: {
         window.location.reload();
         return null;
     }
+
+    const confirmSubscriptionCancellation = () => {
+        const subscription = userSubscription;
+        if (!subscription) {
+            throw new Error("Can't cancel without a subscription");
+        }
+
+        const planName = SubscriptionPlans[subscription.plan].name;
+
+        let cancelEffect: string;
+
+        if (subscription.status === 'active') {
+            cancelEffect = `It will remain usable until it expires in ${
+                formatDistanceToNow(subscription.expiry)
+            } but will not renew.`;
+        } else if (subscription.status === 'past_due') {
+            cancelEffect = 'No more renewals will be attempted and it will deactivate immediately.';
+        } else {
+            throw new Error(`Cannot cancel subscription with status ${subscription.status}`);
+        }
+
+        const confirmed = confirm([
+            `This will cancel your HTTP Toolkit ${planName} subscription.`,
+            cancelEffect,
+            "Are you sure?"
+        ].join('\n\n'));
+
+        if (!confirmed) return;
+
+        cancelSubscription().catch((e) => {
+            alert(e.message);
+            reportError(e);
+        });
+    };
 
     return <PageContainer>
         <PageHeading>Your Account</PageHeading>
@@ -154,6 +198,9 @@ export const AccountPage = observer((props: {
                             'deleted': 'Cancelled'
                         }[sub.status]) || 'Unknown'
                     }
+                    { isAccountUpdateInProcess &&
+                        <AccountUpdateSpinner />
+                    }
                 </ContentValue>
 
                 <ContentLabel>
@@ -185,28 +232,24 @@ export const AccountPage = observer((props: {
                 </Explanation>
             }
 
-            <AccountControls>
-                { sub.status !== 'deleted' &&
-                    sub.updateBillingDetailsUrl &&
-                    <ButtonLink
-                        href={ sub.updateBillingDetailsUrl }
-                        target='_blank'
-                        rel='noreferrer noopener'
-                    >
-                        Update billing details
-                    </ButtonLink>
-                }
-                { sub.status !== 'deleted' &&
-                    sub.cancelSubscriptionUrl &&
-                    <ButtonLink
-                        href={ sub.cancelSubscriptionUrl }
-                        target='_blank'
-                        rel='noreferrer noopener'
+            { canManageSubscription &&
+                <AccountControls>
+                    { sub.updateBillingDetailsUrl &&
+                        <ButtonLink
+                            href={sub.updateBillingDetailsUrl}
+                            target='_blank'
+                            rel='noreferrer noopener'
+                        >
+                            Update billing details
+                        </ButtonLink>
+                    }
+                    <Button
+                        onClick={confirmSubscriptionCancellation}
                     >
                         Cancel subscription
-                    </ButtonLink>
-                }
-            </AccountControls>
+                    </Button>
+                </AccountControls>
+            }
         </AccountSection>
 
         { sub && user.teamMembers && <AccountSection>

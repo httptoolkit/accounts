@@ -6,13 +6,16 @@ import { reportError } from './errors';
 import {
     getBillingData,
     updateTeamMembers,
+    cancelSubscription,
     loginEvents,
     initializeAuthUi,
     showLoginDialog,
     hideLoginDialog,
     logOut,
     BillingAccount
-} from '../../module/dist/auth';
+} from '../../module/src/auth';
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class AccountStore {
 
@@ -21,6 +24,7 @@ export class AccountStore {
             user: observable,
             isMaybeLoggedIn: observable,
             isLoggedIn: computed,
+            isAccountUpdateInProcess: observable,
             userSubscription: computed,
             updateUser: flow.bound
         });
@@ -129,6 +133,62 @@ export class AccountStore {
     logOut() {
         logOut();
     }
+
+    // Set when we know a cancel is processing elsewhere:
+    isAccountUpdateInProcess = false;
+
+    get canManageSubscription() {
+        return !!this.userSubscription?.canManageSubscription;
+    }
+
+    cancelSubscription = flow(function * (this: AccountStore) {
+        yield cancelSubscription();
+
+        console.log('Subscription cancel requested');
+        this.isAccountUpdateInProcess = true;
+        yield this.waitForUserUpdate(() =>
+            !this.user?.subscription ||
+            this.user?.subscription.status === 'deleted'
+        );
+        this.isAccountUpdateInProcess = false;
+        console.log('Subscription cancellation confirmed');
+    }).bind(this);
+
+    private waitForUserUpdate = flow(function * (
+        this: AccountStore,
+        completedCheck: () => boolean
+    ) {
+        let focused = true;
+
+        const setFocused = () => {
+            focused = true;
+            this.updateUser();
+        };
+
+        const setUnfocused = () => {
+            focused = false;
+        };
+
+        window.addEventListener('focus', setFocused);
+        window.addEventListener('blur', setUnfocused);
+
+        // Keep checking the user's subscription data at intervals, whilst other processes
+        // (update from payment provider) complete elsewhere...
+        yield this.updateUser();
+        let ticksSinceCheck = 0;
+        while (!completedCheck()) {
+            yield delay(1000);
+            ticksSinceCheck += 1;
+
+            if (focused || ticksSinceCheck > 10) {
+                // Every 10s while blurred or 500ms while focused, check the user data:
+                ticksSinceCheck = 0;
+                yield this.updateUser();
+            }
+        }
+        window.removeEventListener('focus', setFocused);
+        window.removeEventListener('blur', setUnfocused);
+    }).bind(this);
 
 }
 
