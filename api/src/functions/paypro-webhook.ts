@@ -63,7 +63,7 @@ export const handler = catchErrors(async (event) => {
             subscription_sku: sku,
             subscription_quantity: quantity,
             subscription_expiry: endDate?.valueOf(),
-            last_receipt_url: eventData.INVOICE_URL,
+            last_receipt_url: eventData.INVOICE_LINK,
 
             payment_provider: 'paypro',
             subscription_id: subscriptionId // Useful for API requests later
