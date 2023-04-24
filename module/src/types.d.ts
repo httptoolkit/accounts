@@ -108,19 +108,12 @@ export interface TransactionData {
     sku: SKU; // Used to show plan name for this order
     created_at: string; // Used for date, ISO format UTC
     status:
-        // Paddle statuses:
         | 'completed'
         | 'refunded'
         | 'partially_refunded'
         | 'disputed'
-        // PayPro statuses:
-        | 'Waiting'
-        | 'Canceled'
-        | 'Refunded'
-        | 'Chargeback'
-        | 'Processed';
-    // ^ Eventually maybe these could be consistent, but since it's just shown directly
-    // it feels like it doesn't matter too much.
+        | 'waiting'
+        | 'canceled';
 
     currency: string; // Shown together as total paid
     amount: string;

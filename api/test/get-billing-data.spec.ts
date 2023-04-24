@@ -283,7 +283,7 @@ describe('/get-billing-data', () => {
                     order_id: "12345",
                     sku: 'pro-annual',
                     receipt_url: "https://invoice-url",
-                    status: "Processed"
+                    status: "completed"
                 } as TransactionData],
                 can_manage_subscription: true
             });

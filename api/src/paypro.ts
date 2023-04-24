@@ -420,6 +420,15 @@ export async function lookupPayProOrders(email: string): Promise<TransactionData
         const orderItem = order.orderItems[0];
 
         const orderDate = moment.utc(order.createdAt, PayProOrderDetailsDate);
+        const orderStatus = ({
+            'Waiting': 'waiting',
+            'Canceled': 'canceled',
+            'Refunded': 'refunded',
+            'Chargeback': 'disputed',
+            'Processed': 'completed'
+        } as const)[order.orderStatusName];
+
+        if (!orderStatus) throw new Error(`Unrecognized PayPro order status: ${order.orderStatusName}`);
 
         return {
             order_id: order.orderId.toString(),
@@ -427,7 +436,7 @@ export async function lookupPayProOrders(email: string): Promise<TransactionData
             currency: order.billingCurrencyCode,
             receipt_url: order.invoiceLink,
             sku: orderItem.sku,
-            status: order.orderStatusName,
+            status: orderStatus,
             created_at: orderDate.toISOString()
         };
     })
