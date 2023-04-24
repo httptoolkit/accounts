@@ -101,7 +101,7 @@ export async function recordCancellation(
     subscriptionId: string,
     effectiveDate: number
 ) {
-    // Record the new subscription in Profitwell:
+    // Record the subscription cancellation in Profitwell:
     const response = await fetch(`${PROFITWELL_API_BASE_URL}/v2/subscriptions/${
         subscriptionId
     }?effective_date=${

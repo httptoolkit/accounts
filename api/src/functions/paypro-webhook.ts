@@ -30,7 +30,8 @@ export const handler = catchErrors(async (event) => {
     if ([
         'OrderCharged', // Initial charge for a new subscription
         'SubscriptionChargeSucceed', // Successful renewal
-        'SubscriptionTerminated' // Subscription cancelled
+        'SubscriptionTerminated', // Subscription permanently cancelled
+        'SubscriptionSuspended' // Subscription not going to renew for now
     ].includes(eventType)) {
         console.log(`Updating user data from ${eventType} event`);
 
@@ -86,7 +87,7 @@ export const handler = catchErrors(async (event) => {
                     "Payment provider": 'paypro',
                     "Country code": countryCode
                 });
-            } else if (eventType === 'SubscriptionTerminated') {
+            } else if (eventType === 'SubscriptionTerminated' || eventType === 'SubscriptionSuspended') {
                 const existingExpiry = await getExistingSubscriptionExpiry(email).catch(console.log);
 
                 await recordCancellation(
