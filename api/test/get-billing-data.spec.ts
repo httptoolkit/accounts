@@ -205,7 +205,6 @@ describe('/get-billing-data', () => {
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
                 email: userEmail,
-                payment_provider: 'paddle',
                 subscription_expiry: subExpiry,
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
@@ -273,7 +272,6 @@ describe('/get-billing-data', () => {
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
                 email: userEmail,
-                payment_provider: 'paypro',
                 subscription_expiry: subExpiry,
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,

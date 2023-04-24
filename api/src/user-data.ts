@@ -126,7 +126,8 @@ function migrateOldUserData(data: RawMetadata): RawMetadata {
 const INTERNAL_FIELDS = [
     'subscription_id',
     'paddle_user_id',
-    'locked_licenses'
+    'locked_licenses',
+    'payment_provider'
 ] as const;
 
 // All subscription-related properties, which are hidden if the user's
