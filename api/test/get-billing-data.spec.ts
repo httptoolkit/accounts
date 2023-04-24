@@ -15,7 +15,10 @@ import {
     PADDLE_PORT,
     givenSubscription,
     givenPaddleTransactions,
-    id
+    id,
+    givenPayProOrders,
+    payproApiServer,
+    PAYPRO_API_PORT
 } from './test-util';
 import { TransactionData } from '../../module/src/types';
 import { LICENSE_LOCK_DURATION_MS, TeamOwnerMetadata } from '../src/auth0';
@@ -56,12 +59,14 @@ describe('/get-billing-data', () => {
         await auth0Server.forPost('/oauth/token').thenReply(200);
 
         await paddleServer.start(PADDLE_PORT);
+        await payproApiServer.start(PAYPRO_API_PORT);
     });
 
     afterEach(async () => {
         await new Promise((resolve) => functionServer.stop(resolve));
         await auth0Server.stop();
         await paddleServer.stop();
+        await payproApiServer.stop();
     });
 
     describe("for unauthed users", () => {
@@ -98,7 +103,7 @@ describe('/get-billing-data', () => {
     });
 
     describe("for Pro users", () => {
-        it("returns signed subscription data", async () => {
+        it("returns signed subscription data for older Paddle customers", async () => {
             const authToken = freshAuthToken();
             const userId = "abc";
             const userEmail = 'user@example.com';
@@ -152,6 +157,136 @@ describe('/get-billing-data', () => {
                     receipt_url: "receipt.example",
                     status: "completed"
                 }],
+                can_manage_subscription: true
+            });
+        });
+
+        it("returns signed subscription data for new Paddle customers", async () => {
+            const authToken = freshAuthToken();
+            const userId = "abc";
+            const userEmail = 'user@example.com';
+
+            const subId = id();
+            const subExpiry = Date.now();
+
+            const { paddleUserId } = await givenSubscription(subId);
+
+            await auth0Server.forGet('/userinfo')
+                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
+                .thenJson(200, { sub: userId });
+            await auth0Server.forGet('/api/v2/users/' + userId)
+                .thenJson(200, {
+                    email: userEmail,
+                    app_metadata: {
+                        payment_provider: 'paddle',
+                        paddle_user_id: paddleUserId,
+                        subscription_id: subId.toString(),
+                        subscription_expiry: subExpiry,
+                        subscription_sku: 'pro-monthly',
+                        subscription_plan_id: 550380,
+                        subscription_status: "active"
+                    }
+                });
+
+            const transactionDate = new Date();
+            await givenPaddleTransactions(paddleUserId, [{
+                amount: "1.00",
+                currency: "USD",
+                created_at: transactionDate.toISOString(),
+                order_id: "order-456",
+                product_id: 550380,
+                receipt_url: "receipt.example",
+                status: "completed"
+            }]);
+
+            const response = await getBillingData(functionServer, authToken);
+            expect(response.status).to.equal(200);
+
+            const data = getJwtData(await response.text());
+            expect(data).to.deep.equal({
+                email: userEmail,
+                payment_provider: 'paddle',
+                subscription_expiry: subExpiry,
+                subscription_sku: 'pro-monthly',
+                subscription_plan_id: 550380,
+                subscription_status: "active",
+                transactions: [{
+                    amount: "1.00",
+                    currency: "USD",
+                    created_at: transactionDate.toISOString(),
+                    order_id: "order-456",
+                    sku: 'pro-monthly',
+                    receipt_url: "receipt.example",
+                    status: "completed"
+                }],
+                can_manage_subscription: true
+            });
+        });
+
+        it("returns signed subscription data for PayPro customers", async () => {
+            const authToken = freshAuthToken();
+            const userId = "abc";
+            const userEmail = 'user@example.com';
+
+            const subId = id();
+            const subCreation = new Date();
+            const subExpiry = Date.now();
+
+            await auth0Server.forGet('/userinfo')
+                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
+                .thenJson(200, { sub: userId });
+            await auth0Server.forGet('/api/v2/users/' + userId)
+                .thenJson(200, {
+                    email: userEmail,
+                    app_metadata: {
+                        payment_provider: 'paypro',
+                        subscription_id: subId.toString(),
+                        subscription_expiry: subExpiry,
+                        subscription_sku: 'pro-monthly',
+                        subscription_plan_id: 550380,
+                        subscription_status: "active"
+                    }
+                });
+
+            const orderId = 12345;
+            await givenPayProOrders(userEmail, [{
+                orderId,
+                billingCurrencyCode: 'EUR',
+                billingTotalPrice: 60,
+                customer: { email: userEmail },
+                invoiceLink: 'https://invoice-url',
+                orderStatusId: 5,
+                orderStatusName: 'Processed',
+                paymentMethodName: 'Credit card',
+                createdAt: subCreation.toISOString().slice(0, -1), // PayPro's funky format
+                orderItems: [{
+                    billingPrice: 60,
+                    sku: 'pro-annual',
+                    orderItemName: 'HTTP Toolkit Pro (annual)',
+                    quantity: 1
+                }]
+            }]);
+
+            const response = await getBillingData(functionServer, authToken);
+            expect(response.status).to.equal(200);
+
+            const data = getJwtData(await response.text());
+            expect(data).to.deep.equal({
+                email: userEmail,
+                payment_provider: 'paypro',
+                subscription_expiry: subExpiry,
+                subscription_sku: 'pro-monthly',
+                subscription_plan_id: 550380,
+                subscription_status: "active",
+                transactions: [{
+                    amount: "60.00",
+                    currency: "EUR",
+                    created_at: subCreation.toISOString(),
+                    order_id: "12345",
+                    sku: 'pro-annual',
+                    receipt_url: "https://invoice-url",
+                    status: "Processed"
+                } as TransactionData],
                 can_manage_subscription: true
             });
         });
@@ -313,7 +448,7 @@ describe('/get-billing-data', () => {
 
             const { paddleUserId } = await givenSubscription(subId);
             const transactionDate = new Date();
-            const transaction = {
+            await givenPaddleTransactions(paddleUserId, [{
                 amount: "1.00",
                 currency: "USD",
                 created_at: transactionDate.toISOString(),
@@ -321,8 +456,7 @@ describe('/get-billing-data', () => {
                 product_id: 550789,
                 receipt_url: "receipt.example",
                 status: "completed"
-            };
-            await givenPaddleTransactions(paddleUserId, [transaction]);
+            }]);
 
             const response = await getBillingData(functionServer, authToken);
             expect(response.status).to.equal(200);
@@ -406,7 +540,7 @@ describe('/get-billing-data', () => {
 
             const { paddleUserId } = await givenSubscription(subId);
             const transactionDate = new Date();
-            const transaction = {
+            await givenPaddleTransactions(paddleUserId, [{
                 amount: "1.00",
                 currency: "USD",
                 created_at: transactionDate.toISOString(),
@@ -414,8 +548,7 @@ describe('/get-billing-data', () => {
                 product_id: 550789,
                 receipt_url: "receipt.example",
                 status: "completed"
-            };
-            await givenPaddleTransactions(paddleUserId, [transaction]);
+            }]);
 
             const response = await getBillingData(functionServer, authToken);
             expect(response.status).to.equal(200);

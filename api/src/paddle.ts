@@ -252,7 +252,9 @@ export interface PaddleTransaction {
     receipt_url: string; // url
     product_id: number; // Used to show plan name for this order
     created_at: string; // Used for date
-    status: string; // Shown directly
+
+    status: 'completed' | 'refunded' | 'partially_refunded' | 'disputed';
+    // Status is shown in the dashboard, title cased.
 
     currency: string; // Shown together as total paid
     amount: string;

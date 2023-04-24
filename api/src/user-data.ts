@@ -28,6 +28,7 @@ import {
     getSku,
     isTeamSubscription
 } from './products';
+import { lookupPayProOrders } from './paypro';
 
 type RawMetadata = Partial<AppMetadata> & {
     email: string;
@@ -321,6 +322,9 @@ async function getTransactions(rawMetadata: RawMetadata) {
         // We always query for fresh transaction data (even if we might return cached data
         // below in the meantime)
         transactionsRequest = lookupPaddleUserTransactions(paddleUserId);
+    } else if (billingMetadata.payment_provider === 'paypro') {
+        transactionsCacheKey = `paypro-${rawMetadata.email}`;
+        transactionsRequest = lookupPayProOrders(rawMetadata.email);
     } else {
         throw new Error(`Could not get transactions for unknown payment provider: ${
             billingMetadata.payment_provider

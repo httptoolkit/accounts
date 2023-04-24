@@ -6,6 +6,7 @@ import stoppable from 'stoppable';
 
 import { serveFunctions } from '@httptoolkit/netlify-cli/src/utils/serve-functions';
 import { AppMetadata } from '../src/auth0';
+import { PayProOrderDetails, PayProOrderListing } from '../src/paypro';
 import { PaddleTransaction } from '../src/paddle';
 
 let idCounter = 1000;
@@ -191,6 +192,43 @@ export function givenPaddleTransactions(userId: number, transactions: PaddleTran
             success: true,
             response: transactions
         });
+}
+
+export function givenPayProOrders(email: string, orders: PayProOrderDetails[]) {
+    return Promise.all([
+        payproApiServer
+        .forPost(`/api/Orders/GetList`)
+        .withJsonBodyIncluding({
+            search: { customerEmail: email }
+        })
+        .thenJson(200, {
+            isSuccess: true,
+            response: {
+                orders: orders.map(o => ({
+                    id: o.orderId,
+                    orderStatusId: o.orderStatusId,
+                    orderStatusName: o.orderStatusName,
+                    placedAtUtc: o.createdAt,
+                    customerBillingEmail: o.customer.email,
+                    paymentMethodName: o.paymentMethodName,
+                    invoiceUrl: o.invoiceLink
+                } as PayProOrderListing))
+            }
+        }),
+        payproApiServer
+        .forPost(`/api/Orders/GetOrderDetails`)
+        .thenCallback(async (request) => {
+            const orderId = (await request.body.getJson() as any).orderId;
+
+            return {
+                statusCode: 200,
+                json: {
+                    isSuccess: true,
+                    response: orders.find(o => o.orderId === orderId)
+                }
+            }
+        }),
+    ]);
 }
 
 // Create a team, with the given list of users, and 'undefined' for each

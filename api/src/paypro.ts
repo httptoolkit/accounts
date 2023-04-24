@@ -2,9 +2,10 @@ import * as _ from 'lodash';
 import * as crypto from 'crypto';
 import * as forge from 'node-forge';
 import fetch from 'node-fetch';
+import * as moment from 'moment';
 
 import { reportError, StatusError } from './errors';
-import { SKU } from "../../module/src/types";
+import { SKU, TransactionData } from "../../module/src/types";
 import { getLatestRates } from './exchange-rates';
 
 const PAYPRO_API_BASE_URL = process.env.PAYPRO_API_BASE_URL
@@ -233,8 +234,10 @@ export interface PayProWebhookData {
     ORDER_CUSTOM_FIELDS: string; // a=b,b=c params, including x-passthrough=[JSON}
 }
 
+// All in Moment format:
 export const PayProOrderDateFormat = 'MM/DD/YYYY HH:mm:ss';
 export const PayProRenewalDateFormat = 'M/D/YYYY h:mm A';
+export const PayProOrderDetailsDate = 'YYYY-MM-DDTHH:mm:ss.SSS'; // ISO minus timestamp
 
 export function validatePayProWebhook(data: PayProWebhookData) {
     // PayPro only validates this limited set of fields (eugh) but as the
@@ -312,4 +315,120 @@ export async function cancelSubscription(subscriptionId: string | number) {
         console.log('PayPro errors:', responseBody.errors);
         throw new Error(`PayPro cancellation request failed`);
     }
+}
+
+// Order statuses: 1 – Waiting, 2 – Canceled, 3 – Refunded, 4 – Chargeback, 5 – Processed.
+type OrderStatusId = number;
+type OrderStatusName =
+    | 'Waiting'
+    | 'Canceled'
+    | 'Refunded'
+    | 'Chargeback'
+    | 'Processed';
+
+export interface PayProOrderListing {
+    id: number,
+    placedAtUtc: string, // E.g. "2023-03-20T17:27:31.44" (so ISO without timestamp, always UTC)
+    invoiceUrl: string, // Full URL
+    customerBillingEmail: string,
+    orderStatusId: OrderStatusId,
+    orderStatusName: OrderStatusName,
+    paymentMethodName: string
+
+}
+
+export interface PayProOrderDetails {
+    "orderId": number,
+    "orderStatusId": OrderStatusId,
+    "orderStatusName": OrderStatusName,
+    "paymentMethodName": string,
+    "createdAt": string // E.g. "2023-04-10T17:47:12.123" (so ISO without timestamp, always UTC)
+    "billingCurrencyCode": string,
+    "customer": { "email": string }
+    "orderItems": Array<{
+        "orderItemName": string,
+        "sku": SKU,
+        "quantity": number,
+        "billingPrice": number
+    }>,
+    "invoiceLink": string, // Full URL
+    "billingTotalPrice": number
+}
+
+export async function lookupPayProOrders(email: string): Promise<TransactionData[]> {
+    const listResponse = await fetch(`${PAYPRO_API_BASE_URL}/api/Orders/GetList`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+            vendorAccountId: PAYPRO_ACCOUNT_ID,
+            apiSecretKey: PAYPRO_API_KEY,
+            search: { customerEmail: email }
+        })
+    });
+
+    if (!listResponse.ok) {
+        console.log(`${listResponse.status} ${listResponse.statusText}`,
+            listResponse.headers,
+            await listResponse.text().catch(() => '')
+        );
+        throw new Error(`Unexpected ${listResponse.status} during PayPro order listing`);
+    }
+
+    const listResponseBody = await listResponse.json();
+    if (!listResponseBody.isSuccess) {
+        console.log('PayPro errors:', listResponseBody.errors);
+        throw new Error(`PayPro order listing request failed`);
+    }
+
+    const orders = listResponseBody.response.orders as PayProOrderListing[];
+
+    const rawOrders = await Promise.all(orders.map(async (order): Promise<PayProOrderDetails> => {
+        const orderResponse = await fetch(`${PAYPRO_API_BASE_URL}/api/Orders/GetOrderDetails`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+                vendorAccountId: PAYPRO_ACCOUNT_ID,
+                apiSecretKey: PAYPRO_API_KEY,
+                orderId: order.id
+            })
+        });
+
+        if (!orderResponse.ok) {
+            console.log(`${orderResponse.status} ${orderResponse.statusText}`,
+                orderResponse.headers,
+                await orderResponse.text().catch(() => '')
+            );
+            throw new Error(`Unexpected ${orderResponse.status} during PayPro order detail lookup`);
+        }
+
+        const orderResponseBody = await orderResponse.json();
+        if (!orderResponseBody.isSuccess) {
+            console.log('PayPro errors:', orderResponseBody.errors);
+            throw new Error(`PayPro order detail lookup request failed`);
+        }
+
+        return orderResponseBody.response;
+    }));
+
+    return rawOrders.map((order): TransactionData => {
+        if (order.orderItems.length !== 1) {
+            throw new Error(
+                `Unexpectedly found ${order.orderItems.length} orders in PayPro order ${order.orderId}`
+            );
+        }
+
+        const orderItem = order.orderItems[0];
+
+        const orderDate = moment.utc(order.createdAt, PayProOrderDetailsDate);
+
+        return {
+            order_id: order.orderId.toString(),
+            amount: order.billingTotalPrice.toFixed(2),
+            currency: order.billingCurrencyCode,
+            receipt_url: order.invoiceLink,
+            sku: orderItem.sku,
+            status: order.orderStatusName,
+            created_at: orderDate.toISOString()
+        };
+    })
 }
