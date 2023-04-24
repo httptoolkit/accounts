@@ -14,7 +14,7 @@ import {
     paddleServer,
     PADDLE_PORT,
     givenSubscription,
-    givenTransactions,
+    givenPaddleTransactions,
     id
 } from './test-util';
 import { TransactionData } from '../../module/src/types';
@@ -122,16 +122,16 @@ describe('/get-billing-data', () => {
                 });
 
             const { paddleUserId } = await givenSubscription(subId);
-            const transaction: TransactionData = {
+            const transactionDate = new Date();
+            await givenPaddleTransactions(paddleUserId, [{
                 amount: "1.00",
                 currency: "USD",
-                created_at: new Date().toISOString(),
+                created_at: transactionDate.toISOString(),
                 order_id: "order-456",
                 product_id: 550380,
                 receipt_url: "receipt.example",
                 status: "completed"
-            };
-            await givenTransactions(paddleUserId, [transaction]);
+            }]);
 
             const response = await getBillingData(functionServer, authToken);
             expect(response.status).to.equal(200);
@@ -143,7 +143,15 @@ describe('/get-billing-data', () => {
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
                 subscription_status: "active",
-                transactions: [transaction],
+                transactions: [{
+                    amount: "1.00",
+                    currency: "USD",
+                    created_at: transactionDate.toISOString(),
+                    order_id: "order-456",
+                    sku: 'pro-monthly',
+                    receipt_url: "receipt.example",
+                    status: "completed"
+                }],
                 can_manage_subscription: true
             });
         });
@@ -173,7 +181,7 @@ describe('/get-billing-data', () => {
                 });
 
             const { paddleUserId } = await givenSubscription(subId);
-            await givenTransactions(paddleUserId, []);
+            await givenPaddleTransactions(paddleUserId, []);
 
             const response1 = await getBillingData(functionServer, authToken);
             expect(response1.status).to.equal(200);
@@ -304,16 +312,17 @@ describe('/get-billing-data', () => {
                 ]);
 
             const { paddleUserId } = await givenSubscription(subId);
-            const transaction: TransactionData = {
+            const transactionDate = new Date();
+            const transaction = {
                 amount: "1.00",
                 currency: "USD",
-                created_at: new Date().toISOString(),
+                created_at: transactionDate.toISOString(),
                 order_id: "order-456",
                 product_id: 550789,
                 receipt_url: "receipt.example",
                 status: "completed"
             };
-            await givenTransactions(paddleUserId, [transaction]);
+            await givenPaddleTransactions(paddleUserId, [transaction]);
 
             const response = await getBillingData(functionServer, authToken);
             expect(response.status).to.equal(200);
@@ -336,7 +345,15 @@ describe('/get-billing-data', () => {
                 update_url: 'uu',
                 can_manage_subscription: true,
 
-                transactions: [transaction],
+                transactions: [{
+                    amount: "1.00",
+                    currency: "USD",
+                    created_at: transactionDate.toISOString(),
+                    order_id: "order-456",
+                    sku: 'team-monthly',
+                    receipt_url: "receipt.example",
+                    status: "completed"
+                }],
                 team_members: [
                     { id: '1', name: team[0].email, locked: false },
                     // Rejected due to lock:
@@ -388,16 +405,17 @@ describe('/get-billing-data', () => {
                 ]);
 
             const { paddleUserId } = await givenSubscription(subId);
-            const transaction: TransactionData = {
+            const transactionDate = new Date();
+            const transaction = {
                 amount: "1.00",
                 currency: "USD",
-                created_at: new Date().toISOString(),
+                created_at: transactionDate.toISOString(),
                 order_id: "order-456",
                 product_id: 550789,
                 receipt_url: "receipt.example",
                 status: "completed"
             };
-            await givenTransactions(paddleUserId, [transaction]);
+            await givenPaddleTransactions(paddleUserId, [transaction]);
 
             const response = await getBillingData(functionServer, authToken);
             expect(response.status).to.equal(200);
@@ -416,7 +434,15 @@ describe('/get-billing-data', () => {
                 update_url: 'uu',
                 can_manage_subscription: true,
 
-                transactions: [transaction],
+                transactions: [{
+                    amount: "1.00",
+                    currency: "USD",
+                    created_at: transactionDate.toISOString(),
+                    order_id: "order-456",
+                    sku: 'team-monthly',
+                    receipt_url: "receipt.example",
+                    status: "completed"
+                }],
                 team_owner: { id: billingUserId, name: billingUserEmail },
                 team_members: [
                     { id: billingUserId, name: billingUserEmail, locked: false }

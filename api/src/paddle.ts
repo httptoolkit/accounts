@@ -247,6 +247,17 @@ export async function getPaddleUserIdFromSubscription(
     }
 }
 
+export interface PaddleTransaction {
+    order_id: string; // Used as key
+    receipt_url: string; // url
+    product_id: number; // Used to show plan name for this order
+    created_at: string; // Used for date
+    status: string; // Shown directly
+
+    currency: string; // Shown together as total paid
+    amount: string;
+}
+
 export async function lookupPaddleUserTransactions(
     userId: string | number
 ): Promise<TransactionData[]> {
@@ -260,16 +271,18 @@ export async function lookupPaddleUserTransactions(
         }
     );
 
-    // Expose this data as objects with only the minimal set of relevant keys for now:
-    return response.map((transaction: TransactionData) => _.pick(transaction, [
-        'order_id',
-        'receipt_url',
-        'product_id',
-        'created_at',
-        'status',
-        'currency',
-        'amount'
-    ]));
+    // Expose this data as objects with minor trimming & transformation:
+    return response.map((transaction: PaddleTransaction) => ({
+        ..._.pick(transaction, [
+            'order_id',
+            'receipt_url',
+            'created_at',
+            'status',
+            'currency',
+            'amount'
+        ]),
+        sku: getSkuForPaddleId(transaction.product_id)
+    }));
 }
 
 // Taken from https://www.paddle.com/help/start/intro-to-paddle/what-currencies-do-you-support

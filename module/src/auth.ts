@@ -9,7 +9,7 @@ import { Auth0LockPasswordless } from '@httptoolkit/auth0-lock';
 const auth0Dictionary = require('@httptoolkit/auth0-lock/lib/i18n/en').default;
 import * as dedent from 'dedent';
 
-import { SubscriptionData, SubscriptionPlanCode, UserAppData, UserBillingData } from "./types";
+import { SKU, SubscriptionData, SubscriptionPlanCode, UserAppData, UserBillingData } from "./types";
 import { getSubscriptionPlanCode } from './plans';
 
 const AUTH0_CLIENT_ID = 'KAJyF1Pq9nfBrv5l3LHjT9CrSQIleujj';
@@ -271,7 +271,7 @@ const anonUser = (): User => ({ featureFlags: [] });
 export interface Transaction {
     orderId: string;
     receiptUrl: string;
-    productId: number;
+    sku: SKU;
     createdAt: string;
     status: string;
 
@@ -375,7 +375,7 @@ function parseBillingData(userJwt: string | null): BillingAccount {
     const transactions = billingData.transactions.map((transaction) => ({
         orderId: transaction.order_id,
         receiptUrl: transaction.receipt_url,
-        productId: transaction.product_id,
+        sku: transaction.sku,
         createdAt: transaction.created_at,
         status: transaction.status,
 

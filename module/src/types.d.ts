@@ -103,13 +103,13 @@ export interface SubscriptionData {
 }
 
 export interface TransactionData {
-    order_id: string;
-    receipt_url: string;
-    product_id: number;
-    created_at: string;
-    status: string;
+    order_id: string; // Used as key
+    receipt_url: string; // url
+    sku: SKU; // Used to show plan name for this order
+    created_at: string; // Used for date
+    status: string; // Shown directly
 
-    currency: string;
+    currency: string; // Shown together as total paid
     amount: string;
 }
 

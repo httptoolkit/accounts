@@ -5,8 +5,8 @@ import { getLocal } from 'mockttp';
 import stoppable from 'stoppable';
 
 import { serveFunctions } from '@httptoolkit/netlify-cli/src/utils/serve-functions';
-import { TransactionData } from '../../module/src/types';
 import { AppMetadata } from '../src/auth0';
+import { PaddleTransaction } from '../src/paddle';
 
 let idCounter = 1000;
 export function id() {
@@ -184,7 +184,7 @@ export async function givenSubscription(subId: number) {
     return { paddleUserId: userId };
 }
 
-export function givenTransactions(userId: number, transactions: TransactionData[]) {
+export function givenPaddleTransactions(userId: number, transactions: PaddleTransaction[]) {
     return paddleServer
         .forPost(`/api/2.0/user/${userId}/transactions`)
         .thenJson(200, {

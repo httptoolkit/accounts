@@ -12,7 +12,7 @@ import type {
 } from '../../module/src/auth';
 
 import {
-    getPlanById
+    getPlanByCode
 } from '../../module/src/plans';
 
 export const Transactions = observer((p: {
@@ -26,7 +26,7 @@ export const Transactions = observer((p: {
         >
             <TransactionDescription>
                 {
-                    getPlanById(transaction.productId)?.name
+                    getPlanByCode(transaction.sku)?.name
                     ?? 'Unknown'
                 }
             </TransactionDescription>
