@@ -48,7 +48,7 @@ export async function setRevenueTraits(email: string, traits: Traits, retries = 
             // Retry failures, to work around intermittent connection problems or race conditions
             // where a parallel process (e.g. Paddle's Profitwell integration) or Profitwell's
             // own processing hasn't completed yet and so the customer isn't recognized.
-            await delay(1000);
+            await delay(2000);
             return setRevenueTraits(email, traits, retries - 1);
         } else {
             throw e;
