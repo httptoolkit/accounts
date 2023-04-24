@@ -349,6 +349,47 @@ describe('PayPro webhooks', () => {
             });
         });
 
+        it('should handle users whose renewal payments fail', async () => {
+            const userId = "abc";
+            const userEmail = 'user@example.com';
+            const nextRenewal = moment('2025-01-01');
+
+            givenUser(userId, userEmail, {
+                subscription_status: 'active',
+                subscription_sku: 'pro-annual',
+                subscription_expiry: nextRenewal.subtract(30, 'days').valueOf()
+            });
+
+            const userUpdate = await auth0Server
+                .forPatch('/api/v2/users/' + userId)
+                .thenReply(200);
+
+            await triggerWebhook(functionServer, {
+                IPN_TYPE_NAME: 'SubscriptionChargeFailed',
+                ORDER_ITEM_SKU: 'pro-annual',
+                SUBSCRIPTION_ID: '456',
+                SUBSCRIPTION_RENEWAL_TYPE: 'Auto',
+                SUBSCRIPTION_STATUS_NAME: 'Active',
+                SUBSCRIPTION_NEXT_CHARGE_DATE: formatRenewalDate(nextRenewal),
+                PRODUCT_QUANTITY: '1',
+                TEST_MODE: '0',
+                CUSTOMER_EMAIL: userEmail
+            });
+
+            const updateRequests = await userUpdate.getSeenRequests();
+            expect(updateRequests.length).to.equal(1);
+            expect(await updateRequests[0].body.getJson()).to.deep.equal({
+                app_metadata: {
+                    subscription_status: 'past_due',
+                    payment_provider: 'paypro',
+                    subscription_id: '456',
+                    subscription_sku: 'pro-annual',
+                    subscription_quantity: 1,
+                    subscription_expiry: nextRenewal.valueOf() // Expiry is next charge date
+                }
+            });
+        });
+
         it('should log subscriptions in Profitwell', async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';

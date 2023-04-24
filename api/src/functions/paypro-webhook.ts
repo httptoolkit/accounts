@@ -3,6 +3,7 @@ initSentry();
 
 import * as querystring from 'querystring';
 import moment from 'moment';
+import { SubscriptionStatus } from '../../../module/src/types';
 
 import { SKUs } from '../products';
 import { recordCancellation, recordSubscription } from '../accounting';
@@ -30,6 +31,7 @@ export const handler = catchErrors(async (event) => {
     if ([
         'OrderCharged', // Initial charge for a new subscription
         'SubscriptionChargeSucceed', // Successful renewal
+        'SubscriptionChargeFailed', // Failed renewal
         'SubscriptionTerminated', // Subscription permanently cancelled
         'SubscriptionSuspended' // Subscription not going to renew for now
     ].includes(eventType)) {
@@ -38,14 +40,22 @@ export const handler = catchErrors(async (event) => {
         const sku = eventData.ORDER_ITEM_SKU;
         if (!SKUs.includes(sku)) throw new Error(`Received webhook for unrecognized SKU: ${sku}`);
 
-        const isSubscriptionActive = eventData.SUBSCRIPTION_STATUS_NAME === 'Active' &&
-            // If 'Manual', the subscription is implicitly cancelled, so renewal date is actually expiry
-            eventData.SUBSCRIPTION_RENEWAL_TYPE === 'Auto';
+        const subState: SubscriptionStatus = (
+            // Not active means terminated/suspended/finished, so it's definitely cancelled:
+            eventData.SUBSCRIPTION_STATUS_NAME !== 'Active' ||
+            // If active but 'Manual', the subscription is implicitly cancelled, so renewal is actually expiry:
+            eventData.SUBSCRIPTION_RENEWAL_TYPE !== 'Auto'
+        )
+            ? 'deleted'
+        : eventType === 'SubscriptionChargeFailed'
+            ? 'past_due'
+        // Status active, auto renewal, no failed charges => all good
+            : 'active';
 
         const endDate = eventData.SUBSCRIPTION_NEXT_CHARGE_DATE
             ? moment.utc(eventData.SUBSCRIPTION_NEXT_CHARGE_DATE, PayProRenewalDateFormat)
             : undefined;
-        if (isSubscriptionActive && (!endDate || endDate.isBefore(moment()))) {
+        if ((subState === 'active' || subState === 'past_due') && (!endDate || endDate.isBefore(moment()))) {
             throw new Error(`Received webhook with invalid renewal date: ${
                 eventData.SUBSCRIPTION_NEXT_CHARGE_DATE
             }`);
@@ -58,9 +68,7 @@ export const handler = catchErrors(async (event) => {
         if (!subscriptionId) throw new Error(`Received webhook with no subscription id`);
 
         await updateProUserData(email, {
-            subscription_status: isSubscriptionActive
-                ? 'active'
-                : 'deleted',
+            subscription_status: subState,
             subscription_sku: sku,
             subscription_quantity: quantity,
             subscription_expiry: endDate?.valueOf(),
