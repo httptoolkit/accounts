@@ -355,7 +355,7 @@ async function getTransactions(rawMetadata: RawMetadata) {
     } else {
         // If there's no cached data, we just wait until the full request is done, like normal:
         return Promise.race([
-            transactionsRequest,
+            transactionsRequest.catch(() => null),
             // After 15 seconds, give up & return null (will show as 'unavailable' UI side). We
             // genuinely hit this sometimes because Paddle is remarkably astonishingly bad. On
             // the plus side, caching means the user can refresh in a minute and this will be
