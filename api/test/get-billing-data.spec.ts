@@ -292,7 +292,8 @@ describe('/get-billing-data', () => {
                     receipt_url: "https://invoice-url",
                     status: "completed"
                 } as TransactionData],
-                can_manage_subscription: true
+                can_manage_subscription: true,
+                update_url: 'https://cc.payproglobal.com/Customer/Account/Login'
             });
         });
 

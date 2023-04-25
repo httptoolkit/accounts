@@ -227,6 +227,11 @@ async function buildUserAppData(userId: string, rawMetadata: RawMetadata) {
             : true
     }
 
+    // PayPro users need to go to their control panel to update billing details:
+    if (userMetadata.can_manage_subscription && (rawMetadata as PayingUserMetadata).payment_provider === 'paypro') {
+        userMetadata.update_url = 'https://cc.payproglobal.com/Customer/Account/Login';
+    }
+
     // Annoyingly due to an old implementation issue in the UI
     // (https://github.com/httptoolkit/httptoolkit-ui/commit/acb42aa9e4c05659beae2039854598c982083ffe)
     // we need to return some subscription_id in all paid cases, even though it's never used.
@@ -280,6 +285,11 @@ async function buildUserBillingData(
             ? owner.id === userId
             // Otherwise, it must be your (Team or Pro) subscription, go wild:
             : true
+    }
+
+    // PayPro users need to go to their control panel to update billing details:
+    if (can_manage_subscription && rawMetadata.payment_provider === 'paypro') {
+        rawMetadata.update_url = 'https://cc.payproglobal.com/Customer/Account/Login';
     }
 
     return {
