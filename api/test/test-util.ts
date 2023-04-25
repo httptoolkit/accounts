@@ -5,16 +5,17 @@ import { getLocal } from 'mockttp';
 import stoppable from 'stoppable';
 
 import { serveFunctions } from '@httptoolkit/netlify-cli/src/utils/serve-functions';
+
 import { AppMetadata } from '../src/auth0';
 import { PayProOrderDetails, PayProOrderListing } from '../src/paypro';
 import { PaddleTransaction } from '../src/paddle';
+
+export { delay } from "../../module/src/util";
 
 let idCounter = 1000;
 export function id() {
     return idCounter++;
 }
-
-export const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function generateKeyPair() {
     return crypto.generateKeyPairSync('rsa', {

@@ -3,6 +3,7 @@ import { makeObservable, observable, computed, flow } from 'mobx';
 
 import { reportError } from './errors';
 
+import { delay } from "../../module/src/util";
 import {
     getBillingData,
     updateTeamMembers,
@@ -14,8 +15,6 @@ import {
     logOut,
     BillingAccount
 } from '../../module/src/auth';
-
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class AccountStore {
 

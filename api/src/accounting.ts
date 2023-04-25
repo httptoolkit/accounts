@@ -1,6 +1,7 @@
 import fetch from "node-fetch";
 
 import { SKU } from "../../module/src/types";
+import { delay } from "../../module/src/util";
 
 import { getPaddleIdForSku } from "./paddle";
 import { getSkuInterval } from "./products";
@@ -13,8 +14,6 @@ interface Traits {
     'Payment provider'?: string,
     'Country code'?: string
 }
-
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Attempt to update the user to log subscription metadata (e.g. the provider used) so
 // we can work out where the actual money is later on.
