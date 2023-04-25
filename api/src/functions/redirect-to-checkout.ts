@@ -35,6 +35,8 @@ export const handler = catchErrors(async (event) => {
         payProTestMode?: string
     };
 
+    console.log('Checkaout query params:', event.queryStringParameters);
+
     const sourceIp = event.headers['x-nf-client-connection-ip']
         ?? event.requestContext?.identity.sourceIp;
 
