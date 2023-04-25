@@ -53,7 +53,7 @@ export type UserAppData = {
 // User billing data, as returned by the API
 export type UserBillingData = {
     email: string;
-    transactions: TransactionData[];
+    transactions: TransactionData[] | null;
 
     // Team members only:
     team_owner?: {

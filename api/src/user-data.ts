@@ -8,6 +8,7 @@ import type {
     UserAppData,
     UserBillingData
 } from '../../module/src/types';
+import { delay } from '../../module/src/util';
 
 import {
     getPaddleIdForSku,
@@ -353,7 +354,14 @@ async function getTransactions(rawMetadata: RawMetadata) {
         return transactionsCache.get<TransactionData[]>(transactionsCacheKey)!;
     } else {
         // If there's no cached data, we just wait until the full request is done, like normal:
-        return transactionsRequest;
+        return Promise.race([
+            transactionsRequest,
+            // After 15 seconds, give up & return null (will show as 'unavailable' UI side). We
+            // genuinely hit this sometimes because Paddle is remarkably astonishingly bad. On
+            // the plus side, caching means the user can refresh in a minute and this will be
+            // available immediately.
+            delay(15_000).then(() => null)
+        ]);
     }
 }
 

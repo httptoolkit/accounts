@@ -293,7 +293,7 @@ export interface TeamOwner {
 }
 
 export interface BillingAccount extends BaseAccountData {
-    transactions: Transaction[];
+    transactions: Transaction[] | null;
 
     // Only define if you are a member of a team:
     teamOwner?: TeamOwner;
@@ -372,7 +372,7 @@ function parseBillingData(userJwt: string | null): BillingAccount {
         issuer: 'https://httptoolkit.tech/'
     });
 
-    const transactions = billingData.transactions.map((transaction) => ({
+    const transactions = billingData.transactions?.map((transaction) => ({
         orderId: transaction.order_id,
         receiptUrl: transaction.receipt_url,
         sku: transaction.sku,
@@ -381,7 +381,7 @@ function parseBillingData(userJwt: string | null): BillingAccount {
 
         amount: transaction.amount,
         currency: transaction.currency
-    }));
+    })) ?? null; // Null => transactions timed out upstream, not available.
 
     return {
         email: billingData.email,
