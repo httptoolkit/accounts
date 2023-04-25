@@ -6,10 +6,23 @@ import type { PricedSKU } from '../../../module/src/types';
 import * as Paddle from '../paddle';
 import * as PayPro from '../paypro';
 
-import { isTeamSubscription, PricedSKUs } from '../products';
+import { isProSubscription, isTeamSubscription, PricedSKUs } from '../products';
 import { getAllPrices } from '../pricing';
 import { getIpData } from '../ip-geolocate';
 import { flushMetrics, generateSessionId, trackEvent } from '../metrics';
+
+const PAYPRO_COUNTRIES = [
+    'BRA',
+    'IND',
+    'CHN',
+    'VNM',
+    'MYS',
+    'KOR',
+    'PHL',
+    'THA',
+    'NLD',
+    'ARE'
+];
 
 export const handler = catchErrors(async (event) => {
     const {
@@ -22,20 +35,17 @@ export const handler = catchErrors(async (event) => {
         // Thank you page URL:
         returnUrl,
         // Metadata to pass through:
-        passthrough: passthroughParameter,
-        // Temporary test-only PayPro mode (not yet functional)
-        payProTestMode
+        passthrough: passthroughParameter
     } = event.queryStringParameters as {
         email?: string,
         sku?: PricedSKU,
         quantity?: string,
         source?: string,
         returnUrl?: string,
-        passthrough?: string,
-        payProTestMode?: string
+        passthrough?: string
     };
 
-    console.log('Checkaout query params:', event.queryStringParameters);
+    console.log('Checkout query params:', event.queryStringParameters);
 
     const sourceIp = event.headers['x-nf-client-connection-ip']
         ?? event.requestContext?.identity.sourceIp;
@@ -89,7 +99,9 @@ export const handler = catchErrors(async (event) => {
         : basePassthroughData
     );
 
-    const paymentProvider = payProTestMode === 'true'
+    // We use PayPro to handle payments only for Pro subscriptions, for a set of countries where
+    // the wider support for global payment methods & currencies is likely to be useful:
+    const paymentProvider = isProSubscription(sku) && PAYPRO_COUNTRIES.includes(ipData?.countryCode3!)
         ? 'paypro'
         : 'paddle';
 
