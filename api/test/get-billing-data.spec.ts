@@ -2,6 +2,7 @@ import * as net from 'net';
 import fetch from 'node-fetch';
 import * as jwt from 'jsonwebtoken';
 import stoppable from 'stoppable';
+import moment from 'moment';
 
 import { expect } from 'chai';
 
@@ -22,6 +23,10 @@ import {
 } from './test-util';
 import { TransactionData } from '../../module/src/types';
 import { LICENSE_LOCK_DURATION_MS, TeamOwnerMetadata } from '../src/auth0';
+
+const asPaddleDate = (date: Date) => {
+    return moment.utc(date).format('YYYY-MM-DD HH:mm:ss');
+}
 
 const getBillingData = (server: net.Server, authToken?: string) => fetch(
     `http://localhost:${(server.address() as net.AddressInfo).port}/get-billing-data`,
@@ -128,10 +133,11 @@ describe('/get-billing-data', () => {
 
             const { paddleUserId } = await givenSubscription(subId);
             const transactionDate = new Date();
+            transactionDate.setMilliseconds(0);
             await givenPaddleTransactions(paddleUserId, [{
                 amount: "1.00",
                 currency: "USD",
-                created_at: transactionDate.toISOString(),
+                created_at: asPaddleDate(transactionDate),
                 order_id: "order-456",
                 product_id: 550380,
                 receipt_url: "receipt.example",
@@ -189,10 +195,11 @@ describe('/get-billing-data', () => {
                 });
 
             const transactionDate = new Date();
+            transactionDate.setMilliseconds(0);
             await givenPaddleTransactions(paddleUserId, [{
                 amount: "1.00",
                 currency: "USD",
-                created_at: transactionDate.toISOString(),
+                created_at: asPaddleDate(transactionDate),
                 order_id: "order-456",
                 product_id: 550380,
                 receipt_url: "receipt.example",
@@ -446,10 +453,11 @@ describe('/get-billing-data', () => {
 
             const { paddleUserId } = await givenSubscription(subId);
             const transactionDate = new Date();
+            transactionDate.setMilliseconds(0);
             await givenPaddleTransactions(paddleUserId, [{
                 amount: "1.00",
                 currency: "USD",
-                created_at: transactionDate.toISOString(),
+                created_at: asPaddleDate(transactionDate),
                 order_id: "order-456",
                 product_id: 550789,
                 receipt_url: "receipt.example",
@@ -538,10 +546,12 @@ describe('/get-billing-data', () => {
 
             const { paddleUserId } = await givenSubscription(subId);
             const transactionDate = new Date();
+            transactionDate.setMilliseconds(0);
+
             await givenPaddleTransactions(paddleUserId, [{
                 amount: "1.00",
                 currency: "USD",
-                created_at: transactionDate.toISOString(),
+                created_at: asPaddleDate(transactionDate),
                 order_id: "order-456",
                 product_id: 550789,
                 receipt_url: "receipt.example",

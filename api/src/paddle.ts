@@ -5,6 +5,7 @@ import { URLSearchParams } from 'url';
 import fetch, { RequestInit } from 'node-fetch';
 import Serialize from 'php-serialize';
 import NodeCache from 'node-cache';
+import moment from 'moment';
 
 import { reportError, StatusError } from './errors';
 import { getLatestRates } from './exchange-rates';
@@ -249,14 +250,14 @@ export async function getPaddleUserIdFromSubscription(
 
 export interface PaddleTransaction {
     order_id: string; // Used as key
-    receipt_url: string; // url
+    receipt_url: string;
     product_id: number; // Used to show plan name for this order
-    created_at: string; // Used for date
+    created_at: string; // E.g. "2020-09-03 02:50:36" in UTC
 
     status: 'completed' | 'refunded' | 'partially_refunded' | 'disputed';
     // Status is shown in the dashboard, title cased.
 
-    currency: string; // Shown together as total paid
+    currency: string;
     amount: string;
 }
 
@@ -278,11 +279,15 @@ export async function lookupPaddleUserTransactions(
         ..._.pick(transaction, [
             'order_id',
             'receipt_url',
-            'created_at',
             'status',
             'currency',
             'amount'
         ]),
+        // Switch to UTC ISO from Paddle's funky date format:
+        created_at: moment.utc(
+            transaction.created_at,
+            "YYYY-MM-DD HH:mm:ss"
+        ).toISOString(),
         sku: getSkuForPaddleId(transaction.product_id)
     }));
 }
