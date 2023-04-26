@@ -1,32 +1,31 @@
 import * as _ from 'lodash';
+import { SKU, SubscriptionPricing } from './types';
 
-import type { SKU } from './types';
+import { delay, doWhile, ACCOUNTS_API_BASE } from './util';
 
 export interface SubscriptionPlan {
-    id: number;
+    paddleId: number;
     name: string;
-
-    // Prices are undefined until loadPrices resolves
     prices?: {
+        currency: string;
         monthly: string;
         total: string;
-    };
+    } | 'priceless';
 }
 
 export const SubscriptionPlans = {
-    'pro-monthly': { id: 550380, name: 'Pro (monthly)' } as SubscriptionPlan,
-    'pro-annual': { id: 550382, name: 'Pro (annual)' } as SubscriptionPlan,
-    'pro-perpetual': { id: 599788, name: 'Pro (perpetual)' } as SubscriptionPlan,
-    'team-monthly': { id: 550789, name: 'Team (monthly)' } as SubscriptionPlan,
-    'team-annual': { id: 550788, name: 'Team (annual)' } as SubscriptionPlan,
+    'pro-monthly': { paddleId: 550380, name: 'Pro (monthly)' } as SubscriptionPlan,
+    'pro-annual': { paddleId: 550382, name: 'Pro (annual)' } as SubscriptionPlan,
+    'team-monthly': { paddleId: 550789, name: 'Team (monthly)' } as SubscriptionPlan,
+    'team-annual': { paddleId: 550788, name: 'Team (annual)' } as SubscriptionPlan,
+    // Defunct, but kept to support existing accounts:
+    'pro-perpetual': { paddleId: 599788, name: 'Pro (perpetual)', prices: 'priceless' } as SubscriptionPlan
 };
 
-export async function loadPrices() {
-    const response = await fetch(
-        `https://accounts.httptoolkit.tech/api/get-prices?product_ids=${
-            Object.values(SubscriptionPlans).map(plan => plan.id).join(',')
-        }`
-    );
+export type SubscriptionPlans = typeof SubscriptionPlans;
+
+async function loadPlanPrices() {
+    const response = await fetch(`${ACCOUNTS_API_BASE}/get-prices`);
 
     if (!response.ok) {
         console.log(response);
@@ -40,35 +39,14 @@ export async function loadPrices() {
         throw new Error("Price lookup request was unsuccessful");
     }
 
-    const productPrices = data.response.products as Array<{
-        product_id: number,
-        currency: string,
-        price: { net: number },
-        subscription: { interval: string }
-    }>;
-
-    // Sanity check to ensure both arrays contain the same ids:
-    if (
-        _.intersection(
-            productPrices.map(p => p.product_id),
-            Object.values(SubscriptionPlans).map(p => p.id)
-        ).length !== productPrices.length
-    ) {
-        throw new Error(
-            `Received ${productPrices.length} prices for ${
-                Object.keys(SubscriptionPlans).length
-            } plans`
-        );
-    }
+    const productPrices = data.response.products as Array<SubscriptionPricing>;
 
     productPrices.forEach((productPrice) => {
         const plan = _.find(SubscriptionPlans,
-            { id: productPrice.product_id }
+            { paddleId: productPrice.product_id }
         ) as SubscriptionPlan | undefined;
 
-        if (!plan) throw new Error(
-            `Couldn't find plan ${productPrice.product_id} for price response`
-        );
+        if (!plan) return;
 
         const currency = productPrice.currency;
         const totalPrice = productPrice.price.net;
@@ -77,15 +55,34 @@ export async function loadPrices() {
             : totalPrice;
 
         plan.prices = {
+            currency: currency,
             total: formatPrice(currency, totalPrice),
             monthly: formatPrice(currency, monthlyPrice)
         };
     });
+
+    return SubscriptionPlans;
+}
+
+export async function loadPlanPricesUntilSuccess() {
+    // Async load all plan prices, repeatedly, until it works
+    await doWhile(
+        // Do: load the prices, with a timeout
+        () => Promise.race([
+            loadPlanPrices().catch(console.warn),
+            delay(5000) // 5s timeout
+        ]).then(() => delay(1000)), // Limit the frequency
+
+        // While: if any subs didn't successfully get data, try again:
+        () => _.some(SubscriptionPlans, (plan) => !plan.prices),
+    );
+
+    return SubscriptionPlans;
 }
 
 function formatPrice(currency: string, price: number) {
     return Number(price).toLocaleString(undefined, {
-        style:"currency",
+        style: "currency",
         currency: currency,
         minimumFractionDigits: _.round(price) === price ? 0 : 2,
         maximumFractionDigits: 2
@@ -94,5 +91,5 @@ function formatPrice(currency: string, price: number) {
 
 export const getPlanByCode = (sku: SKU) => SubscriptionPlans[sku];
 
-export const getSKUForPaddleId = (id: number | undefined) =>
-    _.findKey(SubscriptionPlans, { id: id }) as SKU | undefined;
+export const getSKUForPaddleId = (paddleId: number | undefined) =>
+    _.findKey(SubscriptionPlans, { paddleId: paddleId }) as SKU | undefined;

@@ -4,7 +4,7 @@ export {
     SubscriptionPlan,
     getSKUForPaddleId,
     SubscriptionPlans,
-    loadPrices
+    loadPlanPricesUntilSuccess
 } from './plans';
 
 export {

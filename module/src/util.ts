@@ -3,3 +3,12 @@ export const ACCOUNTS_API_BASE = process.env.ACCOUNTS_API ?? // Useful for local
     `https://accounts.httptoolkit.tech/api`;
 
 export const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export async function doWhile<T>(
+    doFn: () => Promise<T>,
+    whileFn: () => Promise<boolean> | boolean
+) {
+    do {
+        await doFn();
+    } while (await whileFn());
+}
