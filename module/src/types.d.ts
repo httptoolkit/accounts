@@ -53,6 +53,7 @@ export type UserAppData = {
 // User billing data, as returned by the API
 export type UserBillingData = {
     email: string;
+    banned?: boolean;
     transactions: TransactionData[] | null;
 
     // Team members only:
@@ -102,6 +103,7 @@ export interface SubscriptionData {
     can_manage_subscription?: boolean;
 }
 
+// Transaction data, as returned within API billing responses
 export interface TransactionData {
     order_id: string; // Used as key
     receipt_url: string; // url

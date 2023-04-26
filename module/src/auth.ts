@@ -260,13 +260,14 @@ interface Subscription {
 interface BaseAccountData {
     email?: string;
     subscription?: Subscription;
+    banned: boolean;
 }
 
 export interface User extends BaseAccountData {
     featureFlags: string[];
 }
 
-const anonUser = (): User => ({ featureFlags: [] });
+const anonUser = (): User => ({ featureFlags: [], banned: false });
 
 export interface Transaction {
     orderId: string;
@@ -303,7 +304,7 @@ export interface BillingAccount extends BaseAccountData {
     lockedLicenseExpiries?: number[]; // Timestamps when locked licenses will unlock
 }
 
-const anonBillingAccount = (): BillingAccount => ({ transactions: [] });
+const anonBillingAccount = (): BillingAccount => ({ transactions: [], banned: false });
 
 /*
  * Synchronously gets the last received user data, _without_
@@ -359,7 +360,8 @@ function parseUserData(userJwt: string | null): User {
     return {
         email: appData.email,
         subscription: parseSubscriptionData(appData),
-        featureFlags: appData.feature_flags || []
+        featureFlags: appData.feature_flags || [],
+        banned: !!appData.banned
     };
 }
 
@@ -389,7 +391,8 @@ function parseBillingData(userJwt: string | null): BillingAccount {
         transactions,
         teamMembers: billingData.team_members,
         teamOwner: billingData.team_owner,
-        lockedLicenseExpiries: billingData.locked_license_expiries
+        lockedLicenseExpiries: billingData.locked_license_expiries,
+        banned: !!billingData.banned
     };
 }
 
