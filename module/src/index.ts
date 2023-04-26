@@ -1,4 +1,4 @@
-export { openCheckout } from './checkout';
+export * from './types';
 
 export {
     SubscriptionPlan,
@@ -7,4 +7,8 @@ export {
     loadPrices
 } from './plans';
 
-export * from './types';
+export {
+    goToCheckout,
+    openNewCheckoutWindow,
+    preloadCheckout
+} from './checkout';
