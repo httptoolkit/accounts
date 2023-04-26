@@ -2,7 +2,8 @@
   "name": "@httptoolkit/accounts",
   "version": "0.1.0",
   "description": "Account management & subscription logic for HTTP Toolkit",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -p ."
   },

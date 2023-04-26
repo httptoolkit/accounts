@@ -12,10 +12,13 @@ const getCheckoutUrl = (email: string, sku: SKU, source: 'web' | 'app') =>
 
 // Forcing an initial fetch for this URL preps the cache and speeds up the checkout
 // process a little (as we can do this while we load initial user data during checkout):
-export const preloadCheckout = (email: string, sku: SKU, source: 'web' | 'app') =>
+export const preloadCheckout = (email: string, sku: SKU, source: 'web' | 'app') => {
     fetch(getCheckoutUrl(email, sku, source), {
         redirect: 'manual' // We just prime the API cache, we don't navigate
-    }).catch(() => {}); // Just an optimization
+    }).catch(() => {}); // Just an optimization - ignore errors
+
+    return; // We don't return the promise - don't wait for this, just trigger it
+};
 
 export const goToCheckout = async (email: string, sku: SKU, source: 'web' | 'app') => {
     window.location.assign(getCheckoutUrl(email, sku, source));
