@@ -10,6 +10,7 @@ const auth0Dictionary = require('@httptoolkit/auth0-lock/lib/i18n/en').default;
 import * as dedent from 'dedent';
 
 import { SKU, SubscriptionData, UserAppData, UserBillingData } from "./types";
+import { ACCOUNTS_API_BASE } from './util';
 import { getSKUForPaddleId } from './plans';
 
 const AUTH0_CLIENT_ID = 'KAJyF1Pq9nfBrv5l3LHjT9CrSQIleujj';
@@ -39,16 +40,29 @@ export class RefreshRejectedError extends TypedError {
 let auth0Lock: typeof Auth0LockPasswordless | undefined;
 export const loginEvents = new EventEmitter();
 
-let apiBase: string;
-
 export const initializeAuthUi = (options: {
-    apiBase?: string,
+    /**
+     * Do we want a persistent refresh token, or just a normal session? Defaults to false.
+     */
     refreshToken?: boolean,
+
+    /**
+     * Should one-click login be available? Should be enabled for cases where you might log
+     * in and out, or be logged out automatically (no refresh token) and disabled for most
+     * long-term persistent usage.
+     *
+     * Defaults to true.
+     */
     rememberLastLogin?: boolean,
+
+    /**
+     * Allow closing the login UI. This may need to be disabled in some environments (e.g. the dashboard)
+     * where the login prompt is modal, not optional.
+     *
+     * Defaults to true.
+     */
     closeable?: boolean
 } = {}) => {
-    apiBase = options.apiBase ?? "https://accounts.httptoolkit.tech/api";
-
     auth0Lock = new Auth0LockPasswordless(AUTH0_CLIENT_ID, AUTH0_DOMAIN, {
         configurationBaseUrl: 'https://cdn.eu.auth0.com',
 
@@ -82,7 +96,7 @@ export const initializeAuthUi = (options: {
         closable: options.closeable ?? true,
         theme: {
             primaryColor: '#e1421f',
-            logo: 'https://httptoolkit.tech/icon-600.png'
+            logo: 'https://httptoolkit.com/icon-600.png'
         },
         languageDictionary: Object.assign(auth0Dictionary, {
             title: 'Log in / Sign up',
@@ -436,7 +450,7 @@ async function requestUserData(type: 'app' | 'billing'): Promise<string> {
     const token = await getToken();
     if (!token) return '';
 
-    const appDataResponse = await fetch(`${apiBase}/get-${type}-data`, {
+    const appDataResponse = await fetch(`${ACCOUNTS_API_BASE}/get-${type}-data`, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${token}`
@@ -460,7 +474,7 @@ export async function updateTeamMembers(
     const token = await getToken();
     if (!token) throw new Error("Can't update team without an auth token");
 
-    const appDataResponse = await fetch(`${apiBase}/update-team`, {
+    const appDataResponse = await fetch(`${ACCOUNTS_API_BASE}/update-team`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -480,7 +494,7 @@ export async function cancelSubscription() {
     const token = await getToken();
     if (!token) throw new Error("Can't cancel account without an auth token");
 
-    const response = await fetch(`${apiBase}/cancel-subscription`, {
+    const response = await fetch(`${ACCOUNTS_API_BASE}/cancel-subscription`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`

@@ -37,7 +37,6 @@ export class AccountStore {
 
         if (!isSSR) {
             initializeAuthUi({
-                apiBase: process.env.API_BASE,
                 closeable: false,
                 rememberLastLogin: false
             });
