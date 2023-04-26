@@ -1,30 +1,25 @@
 import type { SubscriptionPlans } from "./plans";
 
+export type SKU = keyof typeof SubscriptionPlans;
+
+// We only support pro-perpetual for special cases - it's not priced
+// or shown on pricing/checkout pages:
+export type PricedSKU = Exclude<SKU, 'pro-perpetual'>;
+
 // Valid subscription state values:
-export type SubscriptionPlanCode = keyof typeof SubscriptionPlans;
 export type SubscriptionStatus =
     | 'active'
     | 'trialing'
     | 'past_due'
     | 'deleted';
 
-export type SKU =
-    | 'pro-monthly'
-    | 'pro-annual'
-    | 'pro-perpetual'
-    | 'team-monthly'
-    | 'team-annual';
-
 export type Interval =
     | 'monthly'
     | 'annual'
     | 'perpetual';
 
-// We only support pro-perpetual for special cases - it's not priced
-// or shown on pricing/checkout pages:
-export type PricedSKU = Exclude<SKU, 'pro-perpetual'>;
-
-export type SubscriptionPricing = {
+// Subscription plan pricing, as returned by the API
+export interface SubscriptionPricing {
     product_id: number; // Paddle-specific id
     sku: SKU;
     product_title: string;
@@ -122,19 +117,19 @@ export interface TransactionData {
 }
 
 // User model in JS
-export type User = {
+export interface User {
     email?: string;
     subscription?: Subscription;
     featureFlags: string[];
-};
+}
 
 // Subscription data model in JS
-export type Subscription = {
+export interface Subscription {
     id: number;
     status: SubscriptionStatus;
-    plan: SubscriptionPlanCode;
+    plan: SKU;
     expiry: Date;
     updateBillingDetailsUrl?: string;
     cancelSubscriptionUrl?: string;
     lastReceiptUrl?: string;
-};
+}

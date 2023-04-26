@@ -1,9 +1,9 @@
-import { SubscriptionPlanCode } from "./types";
+import { SKU } from "./types";
 import { SubscriptionPlans } from "./plans";
 
 export const openCheckout = async (
     email: string,
-    planCode: SubscriptionPlanCode,
+    planCode: SKU,
     referrer: string
 ) => {
     window.open(

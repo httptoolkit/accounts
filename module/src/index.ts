@@ -2,7 +2,7 @@ export { openCheckout } from './checkout';
 
 export {
     SubscriptionPlan,
-    getSubscriptionPlanCode,
+    getSKUForPaddleId,
     SubscriptionPlans,
     loadPrices
 } from './plans';

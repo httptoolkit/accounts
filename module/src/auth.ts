@@ -9,8 +9,8 @@ import { Auth0LockPasswordless } from '@httptoolkit/auth0-lock';
 const auth0Dictionary = require('@httptoolkit/auth0-lock/lib/i18n/en').default;
 import * as dedent from 'dedent';
 
-import { SKU, SubscriptionData, SubscriptionPlanCode, UserAppData, UserBillingData } from "./types";
-import { getSubscriptionPlanCode } from './plans';
+import { SKU, SubscriptionData, UserAppData, UserBillingData } from "./types";
+import { getSKUForPaddleId } from './plans';
 
 const AUTH0_CLIENT_ID = 'KAJyF1Pq9nfBrv5l3LHjT9CrSQIleujj';
 const AUTH0_DOMAIN = 'login.httptoolkit.tech';
@@ -248,7 +248,7 @@ export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'deleted';
 
 interface Subscription {
     status: SubscriptionStatus;
-    plan: SubscriptionPlanCode;
+    plan: SKU;
     quantity: number;
     expiry: Date;
     updateBillingDetailsUrl?: string;
@@ -400,7 +400,7 @@ function parseSubscriptionData(rawData: SubscriptionData) {
     const subscription = {
         status: rawData.subscription_status,
         plan: rawData.subscription_sku
-            ?? getSubscriptionPlanCode(rawData.subscription_plan_id),
+            ?? getSKUForPaddleId(rawData.subscription_plan_id),
         quantity: rawData.subscription_quantity,
         expiry: rawData.subscription_expiry ? new Date(rawData.subscription_expiry) : undefined,
         updateBillingDetailsUrl: rawData.update_url,
