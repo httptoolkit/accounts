@@ -152,7 +152,6 @@ export const AccountPage = observer((props: {
 
         cancelSubscription().catch((e) => {
             alert(e.message);
-            reportError(e);
         });
     };
 
