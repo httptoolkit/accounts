@@ -37,6 +37,8 @@ export class RefreshRejectedError extends TypedError {
     }
 }
 
+// Both always set as long as initializeAuthUi has been called.
+let auth0Client: Auth0.Authentication | undefined;
 let auth0Lock: typeof Auth0LockPasswordless | undefined;
 export const loginEvents = new EventEmitter();
 
@@ -63,6 +65,11 @@ export const initializeAuthUi = (options: {
      */
     closeable?: boolean
 } = {}) => {
+    auth0Client = new Auth0.Authentication({
+        clientID: AUTH0_CLIENT_ID,
+        domain: AUTH0_DOMAIN
+    });
+
     auth0Lock = new Auth0LockPasswordless(AUTH0_CLIENT_ID, AUTH0_DOMAIN, {
         configurationBaseUrl: 'https://cdn.eu.auth0.com',
 
@@ -116,6 +123,15 @@ export const initializeAuthUi = (options: {
     ].forEach((event) => auth0Lock!.on(event, (data) => loginEvents.emit(event, data)));
 
     loginEvents.on('user_data_loaded', () => auth0Lock!.hide());
+
+    // Synchronously load & parse the latest token value we have, if any
+    try {
+        // ! because actually parse(null) -> null, so it's ok
+        tokens = JSON.parse(localStorage.getItem('tokens')!);
+    } catch (e) {
+        console.log('Invalid token', localStorage.getItem('tokens'), e);
+        loginEvents.emit('app_error', 'Failed to parse saved auth token');
+    }
 };
 
 export const showLoginDialog = () => {
@@ -148,24 +164,10 @@ export const logOut = () => {
     loginEvents.emit('logout');
 };
 
-const auth0Client = new Auth0.Authentication({
-    clientID: AUTH0_CLIENT_ID, domain: AUTH0_DOMAIN
-});
-
-let tokens: {
-    refreshToken?: string;
-    accessToken: string;
-    accessTokenExpiry: number; // time in ms
-} | null;
-
-// Synchronously load & parse the latest token value we have, if any
-try {
-    // ! because actually parse(null) -> null, so it's ok
-    tokens = JSON.parse(localStorage.getItem('tokens')!);
-} catch (e) {
-    console.log('Invalid token', localStorage.getItem('tokens'), e);
-    loginEvents.emit('app_error', 'Failed to parse saved auth token');
-}
+let tokens:
+    | { refreshToken?: string; accessToken: string; accessTokenExpiry: number; /* time in ms */ }
+    | null // Initialized but not logged in
+    | undefined; // Not initialized
 
 const tokenMutex = new Mutex();
 
@@ -195,7 +197,7 @@ async function refreshToken() {
         // If we have a permanent refresh token, we send it to Auth0 to get a
         // new fresh access token:
         return new Promise<string>((resolve, reject) => {
-            auth0Client.oauthToken({
+            auth0Client!.oauthToken({
                 refreshToken: tokens!.refreshToken,
                 grantType: 'refresh_token'
             }, (error: any, result: { accessToken: string, expiresIn: number }) => {
