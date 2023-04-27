@@ -8,9 +8,10 @@ export {
 } from './plans';
 
 export {
+    prepareCheckout,
+    prefetchCheckout,
     goToCheckout,
-    openNewCheckoutWindow,
-    preloadCheckout
+    openNewCheckoutWindow
 } from './checkout';
 
 export {
