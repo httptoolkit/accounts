@@ -8,7 +8,7 @@ import { SubscriptionStatus } from '../../../module/src/types';
 import { SKUs } from '../products';
 import { recordCancellation, recordSubscription } from '../accounting';
 import { mgmtClient, PayingUserMetadata } from '../auth0';
-import { parseCheckoutPassthrough, updateProUserData } from '../webhook-handling';
+import { parseCheckoutPassthrough, reportSuccessfulCheckout, updateProUserData } from '../webhook-handling';
 import {
     parsePayProCustomFields,
     PayProOrderDateFormat,
@@ -83,17 +83,24 @@ export const handler = catchErrors(async (event) => {
                 const currency = eventData.ORDER_CURRENCY_CODE;
                 const price = parseFloat(eventData.ORDER_ITEM_TOTAL_AMOUNT);
                 const passthroughData = parsePayProCustomFields(eventData.ORDER_CUSTOM_FIELDS).passthrough;
-                const countryCode = parseCheckoutPassthrough(passthroughData)?.countryCode;
+                const parsedPassthrough = parseCheckoutPassthrough(passthroughData);
+                const countryCode = parsedPassthrough?.countryCode;
 
-                await recordSubscription(email, {
-                    id: subscriptionId,
-                    sku,
-                    currency,
-                    price,
-                    effectiveDate: moment.utc(eventData.ORDER_PLACED_TIME_UTC, PayProOrderDateFormat).toDate()
-                }, {
-                    "Payment provider": 'paypro',
-                    "Country code": countryCode
+                await Promise.all([
+                    reportSuccessfulCheckout(parsedPassthrough?.id),
+                    recordSubscription(email, {
+                        id: subscriptionId,
+                        sku,
+                        currency,
+                        price,
+                        effectiveDate: moment.utc(eventData.ORDER_PLACED_TIME_UTC, PayProOrderDateFormat).toDate()
+                    }, {
+                        "Payment provider": 'paypro',
+                        "Country code": countryCode
+                    })
+                ]).catch((e: any) => {
+                    console.warn(e);
+                    reportError(`Failed to record new PayPro subscription: ${e.message || e}`);
                 });
             } else if (eventType === 'SubscriptionTerminated' || eventType === 'SubscriptionSuspended') {
                 const existingExpiry = await getExistingSubscriptionExpiry(email).catch(console.log);

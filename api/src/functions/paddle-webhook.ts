@@ -179,7 +179,7 @@ export const handler = catchErrors(async (event) => {
             ]);
         } catch (e: any) {
             console.log(e);
-            reportError('Failed to record new Paddle subscription');
+            reportError(`Failed to record new Paddle subscription: ${e.message || e}`);
         }
     }
 
