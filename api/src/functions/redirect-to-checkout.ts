@@ -21,7 +21,8 @@ const PAYPRO_COUNTRIES = [
     'PHL',
     'THA',
     'NLD',
-    'ARE'
+    'ARE',
+    'COD'
 ];
 
 export const handler = catchErrors(async (event) => {
