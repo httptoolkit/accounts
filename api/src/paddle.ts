@@ -461,6 +461,8 @@ export async function createCheckout(options: {
         if (e instanceof PaddleApiError && e.code === 175) {
             // 175 => Invalid country code (https://developer.paddle.com/api-reference/324ed7bfd28c8-api-error-codes#list-of-error-codes-and-messages)
 
+            reportError(`Paddle checkout creation failure due to ${options.countryCode} country code`);
+
             // Paddle can reject some country codes. Here we work around that, by just skipping the country
             // entirely in that case, and the user can sort it themselves (or fight with Paddle's support team
             // and complain directly, if not):
