@@ -6,6 +6,7 @@ import fetch, { RequestInit } from 'node-fetch';
 import Serialize from 'php-serialize';
 import NodeCache from 'node-cache';
 import moment from 'moment';
+import { TypedError } from 'typed-error';
 
 import { reportError, StatusError } from './errors';
 import { getLatestRates } from './exchange-rates';
@@ -173,6 +174,15 @@ export function validatePaddleWebhook(webhookData: PaddleWebhookData) {
     if (!verification) throw new Error('Webhook signature was invalid');
 }
 
+export class PaddleApiError extends TypedError {
+    constructor(
+        public readonly code?: number,
+        public readonly message: string = 'Unknown Paddle error'
+    ) {
+        super(`Unsuccessful response from Paddle API: ${message} (${code})`);
+    }
+}
+
 async function makePaddleApiRequest(url: string, options: RequestInit = {}) {
     url = url.startsWith('/')
         ? PADDLE_BASE_URL + url
@@ -192,7 +202,9 @@ async function makePaddleApiRequest(url: string, options: RequestInit = {}) {
 
     if (!data.success) {
         console.log(`Unsuccessful Paddle response: `, JSON.stringify(data));
-        throw new Error("Unsuccessful response from Paddle API");
+        const errorCode = data.error?.code;
+        const errorMessage = data.error?.message;
+        throw new PaddleApiError(errorCode, errorMessage);
     }
 
     return data.response;
@@ -342,7 +354,7 @@ export async function createCheckout(options: {
     source: string,
     returnUrl?: string,
     passthrough?: string
-}) {
+}): Promise<string> {
     const cacheKey = JSON.stringify(options);
     if (checkoutCache.has(cacheKey)) return checkoutCache.get<string>(cacheKey)!;
 
@@ -434,16 +446,32 @@ export async function createCheckout(options: {
         ...priceParams
     });
 
-    const response = await makePaddleApiRequest(
-        `/api/2.0/product/generate_pay_link`, {
-            method: 'POST',
-            body: checkoutParams
+    try {
+        const response = await makePaddleApiRequest(
+            `/api/2.0/product/generate_pay_link`, {
+                method: 'POST',
+                body: checkoutParams
+            }
+        );
+
+        checkoutCache.set<string>(cacheKey, response.url);
+
+        return response.url as string;
+    } catch (e) {
+        if (e instanceof PaddleApiError && e.code === 175) {
+            // 175 => Invalid country code (https://developer.paddle.com/api-reference/324ed7bfd28c8-api-error-codes#list-of-error-codes-and-messages)
+
+            // Paddle can reject some country codes. Here we work around that, by just skipping the country
+            // entirely in that case, and the user can sort it themselves (or fight with Paddle's support team
+            // and complain directly, if not):
+            return createCheckout({
+                ...options,
+                countryCode: undefined
+            });
+        } else {
+            throw e;
         }
-    );
-
-    checkoutCache.set<string>(cacheKey, response.url);
-
-    return response.url as string;
+    }
 }
 
 export async function cancelSubscription(subscriptionId: string | number) {
