@@ -243,6 +243,7 @@ describe('/get-app-data', () => {
                 subscription_sku: 'team-monthly',
                 subscription_plan_id: 550789,
                 subscription_status: "active",
+                subscription_quantity: 3,
                 can_manage_subscription: false
             });
         });
@@ -325,6 +326,7 @@ describe('/get-app-data', () => {
                 subscription_sku: 'team-monthly',
                 subscription_plan_id: 550789,
                 subscription_status: "active",
+                subscription_quantity: 2,
                 subscription_id: -1,
                 can_manage_subscription: true,
 

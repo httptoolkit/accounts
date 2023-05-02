@@ -167,6 +167,7 @@ const EXTRACTED_TEAM_SUBSCRIPTION_PROPERTIES = [
 const DELEGATED_TEAM_SUBSCRIPTION_PROPERTIES = [
     'subscription_status',
     'subscription_expiry',
+    'subscription_quantity',
     'subscription_sku',
     'subscription_plan_id'
 ] as const;
