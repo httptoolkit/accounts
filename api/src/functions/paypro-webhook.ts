@@ -84,7 +84,7 @@ export const handler = catchErrors(async (event) => {
                 const price = parseFloat(eventData.ORDER_ITEM_TOTAL_AMOUNT);
                 const passthroughData = parsePayProCustomFields(eventData.ORDER_CUSTOM_FIELDS).passthrough;
                 const parsedPassthrough = parseCheckoutPassthrough(passthroughData);
-                const countryCode = parsedPassthrough?.countryCode;
+                const countryCode = parsedPassthrough?.country;
 
                 await Promise.all([
                     reportSuccessfulCheckout(parsedPassthrough?.id),

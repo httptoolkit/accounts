@@ -431,7 +431,7 @@ describe('PayPro webhooks', () => {
                 ORDER_ITEM_TOTAL_AMOUNT: '10',
                 TEST_MODE: '0',
                 CUSTOMER_EMAIL: userEmail,
-                ORDER_CUSTOM_FIELDS: 'x-passthrough={"countryCode":"ABC"}'
+                ORDER_CUSTOM_FIELDS: 'x-passthrough={"country":"ABC"}'
             });
 
             givenUser(userId, userEmail, {
@@ -448,7 +448,7 @@ describe('PayPro webhooks', () => {
                 PRODUCT_QUANTITY: '1',
                 TEST_MODE: '0',
                 CUSTOMER_EMAIL: userEmail,
-                ORDER_CUSTOM_FIELDS: 'x-passthrough={"countryCode":"ABC"}'
+                ORDER_CUSTOM_FIELDS: 'x-passthrough={"country":"ABC"}'
             });
 
             const creationRequests = await profitwellSubscriptionCreation.getSeenRequests();
