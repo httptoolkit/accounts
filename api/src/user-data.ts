@@ -119,6 +119,13 @@ function migrateOldUserData(data: RawMetadata): RawMetadata {
         data.paddle_user_id = data.paddle_user_id.toString();
     }
 
+    // In old trial/open-source Pro accounts, the quantity often wasn't set explicitly,
+    // which can cause issues in new UI versions. We should drop that in the UI, but
+    // for now it's easier to just backfill the data:
+    if ('subscription_id' in data) {
+        data.subscription_quantity ??= 1;
+    }
+
     return data;
 }
 
@@ -226,7 +233,7 @@ async function buildUserAppData(userId: string, rawMetadata: RawMetadata) {
             // If your sub has an owner, you can only manage the subscription if that's you:
             ? userMetadata.subscription_owner_id === userId
             // Otherwise, it must be your (Team or Pro) subscription, go wild:
-            : true
+            : true;
     }
 
     // PayPro users need to go to their control panel to update billing details:

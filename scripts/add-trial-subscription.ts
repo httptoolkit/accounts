@@ -43,10 +43,11 @@ import { mgmtClient } from '../api/src/auth0';
         return process.exit(1);
     }
 
-    mgmtClient.updateAppMetadata({ id: userId }, {
+    mgmtClient.updateAppMetadata({ id: userId! }, {
         subscription_status: 'trialing',
         subscription_plan_id: 550380, // Pro monthly
         subscription_expiry: Date.now() + duration.asMilliseconds(),
-        subscription_id: -1
+        subscription_id: -1,
+        subscription_quantity: 1
     });
 })();

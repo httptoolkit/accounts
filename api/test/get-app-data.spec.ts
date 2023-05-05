@@ -93,7 +93,8 @@ describe('/get-app-data', () => {
                 subscription_id: 2,
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
-                subscription_status: "active"
+                subscription_status: "active",
+                subscription_quantity: 1
             });
 
             const response = await getAppData(functionServer, authToken);
@@ -106,6 +107,7 @@ describe('/get-app-data', () => {
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
                 subscription_status: "active",
+                subscription_quantity: 1,
                 subscription_id: -1,
                 can_manage_subscription: true
             });
@@ -123,7 +125,8 @@ describe('/get-app-data', () => {
                 subscription_id: 2,
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
-                subscription_status: "active"
+                subscription_status: "active",
+                subscription_quantity: 1
             });
 
             const response1 = await getAppData(functionServer, authToken);
@@ -158,7 +161,8 @@ describe('/get-app-data', () => {
                 subscription_id: 2,
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
-                subscription_status: "active"
+                subscription_status: "active",
+                subscription_quantity: 1
             });
 
             const response = await getAppData(functionServer, authToken);
@@ -172,6 +176,7 @@ describe('/get-app-data', () => {
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
                 subscription_status: "active",
+                subscription_quantity: 1,
                 subscription_id: -1,
                 can_manage_subscription: true
             });
@@ -192,7 +197,8 @@ describe('/get-app-data', () => {
                 subscription_id: 2,
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
-                subscription_status: "active"
+                subscription_status: "active",
+                subscription_quantity: 1
             });
 
             const response = await getAppData(functionServer, authToken);

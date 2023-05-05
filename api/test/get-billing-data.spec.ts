@@ -127,7 +127,8 @@ describe('/get-billing-data', () => {
                         subscription_id: subId,
                         subscription_sku: 'pro-monthly',
                         subscription_plan_id: 550380,
-                        subscription_status: "active"
+                        subscription_status: "active",
+                        subscription_quantity: 1
                     }
                 });
 
@@ -154,6 +155,7 @@ describe('/get-billing-data', () => {
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
                 subscription_status: "active",
+                subscription_quantity: 1,
                 transactions: [{
                     amount: "1.00",
                     currency: "USD",
@@ -190,7 +192,8 @@ describe('/get-billing-data', () => {
                         subscription_expiry: subExpiry,
                         subscription_sku: 'pro-monthly',
                         subscription_plan_id: 550380,
-                        subscription_status: "active"
+                        subscription_status: "active",
+                        subscription_quantity: 1
                     }
                 });
 
@@ -216,6 +219,7 @@ describe('/get-billing-data', () => {
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
                 subscription_status: "active",
+                subscription_quantity: 1,
                 transactions: [{
                     amount: "1.00",
                     currency: "USD",
@@ -250,7 +254,8 @@ describe('/get-billing-data', () => {
                         subscription_expiry: subExpiry,
                         subscription_sku: 'pro-monthly',
                         subscription_plan_id: 550380,
-                        subscription_status: "active"
+                        subscription_status: "active",
+                        subscription_quantity: 1
                     }
                 });
 
@@ -283,6 +288,7 @@ describe('/get-billing-data', () => {
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
                 subscription_status: "active",
+                subscription_quantity: 1,
                 transactions: [{
                     amount: "60.00",
                     currency: "EUR",
