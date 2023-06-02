@@ -124,6 +124,14 @@ export const PRICING: { [key: string]: Prices } = {
         'team-annual': 13200
     },
 
+    'country:KOR': {
+        currency: 'KRW',
+        'pro-monthly': 9000,
+        'pro-annual': 84000,
+        'team-monthly': 14000,
+        'team-annual': 132000
+    },
+
     'country:MEX': {
         currency: 'MXN',
         'pro-monthly': 80,
