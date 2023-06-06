@@ -114,6 +114,12 @@ export const handler = catchErrors(async (event) => {
             console.log(e);
             reportError('Failed to record PayPro subscription update');
         }
+    } else if (eventType === 'OrderChargedBack') {
+        await updateProUserData(email, {
+            subscription_status: 'deleted', // Redundant, since we should get a cancel webhook too
+            subscription_expiry: Date.now(), // But we want to cancel *immediately*
+            banned: true // And block the user automatically until the context support to resolve
+        });
     } else {
         console.log(`Ignoring ${eventType} event`);
     }
