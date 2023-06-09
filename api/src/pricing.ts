@@ -217,10 +217,10 @@ export const PRICING: { [key: string]: Prices } = {
 
     'continent:AS': { // Asia
         currency: 'USD',
-        'pro-monthly': 5,
-        'pro-annual': 36,
-        'team-monthly': 7,
-        'team-annual': 60
+        'pro-monthly': 4,
+        'pro-annual': 30,
+        'team-monthly': 6,
+        'team-annual': 48
     },
 
     'continent:NA': { // North America (but not US/Canada)

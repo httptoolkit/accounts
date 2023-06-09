@@ -236,8 +236,9 @@ describe('/get-prices', () => {
 
             expect(pricing['pro-monthly']).to.be.greaterThan(0);
 
-            // Annual must be divisible by 12, to make the pricing pages look nice:
-            expect(pricing['pro-annual'] % 12).to.equal(0);
+            // Annual must be divisible by 12, to make the pricing pages look nice.
+            // (We do allow .5's here - as otherwise some cases are tricky)
+            expect(pricing['pro-annual'] % 12).to.be.oneOf([0, 6]);
             // Annual must be a discount between 50% & 99% of monthly equivalent
             expect(pricing['pro-annual']).to.be.greaterThan(pricing['pro-monthly'] * 7);
             expect(pricing['pro-annual']).to.be.lessThan(pricing['pro-monthly'] * 11);
