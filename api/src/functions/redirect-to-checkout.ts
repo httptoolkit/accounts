@@ -13,6 +13,7 @@ import { flushMetrics, generateSessionId, trackEvent } from '../metrics';
 
 const PAYPRO_COUNTRIES = [
     'BRA',
+    'IDN',
     'IND',
     'CHN',
     'VNM',

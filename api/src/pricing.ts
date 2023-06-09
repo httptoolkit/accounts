@@ -100,6 +100,14 @@ export const PRICING: { [key: string]: Prices } = {
         'team-annual': 756
     },
 
+    'country:IDN': {
+        currency: 'IDR',
+        'pro-monthly': 40000,
+        'pro-annual': 300000,
+        'team-monthly': 60000,
+        'team-annual': 480000
+    },
+
     'country:IND': {
         currency: 'INR',
         'pro-monthly': 180,
