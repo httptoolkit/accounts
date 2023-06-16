@@ -31,6 +31,12 @@ mCVpul3MYubdv034/ipGZSKJTwgubiHocrSBdeImNe3xdxOw/Mo04r0kcZBg2l/b
 -----END PUBLIC KEY-----
 `;
 
+export class TokenRejectedError extends TypedError {
+    constructor() {
+        super('Auth token rejected');
+    }
+}
+
 export class RefreshRejectedError extends TypedError {
     constructor(response: { description: string }) {
         super(`Token refresh failed with: ${response.description}`);
@@ -448,7 +454,10 @@ function parseSubscriptionData(rawData: SubscriptionData) {
         : undefined
 }
 
-async function requestUserData(type: 'app' | 'billing'): Promise<string> {
+async function requestUserData(
+    type: 'app' | 'billing',
+    options: { isRetry?: boolean } = {}
+): Promise<string> {
     const token = await getToken();
     if (!token) return '';
 
@@ -463,6 +472,20 @@ async function requestUserData(type: 'app' | 'billing'): Promise<string> {
         console.log(`Received ${appDataResponse.status} loading ${type} data, with body: ${
             await appDataResponse.text()
         }`);
+
+        if (appDataResponse.status === 401) {
+            // We allow a single refresh+retry. If it's passed, we fail.
+            if (options.isRetry) throw new TokenRejectedError();
+
+            // If this is a first failure, let's assume it's a blip with our access token,
+            // so a refresh is worth a shot (worst case, it'll at least confirm we're unauthed).
+            return tokenMutex.runExclusive(() =>
+                refreshToken()
+            ).then(() =>
+                requestUserData(type, { isRetry: true })
+            );
+        }
+
         throw new Error(`Failed to load ${type} data`);
     }
 
