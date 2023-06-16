@@ -57,8 +57,17 @@ describe('/get-app-data', () => {
     });
 
     describe("for unauthed users", () => {
-        it("returns 401", async () => {
+        it("returns 401 for missing tokens", async () => {
             const response = await getAppData(functionServer);
+            expect(response.status).to.equal(401);
+        });
+
+        it("returns 401 for invalid tokens", async () => {
+            await auth0Server.forGet('/userinfo')
+                .withHeaders({ 'Authorization': 'Bearer INVALID_TOKEN' })
+                .thenReply(401, 'Unauthorized');
+
+            const response = await getAppData(functionServer, 'INVALID_TOKEN');
             expect(response.status).to.equal(401);
         });
     });

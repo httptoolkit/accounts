@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import NodeCache from 'node-cache';
 
-import { reportError } from './errors';
+import { reportError, StatusError } from './errors';
 
 import type {
     TransactionData,
@@ -73,7 +73,13 @@ export async function getUserId(accessToken: string): Promise<string> {
         return userId;
     } else {
         // getProfile is only minimal data, updated at last login (/userinfo - 5 req/minute/user)
-        const user: { sub: string } | undefined = await authClient.getProfile(accessToken);
+        const user: { sub: string } | undefined = await authClient.getProfile(accessToken)
+            .catch((error) => {
+                console.warn('Auth0 getProfile request rejected:', error.message);
+                if (error.message === 'Request failed with status code 401') {
+                    throw new StatusError(401, "Unauthorized");
+                }
+            });
 
         if (!user) {
             throw new Error("User could not be found in getUserId");
