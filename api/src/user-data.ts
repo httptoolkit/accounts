@@ -73,13 +73,7 @@ export async function getUserId(accessToken: string): Promise<string> {
         return userId;
     } else {
         // getProfile is only minimal data, updated at last login (/userinfo - 5 req/minute/user)
-        const user: { sub: string } | undefined = await authClient.getProfile(accessToken)
-            .catch((error) => {
-                console.warn('Auth0 getProfile request rejected:', error.message);
-                if (error.message === 'Request failed with status code 401') {
-                    throw new StatusError(401, "Unauthorized");
-                }
-            });
+        const user = await getUserProfile(accessToken);
 
         if (!user) {
             throw new Error("User could not be found in getUserId");
@@ -92,6 +86,25 @@ export async function getUserId(accessToken: string): Promise<string> {
         console.log(`Looked up user id ${userId} from token`);
         return userId;
     }
+}
+
+async function getUserProfile(accessToken: string, options: {
+    isRetry?: boolean
+} = {}): Promise<{ sub: string } | undefined> {
+    return authClient.getProfile(accessToken).catch((error) => {
+        console.warn('Auth0 getProfile request rejected:', error.message);
+
+        if (error.message === 'Request failed with status code 401') {
+            throw new StatusError(401, "Unauthorized");
+        }
+
+        // Most other errors are intermittent, so retry, if we haven't already:
+        if (!options.isRetry) {
+            return getUserProfile(accessToken, { isRetry: true });
+        } else {
+            throw new StatusError(502, "Unexpected error from Auth0");
+        }
+    });
 }
 
 async function loadRawUserData(userId: string): Promise<RawMetadata> {

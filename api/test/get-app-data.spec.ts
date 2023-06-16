@@ -87,6 +87,53 @@ describe('/get-app-data', () => {
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({ email: userEmail });
         });
+
+        it("retries to work around intermittent Auth0 error responses", async () => {
+            const authToken = freshAuthToken();
+            const userId = "abc";
+            const userEmail = 'user@example.com';
+
+            await auth0Server.forGet('/userinfo')
+                .once()
+                .thenReply(500, 'OH NO');
+
+            await givenAuthToken(authToken, userId);
+            await givenUser(userId, userEmail, {});
+
+            const response = await getAppData(functionServer, authToken);
+            expect(response.status).to.equal(200);
+
+            const data = getJwtData(await response.text());
+            expect(data).to.deep.equal({ email: userEmail });
+        });
+
+        it("retries to work around intermittent Auth0 connection errors", async () => {
+            const authToken = freshAuthToken();
+            const userId = "abc";
+            const userEmail = 'user@example.com';
+
+            await auth0Server.forGet('/userinfo')
+                .once()
+                .thenResetConnection();
+
+            await givenAuthToken(authToken, userId);
+            await givenUser(userId, userEmail, {});
+
+            const response = await getAppData(functionServer, authToken);
+            expect(response.status).to.equal(200);
+
+            const data = getJwtData(await response.text());
+            expect(data).to.deep.equal({ email: userEmail });
+        });
+
+        it("returns a 502 for persistent upstream Auth0 errors", async () => {
+            await auth0Server.forGet('/userinfo')
+                .always()
+                .thenReply(500, 'OH NO');
+
+            const response = await getAppData(functionServer, 'VALID_TOKEN');
+            expect(response.status).to.equal(502);
+        });
     });
 
     describe("for Pro users", () => {
