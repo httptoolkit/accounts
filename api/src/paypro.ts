@@ -135,6 +135,7 @@ export async function createCheckout(options: {
     sku: SKU,
     email?: string, // Almost always set, except manual purchase links
     quantity?: number, // Always set for team accounts
+    discountCode?: string,
     countryCode?: string,
     currency: string,
     price: number,
@@ -145,6 +146,8 @@ export async function createCheckout(options: {
     const checkoutParams = new URLSearchParams();
 
     checkoutParams.set('currency', options.currency);
+
+    if (options.discountCode) throw new Error('Discount codes are not supported by PayPro checkouts');
 
     if (options.email) checkoutParams.set('billing-email', options.email);
     if (options.countryCode) checkoutParams.set('billing-country', options.countryCode);

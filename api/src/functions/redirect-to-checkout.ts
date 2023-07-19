@@ -36,6 +36,8 @@ export const handler = catchErrors(async (event) => {
         source,
         // Thank you page URL:
         returnUrl,
+        // Discount code:
+        discountCode,
         // Metadata to pass through:
         passthrough: passthroughParameter,
         // Optionally request a specific payment provider:
@@ -46,6 +48,7 @@ export const handler = catchErrors(async (event) => {
         quantity?: string,
         source?: string,
         returnUrl?: string,
+        discountCode?: string,
         passthrough?: string,
         paymentProvider?: 'paddle' | 'paypro'
     };
@@ -107,9 +110,9 @@ export const handler = catchErrors(async (event) => {
     // We use PayPro to handle payments only for Pro subscriptions, for a set of countries where
     // the wider support for global payment methods & currencies is likely to be useful:
     const paymentProvider = requestedPaymentProvider ?? (
-        isProSubscription(sku) && PAYPRO_COUNTRIES.includes(ipData?.countryCode3!)
-        ? 'paypro'
-        : 'paddle'
+        isProSubscription(sku) && PAYPRO_COUNTRIES.includes(ipData?.countryCode3!) && !discountCode
+            ? 'paypro'
+            : 'paddle'
     );
 
     trackEvent(basePassthroughData.id, 'Checkout', 'Creation', {
@@ -139,6 +142,7 @@ export const handler = catchErrors(async (event) => {
             : email,
         sku,
         quantity,
+        discountCode,
         countryCode: ipData?.countryCode,
         currency: productPrices.currency,
         price: productPrices[sku],

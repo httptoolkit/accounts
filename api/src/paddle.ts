@@ -348,6 +348,7 @@ export async function createCheckout(options: {
     sku: SKU,
     email?: string, // Almost always set, except manual purchase links
     quantity?: number, // Always set for team accounts
+    discountCode?: string,
     countryCode?: string,
     currency: string,
     price: number,
@@ -431,6 +432,11 @@ export async function createCheckout(options: {
                 quantity: options.quantity.toString(),
                 allowQuantity: 'false' // If set, don't let them change it
             }
+            : {}
+        ),
+
+        ...(options.discountCode
+            ? { coupon_code: options.discountCode }
             : {}
         ),
 
