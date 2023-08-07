@@ -57,14 +57,18 @@ export const TeamMembers = observer((p: {
         formRef.current?.reportValidity();
     };
 
+    const proposedTeam = p.teamMembers
+        .filter(m => !removedIds.includes(m.id))
+        .map(m => m.name)
+        .concat(...emailInputs);
+
     const unusedLicenses = p.licenseCount
-        - p.teamMembers.length
         - p.lockedLicenses.length
-        + removedIds.filter(id =>
-            // You only gain the slots back if the members aren't locked
-            !_.find(p.teamMembers, { id })!.locked
-        ).length
-        - emailInputs.length;
+        - proposedTeam.length
+        - removedIds.filter(id =>
+            // Licenses for locked team members aren't released when removed
+            _.find(p.teamMembers, { id })!.locked
+        ).length;
 
     React.useEffect(() => {
         if (unusedLicenses < 0 && emailInputs.length > 0) {
@@ -75,7 +79,9 @@ export const TeamMembers = observer((p: {
     }, [emailInputs, unusedLicenses]);
 
     const dataIsValid = emailInputs.every(email => email.includes('@')) &&
-        _.uniq(emailInputs).length === emailInputs.length &&
+        // No duplicates between inputs & existing team
+        _.uniq(proposedTeam).length === proposedTeam.length &&
+        // No more inputs than licenses
         unusedLicenses >= 0;
 
     const [updateInProgress, setUpdating] = React.useState(false);
