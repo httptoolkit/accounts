@@ -52,6 +52,11 @@ export const TeamMembers = observer((p: {
         ]);
     });
 
+    const formRef = React.useRef<HTMLFormElement>(null);
+    const onBlurEmail = () => {
+        formRef.current?.reportValidity();
+    };
+
     const unusedLicenses = p.licenseCount
         - p.teamMembers.length
         - p.lockedLicenses.length
@@ -79,7 +84,9 @@ export const TeamMembers = observer((p: {
         !updateInProgress &&
         (emailInputs.length !== 0 || removedIds.length !== 0);
 
-    const submitUpdate = async () => {
+    const submitUpdate = async (e: React.MouseEvent) => {
+        e.preventDefault();
+
         if (!canSubmitUpdate) return;
         else {
             setEmailInputs([]);
@@ -93,7 +100,7 @@ export const TeamMembers = observer((p: {
         }
     };
 
-    return <div>
+    return <form ref={formRef}>
         <Explanation>
             Your subscription includes licenses for up to { p.licenseCount } team member{
                 p.licenseCount > 1 ? 's' : ''
@@ -161,13 +168,17 @@ export const TeamMembers = observer((p: {
                         type="email"
                         value={email}
                         placeholder="new-team-member@org.example"
+                        minLength={1}
+                        onBlur={onBlurEmail}
                         onChange={updateMemberEmail[i]}
                     />
                 </NewTeamMemberRow>
             ) }
 
             { unusedLicenses > 0 &&
-                <AddNewTeamMemberButton onClick={addTeamMember}>
+                <AddNewTeamMemberButton
+                    onClick={addTeamMember}
+                >
                     <Icon icon={['fas', 'plus']}/> Add team member
                 </AddNewTeamMemberButton>
             }
@@ -184,7 +195,7 @@ export const TeamMembers = observer((p: {
                 }
             </Button>
         </TeamControls>
-    </div>
+    </form>
 });
 
 const TeamMembersContainer = styled.ol`
@@ -289,7 +300,7 @@ const NewTeamMemberInput = styled.input`
     margin: 0 0 10px 10px;
 `;
 
-const AddNewTeamMemberButton = styled.button`
+const AddNewTeamMemberButton = styled(UnstyledButton)`
     width: 100%;
     padding: 13px 15px 13px;
     box-sizing: border-box;
