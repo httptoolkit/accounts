@@ -6,7 +6,7 @@ const getCheckoutUrl = (email: string, sku: SKU, source: 'web' | 'app') =>
         encodeURIComponent(email)
     }&sku=${
         sku
-    }&source=app.httptoolkit.tech&returnUrl=${
+    }&source=${window.location.hostname}&returnUrl=${
         encodeURIComponent(`https://httptoolkit.com/${source}-purchase-thank-you/`)
     }`;
 
