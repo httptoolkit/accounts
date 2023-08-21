@@ -180,6 +180,14 @@ export const PRICING: { [key: string]: Prices } = {
         'team-annual': 1152
     },
 
+    'country:TWN': {
+        currency: 'TWD',
+        'pro-monthly': 150,
+        'pro-annual': 1320,
+        'team-monthly': 225,
+        'team-annual': 2016
+    },
+
     'country:UKR': {
         currency: 'UAH',
         'pro-monthly': 180,
