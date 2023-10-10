@@ -312,6 +312,7 @@ const PADDLE_CURRENCIES = [
     "GBP",
     "CAD",
     "CNY",
+    "COP",
     "CZK",
     "DKK",
     "EUR",
