@@ -119,10 +119,9 @@ export const exchangeRateServer = getLocal({
 });
 
 export function givenExchangeRate(currency: string, rate: number) {
-    return exchangeRateServer.forGet('/latest')
-        .withQuery({ 'base': 'EUR' })
+    return exchangeRateServer.forGet('/latest/EUR')
         .thenJson(200, {
-            success: true,
+            result: 'success',
             rates: {
                 [currency]: rate
             }

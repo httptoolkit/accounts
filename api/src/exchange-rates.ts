@@ -2,11 +2,32 @@ import * as _ from 'lodash';
 import fetch from 'node-fetch';
 import { reportError } from './errors';
 
-const EXCHANGE_RATE_BASE_URL = process.env.EXCHANGE_RATE_BASE_URL
-    ?? "https://api.exchangerate.host";
+const EXCHANGE_RATE_API_TOKEN = process.env.EXCHANGE_RATE_API_TOKEN;
 
-const EXCHANGE_RATE_BACKUP_URL = process.env.EXCHANGE_RATE_BACKUP_URL
-    ?? "https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/";
+const PRIMARY_EXCHANGE_RATE_API_BASE_URL = process.env.EXCHANGE_RATE_BASE_URL
+    ?? `https://v6.exchangerate-api.com/v6/${EXCHANGE_RATE_API_TOKEN}`
+
+// We've had repeated issues with exchange rate sources in the past, so test a few of them in order:
+const getExchangeRateSources = (currency: string) => [
+    {
+        // An official fully maintained exchange rate API:
+        url: `${PRIMARY_EXCHANGE_RATE_API_BASE_URL}/latest/${currency}`,
+        test: (data: any) => data.result === 'success',
+        ratesField: 'conversion_rates'
+    },
+    {
+        // The original repo via the CDN
+        url: `https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/${currency.toLowerCase()}.json`,
+        ratesField: currency.toLowerCase(),
+        ratesTransform: (rates: any) => _.mapKeys(rates, (_v, k: string) => k.toUpperCase())
+    },
+    {
+        // Same thing via different CDN
+        url: `https://raw.githubusercontent.com/fawazahmed0/currency-api/1/latest/currencies/${currency.toLowerCase()}.json`,
+        ratesField: currency.toLowerCase(),
+        ratesTransform: (rates: any) => _.mapKeys(rates, (_v, k: string) => k.toUpperCase())
+    }
+]
 
 export interface ExchangeRates {
     [currency: string]: number;
@@ -16,30 +37,41 @@ type SUPPORTED_TARGET_CURRENCY = 'EUR' | 'USD';
 
 async function getRates(currency: SUPPORTED_TARGET_CURRENCY) {
     console.log(`Updating ${currency} exchange rates`);
-    const response = await fetch(`${EXCHANGE_RATE_BASE_URL}/latest?base=${currency}`);
-    const data = await response.json();
-    if (!response.ok || !data.success || !data.rates || !Object.keys(data.rates).length) {
-        console.log(response.status, JSON.stringify(data));
-        throw new Error(`Unsuccessful result from exchange rate API`);
+
+    let rates: ExchangeRates | undefined = undefined;
+    for (let rateSource of getExchangeRateSources(currency)) {
+        try {
+            const { url, test, ratesField, ratesTransform } = rateSource;
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(`Unexpected error response from ${url}: ${response.status}`);
+            }
+            if (test && test(data) === false) {
+                throw new Error(`Bad data received from ${url}: ${JSON.stringify(data)}`);
+            };
+
+            const rawRatesData = data[ratesField];
+            if (!rawRatesData || !Object.keys(rawRatesData).length) {
+                throw new Error(`Empty rates data received from ${url}: ${JSON.stringify(data)}`);
+            }
+
+            if (ratesTransform) {
+                rates = ratesTransform(rawRatesData);
+            } else {
+                rates = rawRatesData;
+            }
+        } catch (e: any) {
+            reportError(e);
+        }
     }
 
-    return data.rates as ExchangeRates;
-}
-
-async function getBackupRates(currency: SUPPORTED_TARGET_CURRENCY) {
-    console.log(`Updating ${currency} exchange rates from backup source`);
-    const response = await fetch(`${EXCHANGE_RATE_BACKUP_URL}/${currency.toLowerCase()}.json`);
-    const data = await response.json();
-
-    const rates = data?.[currency.toLowerCase()];
-
-    if (!response.ok || !rates || !Object.keys(rates).length) {
-        console.log(response.status, JSON.stringify(data));
-        throw new Error(`Unsuccessful result from exchange rate backup API`);
+    if (rates === undefined) {
+        throw new Error('Could not retrieve exchange rates from any source!');
     }
-
-    return _.mapKeys(rates, (v, k: string) => k.toUpperCase()) as ExchangeRates;
-
+    return rates;
 }
 
 // We cache the latest result here (either a promise for the very first result, or an already
@@ -54,24 +86,16 @@ export function getLatestRates(currency: SUPPORTED_TARGET_CURRENCY) {
     if (lastRates) return lastRates;
 
     // Otherwise, if there were no known rates yet, we block while getting new rates:
-    const rateLookup = getRates(currency);
-    rateLookup.catch(async (e) => {
-        console.warn(`Exchange rates initial lookup failed with ${e.message ?? e}`);
-        reportError(e);
-    });
-
-    const rateLookupWithBackup = rateLookup.catch(() => {
-        // Same again, from the backup source:
-        const backupRateLookup = getBackupRates(currency);
-        backupRateLookup.catch((e) => {
-            // If both requests fail, we reset (to try again on next request) and
-            // then fail for real:
+    const rateLookup = latestRates[currency] = getRates(currency)
+        .catch(async (e) => {
+            // If all requests fail, we reset (to try again on next request)
+            // and then fail for real:
             latestRates[currency] = undefined;
-            console.error(e);
-            reportError(`Backup exchange rate source failed! ${e.message}`);
+
+            console.error(`Exchange rates lookup failed entirely with ${e.message ?? e}`);
+            reportError(e);
+            throw e;
         });
-        return backupRateLookup;
-    });
 
     const ratesUpdateInterval = setInterval(() => {
         // Subsequently, we try to refresh every hour, but just keep the
@@ -87,6 +111,5 @@ export function getLatestRates(currency: SUPPORTED_TARGET_CURRENCY) {
     }, 1000 * 60 * 60);
     ratesUpdateInterval.unref(); // We never need to block shutdown for this
 
-    latestRates[currency] = rateLookupWithBackup;
-    return rateLookupWithBackup;
+    return rateLookup;
 }
