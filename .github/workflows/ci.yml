@@ -53,23 +53,3 @@ jobs:
           VERSION: ${{ github.sha }}
           NODE_ENV: production
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-
-      - name: Deploy to Netlify
-        uses: nwtgck/actions-netlify@v1.1
-        with:
-          netlify-config-path: ./netlify.toml
-          publish-dir: 'dist/public'
-          functions-dir: 'dist/functions'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          deploy-message: GHA Deploy - ${{ github.event.head_commit.message }}
-          enable-commit-status: true
-          enable-pull-request-comment: false
-          enable-commit-comment: false
-          production-branch: main
-          alias: ${{ github.sha }}
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-          PADDLE_ID: ${{ secrets.PADDLE_ID }}
-          PADDLE_KEY: ${{ secrets.PADDLE_KEY }}
-        timeout-minutes: 5
