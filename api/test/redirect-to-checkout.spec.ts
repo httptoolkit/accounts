@@ -8,6 +8,8 @@ import {
     exchangeRateServer,
     EXCHANGE_RATE_API_PORT,
     givenExchangeRate,
+    ipApiServer,
+    IP_API_PORT,
     paddleServer,
     PADDLE_PORT,
     startServer
@@ -82,6 +84,7 @@ describe('/redirect-to-checkout', () => {
                 };
             });
 
+        await ipApiServer.start(IP_API_PORT);
         await exchangeRateServer.start(EXCHANGE_RATE_API_PORT);
     });
 
@@ -89,6 +92,7 @@ describe('/redirect-to-checkout', () => {
         await new Promise((resolve) => functionServer.stop(resolve));
         await paddleServer.stop();
         await exchangeRateServer.stop();
+        await ipApiServer.stop();
     });
 
     it("redirects to Paddle by default for Pro-Monthly", async () => {

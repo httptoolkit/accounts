@@ -122,7 +122,7 @@ export function givenExchangeRate(currency: string, rate: number) {
     return exchangeRateServer.forGet('/latest/EUR')
         .thenJson(200, {
             result: 'success',
-            rates: {
+            conversion_rates: {
                 [currency]: rate
             }
         })
