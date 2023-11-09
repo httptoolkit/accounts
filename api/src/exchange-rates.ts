@@ -5,7 +5,7 @@ import { reportError } from './errors';
 const EXCHANGE_RATE_API_TOKEN = process.env.EXCHANGE_RATE_API_TOKEN;
 
 const PRIMARY_EXCHANGE_RATE_API_BASE_URL = process.env.EXCHANGE_RATE_BASE_URL
-    ?? `https://v6.exchangerate-api.com/v6/${EXCHANGE_RATE_API_TOKEN}`
+    ?? `https://v6.exchangerate-api.com/v6/${EXCHANGE_RATE_API_TOKEN}`;
 
 // We've had repeated issues with exchange rate sources in the past, so test a few of them in order:
 const getExchangeRateSources = (currency: string) => [
@@ -36,13 +36,13 @@ export interface ExchangeRates {
 type SUPPORTED_TARGET_CURRENCY = 'EUR' | 'USD';
 
 async function getRates(currency: SUPPORTED_TARGET_CURRENCY) {
-    console.log(`Updating ${currency} exchange rates`);
-
     let rates: ExchangeRates | undefined = undefined;
     for (let rateSource of getExchangeRateSources(currency)) {
-        try {
-            const { url, test, ratesField, ratesTransform } = rateSource;
+        const { url, test, ratesField, ratesTransform } = rateSource;
+        const rateHost = new URL(url).hostname;
+        console.log(`Loading exchange rates from ${rateHost}`);
 
+        try {
             const response = await fetch(url);
             const data = await response.json();
 
@@ -63,7 +63,10 @@ async function getRates(currency: SUPPORTED_TARGET_CURRENCY) {
             } else {
                 rates = rawRatesData;
             }
+
+            if (rates) break;
         } catch (e: any) {
+            console.error(`Lookup from ${rateHost} failed: ${e.message}`);
             reportError(e);
         }
     }
@@ -71,6 +74,7 @@ async function getRates(currency: SUPPORTED_TARGET_CURRENCY) {
     if (rates === undefined) {
         throw new Error('Could not retrieve exchange rates from any source!');
     }
+
     return rates;
 }
 
@@ -84,6 +88,8 @@ export function getLatestRates(currency: SUPPORTED_TARGET_CURRENCY) {
     // After the first successful run, we always return the latest good rates
     const lastRates = latestRates[currency];
     if (lastRates) return lastRates;
+
+    console.log(`Doing initial ${currency} exchange rate lookup...`);
 
     // Otherwise, if there were no known rates yet, we block while getting new rates:
     const rateLookup = latestRates[currency] = getRates(currency)
@@ -100,6 +106,8 @@ export function getLatestRates(currency: SUPPORTED_TARGET_CURRENCY) {
     const ratesUpdateInterval = setInterval(() => {
         // Subsequently, we try to refresh every hour, but just keep the
         // old rates indefinitely (until next refresh) if it fails:
+        console.log(`Updating ${currency} exchange rates...`);
+
         getRates(currency)
         .then((rates) => {
             latestRates[currency] = Promise.resolve(rates);
