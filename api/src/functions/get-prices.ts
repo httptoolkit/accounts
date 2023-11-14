@@ -17,9 +17,8 @@ export const handler = catchErrors(async (event) => {
         headers['Cache-Control'] = 'private, max-age=3600';
     }
 
-    const sourceIp = event.headers['x-nf-client-connection-ip']
-        ?? event.requestContext?.identity.sourceIp;
-
+    const sourceIp = event.headers['x-nf-client-connection-ip'] // Netlify
+        ?? event.requestContext?.identity.sourceIp; // Direct source - also populated by Express wrapper
 
     // Only sent by old clients, parsed here for backward compat:
     const { product_ids } = event.queryStringParameters as { product_ids?: string };
