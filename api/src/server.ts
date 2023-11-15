@@ -1,11 +1,12 @@
 import * as http from 'http';
-import express from 'express';
+import express = require('express');
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
 import { getCorsResponseHeaders } from './cors';
 
 const app = express();
 
+app.use(express.text({ type: '*/*' }));
 app.set('trust proxy', 'loopback');
 
 const apiRouter = express.Router();

@@ -1,6 +1,7 @@
 import * as net from 'net';
 import fetch from 'node-fetch';
 import stoppable from 'stoppable';
+import { RulePriority } from 'mockttp';
 
 import { expect } from 'chai';
 
@@ -25,9 +26,9 @@ const getPrices = (
     server: net.Server,
     ip: string = '1.1.1.1'
 ) => fetch(
-    `http://localhost:${(server.address() as net.AddressInfo).port}/get-prices`, {
+    `http://localhost:${(server.address() as net.AddressInfo).port}/api/get-prices`, {
         headers: {
-            'x-nf-client-connection-ip': ip
+            'X-Forwarded-For': ip
         }
     }
 );
@@ -43,22 +44,42 @@ interface PaddleProduct {
 
 describe('/get-prices', () => {
 
-    let functionServer: stoppable.StoppableServer;
+    let apiServer: stoppable.StoppableServer;
 
     beforeEach(async () => {
-        functionServer = await startServer();
+        apiServer = await startServer();
         await ipApiServer.start(IP_API_PORT);
+
+        await ipApiServer.forGet().asPriority(RulePriority.FALLBACK).thenJson(200, {
+            status: 'fail',
+            message: 'Unknown IP'
+        });
     });
 
     afterEach(async () => {
-        await new Promise((resolve) => functionServer.stop(resolve));
+        await new Promise((resolve) => apiServer.stop(resolve));
         await ipApiServer.stop();
     });
 
     it("can return a price successfully without IP data", async () => {
+        await ipApiServer.forAnyRequest().thenJson(200, {
+            status: 'fail',
+            message: 'Not available'
+        });
+
+        const response = await getPrices(apiServer);
+
+        expect(response.status).to.equal(200);
+
+        const data = await response.json();
+        expect(data.success).to.equal(true);
+        expect(data.response.products[0].currency).to.equal('USD');
+    });
+
+    it("can return a price successfully with IP API unavailable", async () => {
         await ipApiServer.forAnyRequest().thenCloseConnection();
 
-        const response = await getPrices(functionServer);
+        const response = await getPrices(apiServer);
 
         expect(response.status).to.equal(200);
 
@@ -76,7 +97,7 @@ describe('/get-prices', () => {
             currency: 'EUR'
         });
 
-        const response = await getPrices(functionServer, SPAIN_IP);
+        const response = await getPrices(apiServer, SPAIN_IP);
         const data = await response.json();
 
         const products = (data.response.products as Array<PaddleProduct>).map((p) => ({
@@ -112,7 +133,7 @@ describe('/get-prices', () => {
             continentCode: 'NA',
             currency: 'USD'
         });
-        const response = await getPrices(functionServer, US_IP);
+        const response = await getPrices(apiServer, US_IP);
         const data = await response.json();
 
         const products = (data.response.products as Array<PaddleProduct>).map((p) => ({
@@ -137,7 +158,7 @@ describe('/get-prices', () => {
             continentCode: 'EU',
             currency: 'GBP'
         });
-        const response = await getPrices(functionServer, UK_IP);
+        const response = await getPrices(apiServer, UK_IP);
         const data = await response.json();
 
         const products = (data.response.products as Array<PaddleProduct>).map((p) => ({
@@ -162,7 +183,7 @@ describe('/get-prices', () => {
             continentCode: 'EU',
             currency: 'EUR'
         });
-        const response = await getPrices(functionServer, SPAIN_IP);
+        const response = await getPrices(apiServer, SPAIN_IP);
         const data = await response.json();
 
         const products = (data.response.products as Array<PaddleProduct>).map((p) => ({
@@ -187,7 +208,7 @@ describe('/get-prices', () => {
             continentCode: 'SA',
             currency: 'BRL'
         });
-        const response = await getPrices(functionServer, BRAZIL_IP);
+        const response = await getPrices(apiServer, BRAZIL_IP);
         const data = await response.json();
 
         const products = (data.response.products as Array<PaddleProduct>).map((p) => ({
@@ -212,7 +233,7 @@ describe('/get-prices', () => {
             continentCode: 'OC',
             currency: 'FJD'
         });
-        const response = await getPrices(functionServer, FIJI_IP);
+        const response = await getPrices(apiServer, FIJI_IP);
         const data = await response.json();
 
         const products = (data.response.products as Array<PaddleProduct>).map((p) => ({

@@ -6,12 +6,12 @@ const { SENTRY_DSN, VERSION } = process.env;
 
 let sentryInitialized = false;
 export function initSentry() {
+    if (sentryInitialized) return;
+
     if (SENTRY_DSN) {
         Sentry.init({ dsn: SENTRY_DSN, release: VERSION });
         sentryInitialized = true;
         console.log("Sentry initialized");
-    } else {
-        console.log("No Sentry DSN available, error reporting disabled");
     }
 }
 

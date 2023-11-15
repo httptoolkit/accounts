@@ -17,7 +17,7 @@ import {
 import { TeamOwnerMetadata } from '../src/auth0';
 
 const getAppData = (server: net.Server, authToken?: string) => fetch(
-    `http://localhost:${(server.address() as net.AddressInfo).port}/get-app-data`,
+    `http://localhost:${(server.address() as net.AddressInfo).port}/api/get-app-data`,
     {
         headers: authToken
             ? { Authorization: `Bearer ${authToken}` }
@@ -43,22 +43,22 @@ const getJwtData = (jwtString: string): any => {
 
 describe('/get-app-data', () => {
 
-    let functionServer: stoppable.StoppableServer;
+    let apiServer: stoppable.StoppableServer;
 
     beforeEach(async () => {
-        functionServer = await startServer();
+        apiServer = await startServer();
         await auth0Server.start(AUTH0_PORT);
         await auth0Server.forPost('/oauth/token').thenReply(200);
     });
 
     afterEach(async () => {
-        await new Promise((resolve) => functionServer.stop(resolve));
+        await new Promise((resolve) => apiServer.stop(resolve));
         await auth0Server.stop();
     });
 
     describe("for unauthed users", () => {
         it("returns 401 for missing tokens", async () => {
-            const response = await getAppData(functionServer);
+            const response = await getAppData(apiServer);
             expect(response.status).to.equal(401);
         });
 
@@ -67,7 +67,7 @@ describe('/get-app-data', () => {
                 .withHeaders({ 'Authorization': 'Bearer INVALID_TOKEN' })
                 .thenReply(401, 'Unauthorized');
 
-            const response = await getAppData(functionServer, 'INVALID_TOKEN');
+            const response = await getAppData(apiServer, 'INVALID_TOKEN');
             expect(response.status).to.equal(401);
         });
     });
@@ -81,7 +81,7 @@ describe('/get-app-data', () => {
             await givenAuthToken(authToken, userId);
             await givenUser(userId, userEmail, {});
 
-            const response = await getAppData(functionServer, authToken);
+            const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -100,7 +100,7 @@ describe('/get-app-data', () => {
             await givenAuthToken(authToken, userId);
             await givenUser(userId, userEmail, {});
 
-            const response = await getAppData(functionServer, authToken);
+            const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -119,7 +119,7 @@ describe('/get-app-data', () => {
             await givenAuthToken(authToken, userId);
             await givenUser(userId, userEmail, {});
 
-            const response = await getAppData(functionServer, authToken);
+            const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -131,7 +131,7 @@ describe('/get-app-data', () => {
                 .always()
                 .thenReply(500, 'OH NO');
 
-            const response = await getAppData(functionServer, 'VALID_TOKEN');
+            const response = await getAppData(apiServer, 'VALID_TOKEN');
             expect(response.status).to.equal(502);
         });
     });
@@ -153,7 +153,7 @@ describe('/get-app-data', () => {
                 subscription_quantity: 1
             });
 
-            const response = await getAppData(functionServer, authToken);
+            const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -185,11 +185,11 @@ describe('/get-app-data', () => {
                 subscription_quantity: 1
             });
 
-            const response1 = await getAppData(functionServer, authToken);
+            const response1 = await getAppData(apiServer, authToken);
             expect(response1.status).to.equal(200);
             expect(getJwtData((await response1.text())).subscription_status).to.equal('active');
 
-            const response2 = await getAppData(functionServer, authToken);
+            const response2 = await getAppData(apiServer, authToken);
             expect(response1.status).to.equal(200);
             expect(getJwtData((await response2.text())).subscription_status).to.equal('active');
 
@@ -221,7 +221,7 @@ describe('/get-app-data', () => {
                 subscription_quantity: 1
             });
 
-            const response = await getAppData(functionServer, authToken);
+            const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -257,7 +257,7 @@ describe('/get-app-data', () => {
                 subscription_quantity: 1
             });
 
-            const response = await getAppData(functionServer, authToken);
+            const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -294,7 +294,7 @@ describe('/get-app-data', () => {
                 update_url: 'uu',
             });
 
-            const response = await getAppData(functionServer, authToken);
+            const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -331,7 +331,7 @@ describe('/get-app-data', () => {
                 update_url: 'uu',
             });
 
-            const response = await getAppData(functionServer, authToken);
+            const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -375,7 +375,7 @@ describe('/get-app-data', () => {
                 update_url: 'uu',
             });
 
-            const response = await getAppData(functionServer, authToken);
+            const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -431,7 +431,7 @@ describe('/get-app-data', () => {
                 update_url: 'uu',
             });
 
-            const response = await getAppData(functionServer, authToken);
+            const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -466,7 +466,7 @@ describe('/get-app-data', () => {
                 update_url: 'uu',
             } as TeamOwnerMetadata);
 
-            const response = await getAppData(functionServer, authToken);
+            const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -499,7 +499,7 @@ describe('/get-app-data', () => {
                 update_url: 'uu',
             });
 
-            const response = await getAppData(functionServer, authToken);
+            const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
