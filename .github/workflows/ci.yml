@@ -38,6 +38,10 @@ jobs:
       - name: App NPM CI
         run: npm ci
 
+      - name: API NPM CI
+        run: npm ci
+        working-directory: api
+
       - name: Module NPM CI
         run: npm ci
         working-directory: module
