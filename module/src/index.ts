@@ -4,6 +4,7 @@ export {
     SubscriptionPlan,
     SubscriptionPlans,
     getSKUForPaddleId,
+    getPlanByCode,
     loadPlanPricesUntilSuccess
 } from './plans';
 
@@ -15,13 +16,21 @@ export {
 } from './checkout';
 
 export {
-    User,
     RefreshRejectedError,
     loginEvents,
     initializeAuthUi,
     showLoginDialog,
+    hideLoginDialog,
     logOut,
+
+    User,
     getLatestUserData,
     getLastUserData,
-    cancelSubscription
+    cancelSubscription,
+
+    BillingAccount,
+    Transaction,
+    TeamMember,
+    getBillingData,
+    updateTeamMembers
 } from './auth';
