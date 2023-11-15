@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 
-import { SKU } from "../../module/src/types";
-import { delay } from "../../module/src/util";
+import { SKU } from "@httptoolkit/accounts";
+import { delay } from "@httptoolkit/util";
 
 import { getPaddleIdForSku } from "./paddle";
 import { getSkuInterval } from "./products";

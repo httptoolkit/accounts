@@ -7,8 +7,8 @@ import type {
     TransactionData,
     UserAppData,
     UserBillingData
-} from '../../module/src/types';
-import { delay } from '../../module/src/util';
+} from '@httptoolkit/accounts';
+import { delay } from '@httptoolkit/util';
 
 import {
     getPaddleIdForSku,

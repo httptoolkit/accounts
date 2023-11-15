@@ -1,7 +1,7 @@
 import { initSentry, catchErrors, StatusError } from '../errors';
 initSentry();
 
-import type { PricedSKU } from '../../../module/src/types';
+import type { PricedSKU } from '@httptoolkit/accounts';
 
 import * as Paddle from '../paddle';
 import * as PayPro from '../paypro';

@@ -1,7 +1,7 @@
 import { initSentry, catchErrors, reportError } from '../errors';
 initSentry();
 
-import { SubscriptionPricing } from '../../../module/src/types';
+import { SubscriptionPricing } from '@httptoolkit/accounts';
 
 import { getCorsResponseHeaders } from '../cors';
 import { getAllPrices } from '../pricing';

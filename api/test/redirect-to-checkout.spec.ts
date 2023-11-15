@@ -14,7 +14,7 @@ import {
     PADDLE_PORT,
     startServer
 } from './test-util';
-import type { SKU } from '../../module/src/types';
+import type { SKU } from '@httptoolkit/accounts';
 
 const getCheckoutUrl = (
     server: net.Server,

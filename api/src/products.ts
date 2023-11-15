@@ -1,4 +1,4 @@
-import { SKU, PricedSKU, Interval } from "../../module/src/types";
+import { SKU, PricedSKU, Interval } from "@httptoolkit/accounts";
 
 import { AppMetadata, TrialUserMetadata } from "./auth0";
 import { getSkuForPaddleId } from "./paddle";

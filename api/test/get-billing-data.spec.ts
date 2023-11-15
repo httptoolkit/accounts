@@ -21,7 +21,7 @@ import {
     payproApiServer,
     PAYPRO_API_PORT
 } from './test-util';
-import { TransactionData } from '../../module/src/types';
+import { TransactionData } from '@httptoolkit/accounts';
 import { LICENSE_LOCK_DURATION_MS, TeamOwnerMetadata } from '../src/auth0';
 
 const asPaddleDate = (date: Date) => {

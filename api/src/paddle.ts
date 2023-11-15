@@ -15,7 +15,7 @@ import {
     SubscriptionPricing,
     SubscriptionStatus,
     TransactionData
-} from '../../module/src/types';
+} from '@httptoolkit/accounts';
 
 const PADDLE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 ${process.env.PADDLE_PUBLIC_KEY}

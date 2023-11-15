@@ -8,7 +8,7 @@ import { AppMetadata } from '../src/auth0';
 import { PayProOrderDetails, PayProOrderListing } from '../src/paypro';
 import { PaddleTransaction } from '../src/paddle';
 
-export { delay } from "../../module/src/util";
+export { delay } from "@httptoolkit/util";
 
 let idCounter = 1000;
 export function id() {

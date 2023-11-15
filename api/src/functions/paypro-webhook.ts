@@ -3,7 +3,7 @@ initSentry();
 
 import * as querystring from 'querystring';
 import moment from 'moment';
-import { SubscriptionStatus } from '../../../module/src/types';
+import { SubscriptionStatus } from '@httptoolkit/accounts';
 
 import { SKUs } from '../products';
 import { recordCancellation, recordSubscription } from '../accounting';
