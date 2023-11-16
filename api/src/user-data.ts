@@ -397,7 +397,7 @@ async function getTransactions(rawMetadata: RawMetadata) {
 }
 
 // We cache paddle subscription to user id map, which never changes
-const paddleUserIdCache: { [subscriptionId: string | number]: string | number } = {};
+const paddleUserIdCache: { [subscriptionId: string | number]: string | number | undefined } = {};
 
 async function getPaddleUserId(billingMetadata: PayingUserMetadata) {
     const paddleUserId = billingMetadata.paddle_user_id
@@ -407,7 +407,7 @@ async function getPaddleUserId(billingMetadata: PayingUserMetadata) {
         ?? await getPaddleUserIdFromSubscription(billingMetadata.subscription_id);
 
     // Cache this id for faster lookup next time:
-    if (!billingMetadata.paddle_user_id) {
+    if (paddleUserId && !billingMetadata.paddle_user_id) {
         paddleUserIdCache[billingMetadata.subscription_id!] = paddleUserId;
     }
 
