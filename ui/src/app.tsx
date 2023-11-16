@@ -9,7 +9,6 @@ import { LoginPage } from './login-page';
 import { AccountPage, PlaceholderAccountPage } from './account-page';
 
 export const App = observer((props: {
-    isSSR?: true,
     accountStore: AccountStore
 }) =>
     <ThemeProvider theme={theme}>
@@ -17,7 +16,7 @@ export const App = observer((props: {
         {
             props.accountStore.isLoggedIn
                 ? <AccountPage accountStore={props.accountStore} />
-            : (props.accountStore.isMaybeLoggedIn || props.isSSR)
+            : (props.accountStore.isMaybeLoggedIn)
                 ? <PlaceholderAccountPage accountStore={props.accountStore} />
             : <LoginPage accountStore={props.accountStore} />
         }

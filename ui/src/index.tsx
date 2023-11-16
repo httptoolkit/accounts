@@ -8,13 +8,9 @@ import { AccountStore } from './account-store';
 
 import { App } from './app';
 
-const isSSR = (self as {
-    PRERENDER?: true
-}).PRERENDER;
-
-const accountStore = new AccountStore(isSSR);
+const accountStore = new AccountStore();
 
 ReactDOM.render(
-    <App accountStore={accountStore} isSSR={isSSR} />,
+    <App accountStore={accountStore} />,
     document.querySelector('#app')
 );

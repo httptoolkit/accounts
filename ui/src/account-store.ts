@@ -18,7 +18,7 @@ import {
 
 export class AccountStore {
 
-    constructor(isSSR?: true) {
+    constructor() {
         makeObservable(this, {
             user: observable,
             isMaybeLoggedIn: observable,
@@ -35,14 +35,12 @@ export class AccountStore {
         }.bind(this)));
         loginEvents.on('logout', this.updateUser);
 
-        if (!isSSR) {
-            initializeAuthUi({
-                closeable: false,
-                rememberLastLogin: false
-            });
+        initializeAuthUi({
+            closeable: false,
+            rememberLastLogin: false
+        });
 
-            setInterval(this.updateUser, 1000 * 60 * 10);
-        }
+        setInterval(this.updateUser, 1000 * 60 * 10);
 
         this.updateUser();
     }
