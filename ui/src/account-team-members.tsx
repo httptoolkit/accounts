@@ -9,7 +9,7 @@ import { PLACEHOLDER_ID_PREFIX } from './account-store';
 
 import type {
     TeamMember
-} from '../../module/src/auth';
+} from '@httptoolkit/accounts';
 
 const Explanation = styled.p`
     font-style: italic;

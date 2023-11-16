@@ -1,9 +1,9 @@
 import * as _ from 'lodash';
 import { makeObservable, observable, computed, flow } from 'mobx';
+import { delay } from "@httptoolkit/util";
 
 import { reportError } from './errors';
 
-import { delay } from "../../module/src/util";
 import {
     getBillingData,
     updateTeamMembers,
@@ -14,7 +14,7 @@ import {
     hideLoginDialog,
     logOut,
     BillingAccount
-} from '../../module/src/auth';
+} from '@httptoolkit/accounts';
 
 export class AccountStore {
 
