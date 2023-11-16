@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/node';
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Handler } from 'aws-lambda';
-import { TypedError } from 'typed-error';
+import { CustomError } from '@httptoolkit/util';
 
 const { SENTRY_DSN, VERSION } = process.env;
 
@@ -22,7 +22,7 @@ interface Auth0RequestError extends Error {
     originalError: Error
 };
 
-export class StatusError extends TypedError {
+export class StatusError extends CustomError {
     constructor(
         public readonly statusCode: number,
         message: string

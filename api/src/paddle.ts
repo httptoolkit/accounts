@@ -6,7 +6,7 @@ import fetch, { RequestInit } from 'node-fetch';
 import Serialize from 'php-serialize';
 import NodeCache from 'node-cache';
 import moment from 'moment';
-import { TypedError } from 'typed-error';
+import { CustomError } from '@httptoolkit/util';
 
 import { reportError, StatusError } from './errors';
 import { getLatestRates } from './exchange-rates';
@@ -174,7 +174,7 @@ export function validatePaddleWebhook(webhookData: PaddleWebhookData) {
     if (!verification) throw new Error('Webhook signature was invalid');
 }
 
-export class PaddleApiError extends TypedError {
+export class PaddleApiError extends CustomError {
     constructor(
         public readonly code?: number,
         public readonly message: string = 'Unknown Paddle error'
