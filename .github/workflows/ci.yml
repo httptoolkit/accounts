@@ -4,56 +4,58 @@ jobs:
   build-module:
     name: Build & test npm module
     runs-on: ubuntu-latest
-    container: httptoolkit/act-build-base:v2.0.0
+    container: httptoolkit/act-build-base:v3.0.0
     defaults:
       run:
         working-directory: module
     steps:
       - uses: actions/checkout@v3
 
-      # Install Node 14
       - uses: actions/setup-node@v3
         with:
-          node-version: 14
+          node-version: 20
 
-      - run: npm ci
+      - run: npm install
 
       # Just check the code compiles
       - run: npm run build
 
-  build-app:
-    name: Build & test app
+  build-api:
+    name: Build & test API
     runs-on: ubuntu-latest
-    container: httptoolkit/act-build-base:v2.0.0
+    container: httptoolkit/act-build-base:v3.0.0
+    defaults:
+      run:
+        working-directory: api
     steps:
       - uses: actions/checkout@v3
 
-      # Install Node 14
       - uses: actions/setup-node@v3
         with:
-          node-version: 14
+          node-version: 20
 
-      - run: npm install -g npm@8.5.5
+      - run: npm ci
+
+      - run: npm test
+
+  build-app:
+    name: Build & test app
+    runs-on: ubuntu-latest
+    container: httptoolkit/act-build-base:v3.0.0
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20
 
       - name: App NPM CI
         run: npm ci
+        working-directory: ui
 
-      - name: API NPM CI
-        run: npm ci
-        working-directory: api
-
-      - name: Module NPM CI
-        run: npm ci
-        working-directory: module
-
-      # Build & test
-      - run: npm test
-        env:
-          VERSION: ${{ github.sha }}
-          NODE_ENV: production
-
-      - run: npm run build
+      - run: npm run build:ui
         env:
           VERSION: ${{ github.sha }}
           NODE_ENV: production
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
