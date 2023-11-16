@@ -3,7 +3,7 @@
   "description": "API, UI & npm module powering HTTP Toolkit account services",
   "private": true,
   "scripts": {
-    "start": "npm run start:api & ACCOUNTS_API_BASE=http://localhost:2021 npm run start:ui",
+    "start": "npm run start:api & ACCOUNTS_API=http://localhost:3000/api npm run start:ui",
     "start:api": "cd api && npm start",
     "start:ui": "cd ui && npm start",
     "build": "rimraf dist/ && npm run build:module && npm run build:api && npm run build:ui",
@@ -25,6 +25,5 @@
   "homepage": "https://github.com/httptoolkit/accounts#readme",
   "devDependencies": {
     "rimraf": "^3.0.2"
-  },
-  "dependencies": {}
+  }
 }

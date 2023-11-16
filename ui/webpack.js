@@ -74,7 +74,7 @@ module.exports = {
         }),
         new Webpack.EnvironmentPlugin({
             'VERSION': null,
-            'API_BASE': null,
+            'ACCOUNTS_API': null,
             'SENTRY_DSN': null
         })
     ]
