@@ -1,0 +1,12 @@
+{
+  "name": "@httptoolkit/accounts-scripts",
+  "private": true,
+  "scripts": {},
+  "author": "Tim Perry <tim@httptoolkit.tech>",
+  "license": "AGPL-3.0-or-later",
+  "dependencies": {
+    "moment": "^2.29.4",
+    "prompts": "^2.4.2",
+    "ts-node": "^10.9.1"
+  }
+}
