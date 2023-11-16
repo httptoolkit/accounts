@@ -40,7 +40,7 @@
   "dependencies": {
     "@httptoolkit/accounts": "^1.0.1",
     "@httptoolkit/util": "^0.1.0",
-    "auth0": "^2.27.1",
+    "auth0": "^2.44.1",
     "express": "^4.18.2",
     "jsonwebtoken": "^8.4.0",
     "lodash": "^4.17.21",
