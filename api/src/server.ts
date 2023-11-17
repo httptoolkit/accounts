@@ -97,7 +97,7 @@ apiRouter.post('/cancel-subscription', lambdaWrapper('cancel-subscription'));
 
 export function startApiServer() {
     const server = app.listen(process.env.PORT ?? 3000, () => {
-        console.log(`Server listening on port ${(server.address() as any).port}`);
+        console.log(`Server (version ${process.env.VERSION}) listening on port ${(server.address() as any).port}`);
     });
 
     return new Promise<http.Server>((resolve) =>
