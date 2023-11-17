@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "start": "npm run start:api & ACCOUNTS_API=http://localhost:3000/api npm run start:ui",
-    "start:api": "cd api && npm start",
-    "start:ui": "cd ui && npm start",
+    "start:api": "cd api && npm run start:dev",
+    "start:ui": "cd ui && npm run start",
     "build": "rimraf dist/ && npm run build:module && npm run build:api && npm run build:ui",
     "build:module": "cd module && npm run build",
     "build:api": "cd api && npm run build",

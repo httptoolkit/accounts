@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "start": "tsx src/server.ts",
+    "start:dev": "tsx watch src/server.ts",
     "build": "tsc -P .",
     "test": "npm run build && npm run test:mocha",
     "test:mocha": "NODE_EXTRA_CA_CERTS=./test/fixtures/test-ca.pem mocha -r tsx test/**/*.spec.ts"
