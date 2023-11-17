@@ -71,6 +71,13 @@ apiRouter.options('*', (req, res) => {
     }
 });
 
+if (process.env.LOG_REQUESTS) {
+    apiRouter.use((req, _res, next) => {
+        console.log(`Request: ${req.method} ${req.url} ${JSON.stringify(req.headers, null, 2)}`);
+        next();
+    });
+}
+
 apiRouter.get('/get-prices', lambdaWrapper('get-prices'));
 apiRouter.get('/get-app-data', lambdaWrapper('get-app-data'));
 apiRouter.get('/get-billing-data', lambdaWrapper('get-billing-data'));
