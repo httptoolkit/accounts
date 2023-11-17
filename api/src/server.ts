@@ -7,7 +7,11 @@ import { getCorsResponseHeaders } from './cors';
 const app = express();
 
 app.use(express.text({ type: '*/*' }));
-app.set('trust proxy', 'loopback');
+app.set('trust proxy', [
+    'loopback',
+    'uniquelocal',
+    '100.64.0.0/10' // Private network shared address space, used by Scaleway
+]);
 
 const apiRouter = express.Router();
 app.use('/api', apiRouter);
