@@ -10,7 +10,7 @@ import { PricedSKUs, ProductDetails } from '../products';
 import { getIpData } from '../ip-geolocate';
 
 export const handler = catchErrors(async (event) => {
-    let headers = getCorsResponseHeaders(event, /.*/); // Pricing data is CORS-accessible anywhere
+    let headers = getCorsResponseHeaders(event, { allowAnyOrigin: true }); // Pricing data is CORS-accessible anywhere
 
     if (event.httpMethod !== 'OPTIONS') {
         // Cache the per-user result for 1 hour

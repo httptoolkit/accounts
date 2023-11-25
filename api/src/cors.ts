@@ -2,9 +2,14 @@ import { APIGatewayProxyEvent } from "aws-lambda";
 
 const ONE_DAY_IN_SECONDS = 60 * 60 * 24;
 
+const ORIGIN_MATCH = new RegExp(
+    process.env.ORIGIN_REGEX
+    ?? '^https?://(.*\\.)?httptoolkit\\.(tech|com)(:\\d+)?$'
+);
+
 export function getCorsResponseHeaders(
     event: APIGatewayProxyEvent,
-    originMatch = /^https?:\/\/(.*\.)?httptoolkit\.(tech|com)(:\d+)?$/
+    options: { allowAnyOrigin?: boolean } = {}
 ) {
     const corsHeaders: { [key: string]: string } = {
         'Access-Control-Allow-Headers': 'Authorization, Content-Type',
@@ -24,7 +29,7 @@ export function getCorsResponseHeaders(
 
     // Check the origin, include CORS if it's *.httptoolkit.tech or .com
     const { origin } = event.headers;
-    let allowedOrigin = originMatch.test(origin) ?
+    let allowedOrigin = options?.allowAnyOrigin || ORIGIN_MATCH.test(origin) ?
         origin : undefined;
 
     if (allowedOrigin) {

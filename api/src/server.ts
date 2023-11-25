@@ -55,7 +55,7 @@ apiRouter.options('*', (req, res) => {
 
     if (req.path === '/api/get-prices') {
         // Pricing data is CORS-accessible anywhere:
-        const headers = getCorsResponseHeaders(event, /.*/);
+        const headers = getCorsResponseHeaders(event, { allowAnyOrigin: true });
         return res.status(204).set(headers).send();
     } else if ([
         '/get-app-data',
