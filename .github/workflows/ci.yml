@@ -128,7 +128,8 @@ jobs:
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           local-dir: dashboard-dist/
-          dangerous-clean-slate: true
+          protocol: ftps
+          log-level: verbose
           server: ${{ vars.FTP_HOSTNAME }}
           username: ${{ vars.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
