@@ -4,7 +4,6 @@ jobs:
   build-module:
     name: Build & test npm module
     runs-on: ubuntu-latest
-    container: httptoolkit/act-build-base:v3.0.0
     defaults:
       run:
         working-directory: module
@@ -16,14 +15,12 @@ jobs:
           node-version: 20
 
       - run: npm install
-
       # Just check the code compiles
       - run: npm run build
 
   build-api:
     name: Build & test API
     runs-on: ubuntu-latest
-    container: httptoolkit/act-build-base:v3.0.0
     defaults:
       run:
         working-directory: api
@@ -35,13 +32,51 @@ jobs:
           node-version: 20
 
       - run: npm ci
-
       - run: npm test
 
-  build-app:
-    name: Build & test app
+  deploy-api:
+    name: Deploy API to production
+    environment: production
+    needs: build-api
     runs-on: ubuntu-latest
-    container: httptoolkit/act-build-base:v3.0.0
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/setup-buildx-action@v2
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          images: httptoolkit/accounts-api
+          tags: |
+            type=raw,value=prod
+            type=raw,value=latest
+            type=sha
+
+      - name: Build & publish API image to Docker Hub
+        uses: docker/build-push-action@v4
+        with:
+          context: api/
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Redeploy container
+        uses: thibaultchazal/scaleway-serverless-container-deploy-action@0d290edda0c3359e51442bd8bf730eafef4e290f
+        with:
+          container_id: ${{ vars.SCW_API_CONTAINER_ID }}
+          secret_key: ${{ secrets.SCW_SECRET_KEY }}
+          registry_image_url: "registry.hub.docker.com/httptoolkit/accounts-api:prod"
+
+  build-dashboard:
+    name: Build & test dashboard
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
@@ -49,7 +84,7 @@ jobs:
         with:
           node-version: 20
 
-      - name: App NPM CI
+      - name: Dashboard NPM CI
         run: npm ci
         working-directory: ui
 
@@ -59,3 +94,51 @@ jobs:
           NODE_ENV: production
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
+      - uses: actions/upload-artifact@v3
+        with:
+          name: dashboard-dist
+          path: dist/*
+          if-no-files-found: error
+
+  deploy-dashboard:
+    name: Deploy Dashboard to production
+    environment: production
+    needs: build-dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: dashboard-dist
+          path: dashboard-dist
+
+      - name: Publish to Bunny.net FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          local-dir: dashboard-dist/
+          dangerous-clean-slate: true
+          server: ${{ vars.FTP_HOSTNAME }}
+          username: ${{ vars.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+
+  post-deploy:
+    name: Update CDN after deploy
+    environment: production
+    needs:
+      - deploy-api
+      - deploy-dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Flush CDN cache
+        run: |
+          # Wait a little - the redeploy command doesn't wait for the container to start up
+          sleep 30
+
+          # Clear CDN cache to re-request content:
+          curl -f --request POST \
+            --url https://api.bunny.net/pullzone/$BUNNY_PULL_ZONE_ID/purgeCache \
+            --header "AccessKey: $BUNNY_SITE_API_KEY"
+        env:
+          BUNNY_PULL_ZONE_ID: ${{ vars.BUNNY_PULL_ZONE_ID }}
+          BUNNY_SITE_API_KEY: ${{ secrets.BUNNY_SITE_API_KEY }}
