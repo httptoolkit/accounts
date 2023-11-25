@@ -90,6 +90,7 @@ jobs:
 
       - run: npm run build:ui
         env:
+          ACCOUNTS_API: '/api' # UI always uses the matching-origin API
           VERSION: ${{ github.sha }}
           NODE_ENV: production
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
