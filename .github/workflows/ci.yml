@@ -127,7 +127,8 @@ jobs:
       - name: Publish to Bunny.net FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          local-dir: dashboard-dist/
+          local-dir: ./dashboard-dist/
+          server-dir: /${{ vars.FTP_USERNAME }}/
           protocol: ftps
           log-level: verbose
           server: ${{ vars.FTP_HOSTNAME }}
