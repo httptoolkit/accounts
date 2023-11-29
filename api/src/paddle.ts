@@ -487,10 +487,36 @@ export async function cancelSubscription(subscriptionId: string | number) {
     await makePaddleApiRequest(
         `/api/2.0/subscription/users_cancel`, {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
             body: new URLSearchParams({
                 vendor_id: PADDLE_VENDOR_ID,
                 vendor_auth_code: PADDLE_KEY,
                 subscription_id: subscriptionId.toString()
+            })
+        }
+    );
+}
+
+export async function updateSubscriptionQuantity(
+    subscriptionId: string | number,
+    quantity: number,
+    options: { billImmediately: boolean, prorate: boolean }
+) {
+    await makePaddleApiRequest(
+        `/api/2.0/subscription/users/update`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+                vendor_id: PADDLE_VENDOR_ID,
+                vendor_auth_code: PADDLE_KEY,
+                subscription_id: subscriptionId.toString(),
+                quantity: quantity.toString(),
+                bill_immediately: options.billImmediately?.toString(),
+                prorate: options.prorate?.toString()
             })
         }
     );

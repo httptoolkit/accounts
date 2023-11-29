@@ -61,6 +61,7 @@ apiRouter.options('*', (req, res) => {
         '/get-app-data',
         '/get-billing-data',
         '/update-team',
+        '/update-team-size',
         '/cancel-subscription'
     ].includes(req.path)) {
         // Account APIs are limited to our own hosts:
@@ -93,6 +94,7 @@ apiRouter.get('/redirect-to-checkout', lambdaWrapper('redirect-to-checkout'));
 apiRouter.get('/redirect-paypro-to-thank-you', lambdaWrapper('redirect-paypro-to-thank-you'));
 
 apiRouter.post('/update-team', lambdaWrapper('update-team'));
+apiRouter.post('/update-team-size', lambdaWrapper('update-team-size'));
 apiRouter.post('/cancel-subscription', lambdaWrapper('cancel-subscription'));
 
 export function startApiServer() {

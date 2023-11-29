@@ -239,7 +239,7 @@ export async function givenTeam(
     const ownerAuthToken = freshAuthToken();
     const ownerId = "abc";
     const ownerEmail = `billinguser${id()}@example.com`;
-    const subExpiry = Date.now();
+    const subExpiry = Date.now() + 60_000;
 
     let teamMembers = teamMembersAndSpaces.filter(m => !!m) as
         Array<{ id: string, email: string, joinedAt?: number }>;
