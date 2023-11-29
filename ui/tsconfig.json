@@ -3,7 +3,7 @@
         "target": "es2015",
         "module": "esnext",
         "moduleResolution": "node",
-        "outDir": "../dist/public",
+        "outDir": "../dist",
         "sourceMap": true,
 
         "jsx": "react",
@@ -22,6 +22,5 @@
     ],
     "include": [
       "custom-typings/**/*.d.ts",
-      "../module/custom-typings/**/*.d.ts"
     ]
 }

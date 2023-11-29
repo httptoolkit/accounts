@@ -48,10 +48,10 @@ const triggerWebhook = async (
     unsignedBody: Partial<PaddleWebhookData>,
     options: { expectedStatus: number } = { expectedStatus: 200 }
 ) => {
-    const functionServerUrl = `http://localhost:${(server.address() as net.AddressInfo).port}`;
+    const apiServerUrl = `http://localhost:${(server.address() as net.AddressInfo).port}`;
 
     const result = await fetch(
-        `${functionServerUrl}/.netlify/functions/paddle-webhook`,
+        `${apiServerUrl}/api/paddle-webhook`,
         getPaddleWebhookData(unsignedBody)
     );
 
@@ -60,10 +60,10 @@ const triggerWebhook = async (
 
 describe('Paddle webhooks', () => {
 
-    let functionServer: stoppable.StoppableServer;
+    let apiServer: stoppable.StoppableServer;
 
     beforeEach(async () => {
-        functionServer = await startServer();
+        apiServer = await startServer();
 
         await auth0Server.start(AUTH0_PORT);
         await auth0Server.forPost('/oauth/token').thenReply(200);
@@ -74,7 +74,7 @@ describe('Paddle webhooks', () => {
     });
 
     afterEach(async () => {
-        await new Promise((resolve) => functionServer.stop(resolve));
+        await new Promise((resolve) => apiServer.stop(resolve));
         await auth0Server.stop();
         await profitwellApiServer.stop();
     });
@@ -92,7 +92,7 @@ describe('Paddle webhooks', () => {
 
             const nextRenewal = moment('2025-01-01');
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 alert_name: 'subscription_created',
                 status: 'active',
                 email: userEmail,
@@ -137,7 +137,7 @@ describe('Paddle webhooks', () => {
 
             const nextRenewal = moment('2025-01-01');
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 alert_name: 'subscription_created',
                 status: 'active',
                 email: userEmail,
@@ -205,7 +205,7 @@ describe('Paddle webhooks', () => {
 
             const nextRenewal = moment('2025-01-01');
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 alert_name: 'subscription_created',
                 status: 'active',
                 email: memberEmail,
@@ -274,7 +274,7 @@ describe('Paddle webhooks', () => {
 
             const nextRenewal = moment('2025-01-01');
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 alert_name: 'subscription_created',
                 status: 'active',
                 email: memberEmail,
@@ -313,7 +313,7 @@ describe('Paddle webhooks', () => {
                 .forPatch('/api/v2/users/' + userId)
                 .thenReply(200);
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 alert_name: 'subscription_payment_succeeded',
                 status: 'active',
                 email: userEmail,
@@ -358,7 +358,7 @@ describe('Paddle webhooks', () => {
                 .forPatch('/api/v2/users/' + userId)
                 .thenReply(200);
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 alert_name: 'subscription_cancelled',
                 email: userEmail,
                 user_id: '123',
@@ -404,7 +404,7 @@ describe('Paddle webhooks', () => {
 
             // Initial renewal failure:
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 alert_name: 'subscription_updated',
                 status: 'past_due',
                 email: userEmail,
@@ -415,7 +415,7 @@ describe('Paddle webhooks', () => {
                 new_quantity: '1'
             })
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 alert_name: 'subscription_payment_failed',
                 status: 'past_due',
                 email: userEmail,
@@ -453,7 +453,7 @@ describe('Paddle webhooks', () => {
 
             // Final renewal failure:
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 alert_name: 'subscription_payment_failed',
                 status: 'past_due',
                 email: userEmail,
@@ -463,7 +463,7 @@ describe('Paddle webhooks', () => {
                 // N.B: no next_retry_date, we're done
             });
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 alert_name: 'subscription_cancelled',
                 email: userEmail,
                 user_id: '123',
@@ -511,7 +511,7 @@ describe('Paddle webhooks', () => {
 
             const nextRenewal = moment('2025-01-01');
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 alert_name: 'subscription_created',
                 status: 'active',
                 email: userEmail,
@@ -558,7 +558,7 @@ describe('Paddle webhooks', () => {
 
             const nextRenewal = moment('2025-01-01');
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 alert_name: 'subscription_created',
                 status: 'active',
                 email: userEmail,
@@ -609,7 +609,7 @@ describe('Paddle webhooks', () => {
 
             const nextRenewal = moment('2025-01-01');
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 alert_name: 'subscription_payment_succeeded',
                 status: 'active',
                 email: userEmail,
@@ -655,7 +655,7 @@ describe('Paddle webhooks', () => {
 
             const nextRenewal = moment('2025-01-01');
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 alert_name: 'subscription_payment_succeeded',
                 status: 'active',
                 email: userEmail,
@@ -697,7 +697,7 @@ describe('Paddle webhooks', () => {
                 .forPatch('/api/v2/users/' + userId)
                 .thenReply(200);
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 alert_name: 'payment_dispute_created',
                 email: userEmail
             });

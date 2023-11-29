@@ -1,9 +1,9 @@
 import * as _ from 'lodash';
 import { makeObservable, observable, computed, flow } from 'mobx';
+import { delay } from "@httptoolkit/util";
 
 import { reportError } from './errors';
 
-import { delay } from "../../module/src/util";
 import {
     getBillingData,
     updateTeamMembers,
@@ -14,11 +14,11 @@ import {
     hideLoginDialog,
     logOut,
     BillingAccount
-} from '../../module/src/auth';
+} from '@httptoolkit/accounts';
 
 export class AccountStore {
 
-    constructor(isSSR?: true) {
+    constructor() {
         makeObservable(this, {
             user: observable,
             isMaybeLoggedIn: observable,
@@ -35,14 +35,12 @@ export class AccountStore {
         }.bind(this)));
         loginEvents.on('logout', this.updateUser);
 
-        if (!isSSR) {
-            initializeAuthUi({
-                closeable: false,
-                rememberLastLogin: false
-            });
+        initializeAuthUi({
+            closeable: false,
+            rememberLastLogin: false
+        });
 
-            setInterval(this.updateUser, 1000 * 60 * 10);
-        }
+        setInterval(this.updateUser, 1000 * 60 * 10);
 
         this.updateUser();
     }

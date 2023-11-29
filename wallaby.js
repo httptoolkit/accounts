@@ -1,13 +1,12 @@
 const path = require('path');
 
 module.exports = (wallaby) => {
-  process.env.FUNCTIONS_DIR = './api/src/functions/';
-
   return {
     files: [
       'netlify.toml',
       'package.json',
       'api/src/**/*.ts',
+      'module/src/**/*.ts',
       'api/test/tsconfig.json',
       'api/test/**/*.ts',
       'api/test/fixtures/**/*',

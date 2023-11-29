@@ -1,7 +1,7 @@
 import { initSentry, catchErrors, StatusError } from '../errors';
 initSentry();
 
-import type { PricedSKU } from '../../../module/src/types';
+import type { PricedSKU } from '@httptoolkit/accounts';
 
 import * as Paddle from '../paddle';
 import * as PayPro from '../paypro';
@@ -55,8 +55,8 @@ export const handler = catchErrors(async (event) => {
 
     console.log('Checkout query params:', event.queryStringParameters);
 
-    const sourceIp = event.headers['x-nf-client-connection-ip']
-        ?? event.requestContext?.identity.sourceIp;
+    const sourceIp = event.headers['x-nf-client-connection-ip'] // Netlify
+        ?? event.requestContext?.identity.sourceIp; // Direct source - also populated by Express wrapper
 
     if (!email || !sku || !PricedSKUs.includes(sku)) throw new StatusError(400,
         `Checkout requires specifying ${
@@ -161,7 +161,7 @@ export const handler = catchErrors(async (event) => {
 
             // Explicitly depend on the IP (though it doesn't matter much, given short
             // caching, since the user email in the URL should avoid any confusion):
-            'vary': 'x-nf-client-connection-ip',
+            'vary': 'x-nf-client-connection-ip, x-forwarded-for',
 
             location: checkoutUrl.includes('?')
                 ? checkoutUrl

@@ -21,7 +21,7 @@ import {
     payproApiServer,
     PAYPRO_API_PORT
 } from './test-util';
-import { TransactionData } from '../../module/src/types';
+import { TransactionData } from '@httptoolkit/accounts';
 import { LICENSE_LOCK_DURATION_MS, TeamOwnerMetadata } from '../src/auth0';
 
 const asPaddleDate = (date: Date) => {
@@ -29,7 +29,7 @@ const asPaddleDate = (date: Date) => {
 }
 
 const getBillingData = (server: net.Server, authToken?: string) => fetch(
-    `http://localhost:${(server.address() as net.AddressInfo).port}/get-billing-data`,
+    `http://localhost:${(server.address() as net.AddressInfo).port}/api/get-billing-data`,
     {
         headers: authToken
             ? { Authorization: `Bearer ${authToken}` }
@@ -55,10 +55,10 @@ const getJwtData = (jwtString: string): any => {
 
 describe('/get-billing-data', () => {
 
-    let functionServer: stoppable.StoppableServer;
+    let apiServer: stoppable.StoppableServer;
 
     beforeEach(async () => {
-        functionServer = await startServer();
+        apiServer = await startServer();
 
         await auth0Server.start(AUTH0_PORT);
         await auth0Server.forPost('/oauth/token').thenReply(200);
@@ -68,7 +68,7 @@ describe('/get-billing-data', () => {
     });
 
     afterEach(async () => {
-        await new Promise((resolve) => functionServer.stop(resolve));
+        await new Promise((resolve) => apiServer.stop(resolve));
         await auth0Server.stop();
         await paddleServer.stop();
         await payproApiServer.stop();
@@ -76,7 +76,7 @@ describe('/get-billing-data', () => {
 
     describe("for unauthed users", () => {
         it("returns 401", async () => {
-            const response = await getBillingData(functionServer);
+            const response = await getBillingData(apiServer);
             expect(response.status).to.equal(401);
         });
     });
@@ -95,7 +95,7 @@ describe('/get-billing-data', () => {
                 app_metadata: { }
             });
 
-            const response = await getBillingData(functionServer, authToken);
+            const response = await getBillingData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -145,7 +145,7 @@ describe('/get-billing-data', () => {
                 status: "completed"
             }]);
 
-            const response = await getBillingData(functionServer, authToken);
+            const response = await getBillingData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -209,7 +209,7 @@ describe('/get-billing-data', () => {
                 status: "completed"
             }]);
 
-            const response = await getBillingData(functionServer, authToken);
+            const response = await getBillingData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -278,7 +278,7 @@ describe('/get-billing-data', () => {
                 }]
             }]);
 
-            const response = await getBillingData(functionServer, authToken);
+            const response = await getBillingData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -330,11 +330,11 @@ describe('/get-billing-data', () => {
             const { paddleUserId } = await givenSubscription(subId);
             await givenPaddleTransactions(paddleUserId, []);
 
-            const response1 = await getBillingData(functionServer, authToken);
+            const response1 = await getBillingData(apiServer, authToken);
             expect(response1.status).to.equal(200);
             expect(getJwtData((await response1.text())).subscription_status).to.equal('active');
 
-            const response2 = await getBillingData(functionServer, authToken);
+            const response2 = await getBillingData(apiServer, authToken);
             expect(response1.status).to.equal(200);
             expect(getJwtData((await response2.text())).subscription_status).to.equal('active');
 
@@ -382,7 +382,7 @@ describe('/get-billing-data', () => {
                 }
             });
 
-            const response = await getBillingData(functionServer, authToken);
+            const response = await getBillingData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -471,7 +471,7 @@ describe('/get-billing-data', () => {
                 status: "completed"
             }]);
 
-            const response = await getBillingData(functionServer, authToken);
+            const response = await getBillingData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -565,7 +565,7 @@ describe('/get-billing-data', () => {
                 status: "completed"
             }]);
 
-            const response = await getBillingData(functionServer, authToken);
+            const response = await getBillingData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -631,7 +631,7 @@ describe('/get-billing-data', () => {
                 }
             });
 
-            const response = await getBillingData(functionServer, authToken);
+            const response = await getBillingData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -679,7 +679,7 @@ describe('/get-billing-data', () => {
                 }
             });
 
-            const response = await getBillingData(functionServer, authToken);
+            const response = await getBillingData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
@@ -725,7 +725,7 @@ describe('/get-billing-data', () => {
                 }
             });
 
-            const response = await getBillingData(functionServer, authToken);
+            const response = await getBillingData(apiServer, authToken);
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());

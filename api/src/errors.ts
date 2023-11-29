@@ -1,17 +1,17 @@
 import * as Sentry from '@sentry/node';
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Handler } from 'aws-lambda';
-import { TypedError } from 'typed-error';
+import { CustomError } from '@httptoolkit/util';
 
 const { SENTRY_DSN, VERSION } = process.env;
 
 let sentryInitialized = false;
 export function initSentry() {
+    if (sentryInitialized) return;
+
     if (SENTRY_DSN) {
         Sentry.init({ dsn: SENTRY_DSN, release: VERSION });
         sentryInitialized = true;
         console.log("Sentry initialized");
-    } else {
-        console.log("No Sentry DSN available, error reporting disabled");
     }
 }
 
@@ -22,7 +22,7 @@ interface Auth0RequestError extends Error {
     originalError: Error
 };
 
-export class StatusError extends TypedError {
+export class StatusError extends CustomError {
     constructor(
         public readonly statusCode: number,
         message: string

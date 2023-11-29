@@ -1,4 +1,3 @@
-import fetch from 'node-fetch';
 import * as prompts from 'prompts';
 
 import { mgmtClient } from '../api/src/auth0';

@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import { Mutex } from 'async-mutex';
 import { EventEmitter } from 'events';
-import { TypedError } from 'typed-error';
+import { CustomError } from '@httptoolkit/util';
 
 import * as jwt from 'jsonwebtoken';
 import * as Auth0 from 'auth0-js';
@@ -31,13 +31,13 @@ mCVpul3MYubdv034/ipGZSKJTwgubiHocrSBdeImNe3xdxOw/Mo04r0kcZBg2l/b
 -----END PUBLIC KEY-----
 `;
 
-export class TokenRejectedError extends TypedError {
+export class TokenRejectedError extends CustomError {
     constructor() {
         super('Auth token rejected');
     }
 }
 
-export class RefreshRejectedError extends TypedError {
+export class RefreshRejectedError extends CustomError {
     constructor(response: { description: string }) {
         super(`Token refresh failed with: ${response.description}`);
     }

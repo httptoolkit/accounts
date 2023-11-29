@@ -2,10 +2,10 @@ const path = require('path');
 const Webpack = require('webpack');
 
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const GoogleFontsPlugin = require('google-fonts-plugin');
+const GoogleFontsPlugin = require('@beyonk/google-fonts-webpack-plugin');
 
 const SRC_DIR = path.resolve(__dirname, 'src');
-const OUTPUT_DIR = path.resolve(__dirname, '..', 'dist', 'public');
+const OUTPUT_DIR = path.resolve(__dirname, '..', 'dist');
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
@@ -18,12 +18,18 @@ module.exports = {
 
     output: {
         path: OUTPUT_DIR,
-        filename: 'app.js',
-        libraryTarget: 'umd'
+        filename: 'app.js'
     },
 
     resolve: {
-        extensions: ['.js', '.ts', '.tsx']
+        extensions: ['.js', '.ts', '.tsx'],
+        fallback: {
+            'events': require.resolve('events/'),
+            'util': require.resolve('util/'),
+            'buffer': require.resolve('buffer/'),
+            'stream': require.resolve('stream-browserify/'),
+            'crypto': require.resolve('crypto-browserify/')
+        }
     },
 
     devtool: NODE_ENV === 'development'
@@ -33,7 +39,7 @@ module.exports = {
     devServer: {
         port: 8765,
         historyApiFallback: true,
-        public: 'local.httptoolkit.tech:8765'
+        allowedHosts: 'all'
     },
 
     module: {
@@ -43,23 +49,11 @@ module.exports = {
             exclude: /node_modules/
         }, {
             test: /\.(woff2|ttf|png|svg)$/,
-            loader: 'file-loader'
+            type: 'asset/resource'
         }, {
             test: /\.css$/,
             use: ['style-loader', 'css-loader']
-        }, NODE_ENV === 'production' ? {
-            test: INDEX_HTML,
-            use: [{
-                loader: '@httptoolkit/prerender-loader',
-                options: {
-                    string: true,
-                    documentUrl: "https://accounts.httptoolkit.tech",
-                    env: {
-                        SC_DISABLE_SPEEDY: 'true'
-                    }
-                }
-            }]
-        } : {}]
+        }]
     },
 
     plugins: [
@@ -72,12 +66,16 @@ module.exports = {
                 { family: "Lato" }
             ],
             formats: ['woff2'], // Supported by Chrome, FF, Edge, Safari 12+
-            filename: 'fonts.css'
+            filename: 'fonts.css',
+            apiUrl: 'https://gwfh.mranftl.com/api/fonts'
+        }),
+        new Webpack.ProvidePlugin({
+            process: 'process/browser'
         }),
         new Webpack.EnvironmentPlugin({
             'VERSION': null,
-            'API_BASE': null,
+            'ACCOUNTS_API': null,
             'SENTRY_DSN': null
         })
-    ],
+    ]
 };

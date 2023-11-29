@@ -53,9 +53,12 @@ export const handler = catchErrors(async (event) => {
         ]);
 
         const ownerData = userData.app_metadata as TeamOwnerMetadata;
+
         const sku = getSku(ownerData);
         if (!isTeamSubscription(sku)) {
             throw new StatusError(403, "Your account does not have a Team subscription");
+        } else if (!ownerData.team_member_ids) {
+            ownerData.team_member_ids = [];
         }
 
         const input: {

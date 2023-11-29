@@ -4,13 +4,11 @@ import * as crypto from 'crypto';
 import { getLocal } from 'mockttp';
 import stoppable from 'stoppable';
 
-import { serveFunctions } from '@httptoolkit/netlify-cli/src/utils/serve-functions';
-
 import { AppMetadata } from '../src/auth0';
 import { PayProOrderDetails, PayProOrderListing } from '../src/paypro';
 import { PaddleTransaction } from '../src/paddle';
 
-export { delay } from "../../module/src/util";
+export { delay } from "@httptoolkit/util";
 
 let idCounter = 1000;
 export function id() {
@@ -382,14 +380,10 @@ export function freshAuthToken() {
     return crypto.randomBytes(20).toString('hex');
 }
 
-const BUILT_FUNCTIONS_DIR = path.join(__dirname, '..', '..', 'dist', 'functions');
-
-export const startServer = async (port = 0) => {
-    const { server } = await serveFunctions({
-        functionsDir: process.env.FUNCTIONS_DIR || BUILT_FUNCTIONS_DIR,
-        quiet: true,
-        watch: false,
-        port
-    });
+export const startServer = async () => {
+    // We defer loading the server until the first call to this, to
+    // ensure the env vars above are all set first:
+    const { startApiServer } = await import('../src/server');
+    const server = await startApiServer();
     return stoppable(server, 0);
-};
+}

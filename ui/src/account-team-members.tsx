@@ -9,7 +9,7 @@ import { PLACEHOLDER_ID_PREFIX } from './account-store';
 
 import type {
     TeamMember
-} from '../../module/src/auth';
+} from '@httptoolkit/accounts';
 
 const Explanation = styled.p`
     font-style: italic;
@@ -53,8 +53,11 @@ export const TeamMembers = observer((p: {
     });
 
     const formRef = React.useRef<HTMLFormElement>(null);
-    const onBlurEmail = () => {
-        formRef.current?.reportValidity();
+    const onBlurEmail = (...args: any[]) => {
+        // Add a wait, just in case the row was blurred by its deletion
+        setTimeout(() => {
+            formRef.current?.reportValidity();
+        }, 250);
     };
 
     const proposedTeam = p.teamMembers
@@ -178,6 +181,13 @@ export const TeamMembers = observer((p: {
                         onBlur={onBlurEmail}
                         onChange={updateMemberEmail[i]}
                     />
+                    <DeleteButton
+                        onClick={() => setEmailInputs([
+                            ...emailInputs.slice(0, i),
+                            // Drop this input
+                            ...emailInputs.slice(i + 1),
+                        ])}
+                    />
                 </NewTeamMemberRow>
             ) }
 
@@ -255,7 +265,7 @@ const Spinner = styled((p: { className?: string }) =>
 `;
 
 
-const DeleteButton = styled((p: { onClick: () => void, deleted: boolean, className?: string }) =>
+const DeleteButton = styled((p: { onClick: () => void, deleted?: boolean, className?: string }) =>
     <UnstyledButton onClick={p.onClick} className={p.className}>
         { p.deleted
             ? <Icon icon={['fas', 'undo']} />
@@ -283,6 +293,13 @@ const LockedLicenseRow = styled.li`
 const NewTeamMemberRow = styled.li`
     display: flex;
     align-items: baseline;
+
+    position: relative;
+    > ${DeleteButton} {
+        position: absolute;
+        top: 10px;
+        right: 15px;
+    }
 `;
 
 const NewTeamMemberInput = styled.input`

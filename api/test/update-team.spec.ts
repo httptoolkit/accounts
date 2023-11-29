@@ -28,7 +28,7 @@ const updateTeam = (server: net.Server, authToken: string | undefined, team: {
     idsToRemove?: string[],
     emailsToAdd?: string[]
 }) => fetch(
-    `http://localhost:${(server.address() as net.AddressInfo).port}/update-team`,
+    `http://localhost:${(server.address() as net.AddressInfo).port}/api/update-team`,
     {
         method: 'POST',
         headers: {
@@ -44,10 +44,10 @@ const updateTeam = (server: net.Server, authToken: string | undefined, team: {
 
 describe('/update-team', () => {
 
-    let functionServer: stoppable.StoppableServer;
+    let apiServer: stoppable.StoppableServer;
 
     beforeEach(async () => {
-        functionServer = await startServer();
+        apiServer = await startServer();
 
         await auth0Server.start(AUTH0_PORT);
         await auth0Server.forPost('/oauth/token').thenReply(200);
@@ -56,14 +56,14 @@ describe('/update-team', () => {
     });
 
     afterEach(async () => {
-        await new Promise((resolve) => functionServer.stop(resolve));
+        await new Promise((resolve) => apiServer.stop(resolve));
         await auth0Server.stop();
         await paddleServer.stop();
     });
 
     describe("for unauthed users", () => {
         it("returns 401", async () => {
-            const response = await updateTeam(functionServer, undefined, {
+            const response = await updateTeam(apiServer, undefined, {
                 emailsToAdd: ['a@b.com']
             });
             expect(response.status).to.equal(401);
@@ -85,7 +85,7 @@ describe('/update-team', () => {
             });
             await auth0Server.forGet('/api/v2/users').thenJson(200, []);
 
-            const response = await updateTeam(functionServer, authToken, {
+            const response = await updateTeam(apiServer, authToken, {
                 emailsToAdd: ['a@b.com']
             });
             expect(response.status).to.equal(403);
@@ -114,7 +114,7 @@ describe('/update-team', () => {
                 });
             await auth0Server.forGet('/api/v2/users').thenJson(200, []);
 
-            const response = await updateTeam(functionServer, authToken, {
+            const response = await updateTeam(apiServer, authToken, {
                 emailsToAdd: ['a@b.com']
             });
             expect(response.status).to.equal(403);
@@ -132,7 +132,7 @@ describe('/update-team', () => {
 
             const getUserUpdates = await watchUserUpdates();
 
-            const response = await updateTeam(functionServer, ownerAuthToken, {
+            const response = await updateTeam(apiServer, ownerAuthToken, {
                 idsToRemove: [team[0].id, team[3].id]
             });
 
@@ -185,7 +185,7 @@ describe('/update-team', () => {
             const getNewUsers = await watchUserCreation();
             const getUserUpdates = await watchUserUpdates();
 
-            const response = await updateTeam(functionServer, ownerAuthToken, {
+            const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: ['test@example.com']
             });
 
@@ -236,7 +236,7 @@ describe('/update-team', () => {
             const getNewUsers = await watchUserCreation();
             const getUserUpdates = await watchUserUpdates();
 
-            const response = await updateTeam(functionServer, ownerAuthToken, {
+            const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [existingUserEmail]
             });
 
@@ -288,7 +288,7 @@ describe('/update-team', () => {
             const getNewUsers = await watchUserCreation();
             const getUserUpdates = await watchUserUpdates();
 
-            const response = await updateTeam(functionServer, ownerAuthToken, {
+            const response = await updateTeam(apiServer, ownerAuthToken, {
                 idsToRemove: team.map(m => m.id),
                 emailsToAdd: [newUserEmail, existingUserEmail]
             });
@@ -371,7 +371,7 @@ describe('/update-team', () => {
 
             await withUserUpdateNetworkFailures();
 
-            const response = await updateTeam(functionServer, ownerAuthToken, {
+            const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [newUserEmail]
             });
 
@@ -389,7 +389,7 @@ describe('/update-team', () => {
             await givenNoUsers();
             const getUserUpdates = await watchUserUpdates();
 
-            const response = await updateTeam(functionServer, ownerAuthToken, {
+            const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: ['test@example.com']
             });
 
@@ -408,7 +408,7 @@ describe('/update-team', () => {
             await givenNoUsers();
             const getUserUpdates = await watchUserUpdates();
 
-            const response = await updateTeam(functionServer, ownerAuthToken, {
+            const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: ['member1@example.com']
             });
 
@@ -427,7 +427,7 @@ describe('/update-team', () => {
             await givenNoUsers();
             const getUserUpdates = await watchUserUpdates();
 
-            const response = await updateTeam(functionServer, ownerAuthToken, {
+            const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: ['member1@example.com', 'member1@example.com']
             });
 
@@ -458,7 +458,7 @@ describe('/update-team', () => {
             } as PayingUserMetadata);
             const getUserUpdates = await watchUserUpdates();
 
-            const response = await updateTeam(functionServer, ownerAuthToken, {
+            const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [existingUserEmail]
             });
 
@@ -494,7 +494,7 @@ describe('/update-team', () => {
             } as PayingUserMetadata);
             const getUserUpdates = await watchUserUpdates();
 
-            const response = await updateTeam(functionServer, ownerAuthToken, {
+            const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [newUserEmail, existingUserEmail]
             });
 
@@ -512,7 +512,7 @@ describe('/update-team', () => {
             const { ownerId, ownerEmail, ownerAuthToken } = await givenTeam(team);
             const getUserUpdates = await watchUserUpdates();
 
-            const response = await updateTeam(functionServer, ownerAuthToken, {
+            const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [ownerEmail]
             });
 
@@ -559,7 +559,7 @@ describe('/update-team', () => {
                 subscription_expiry: Date.now() + 1000
             } as PayingUserMetadata);
             const getUserUpdates = await watchUserUpdates();
-            const response = await updateTeam(functionServer, ownerAuthToken, {
+            const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [existingUserEmail]
             });
 
@@ -583,7 +583,7 @@ describe('/update-team', () => {
             } as TeamMemberMetadata);
             const getUserUpdates = await watchUserUpdates();
 
-            const response = await updateTeam(functionServer, ownerAuthToken, {
+            const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [existingUserEmail]
             });
 
@@ -602,7 +602,7 @@ describe('/update-team', () => {
             await givenNoUsers();
             const getUserUpdates = await watchUserUpdates();
 
-            const response = await updateTeam(functionServer, ownerAuthToken, {
+            const response = await updateTeam(apiServer, ownerAuthToken, {
                 idsToRemove: [team[0].id, team[0].id]
             });
 
@@ -619,7 +619,7 @@ describe('/update-team', () => {
 
             const getUserUpdates = await watchUserUpdates();
 
-            const response = await updateTeam(functionServer, ownerAuthToken, {
+            const response = await updateTeam(apiServer, ownerAuthToken, {
                 idsToRemove: ['unrelated-id']
             });
 
@@ -637,7 +637,7 @@ describe('/update-team', () => {
 
             updateOwnerData({ team_member_ids: [] }); // Lose the id from team_member_ids
 
-            const response = await updateTeam(functionServer, ownerAuthToken, {
+            const response = await updateTeam(apiServer, ownerAuthToken, {
                 idsToRemove: [team[0].id]
             });
 
@@ -656,7 +656,7 @@ describe('/update-team', () => {
             const { ownerId, ownerAuthToken } = await givenTeam(team);
             const getUserUpdates = await watchUserUpdates();
 
-            const response = await updateTeam(functionServer, ownerAuthToken, {
+            const response = await updateTeam(apiServer, ownerAuthToken, {
                 idsToRemove: [team[0].id]
             });
             expect(response.status).to.equal(200);
@@ -709,7 +709,7 @@ describe('/update-team', () => {
             const getUserUpdates = await watchUserUpdates();
 
             // Add the user once:
-            const response1 = await updateTeam(functionServer, ownerAuthToken, {
+            const response1 = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [memberEmail]
             });
             expect(response1.status).to.equal(200);
@@ -725,7 +725,7 @@ describe('/update-team', () => {
             updateOwnerData(updates[1].body.app_metadata);
 
             // Remove the user again:
-            const response2 = await updateTeam(functionServer, ownerAuthToken, {
+            const response2 = await updateTeam(apiServer, ownerAuthToken, {
                 idsToRemove: [memberId]
             });
             expect(response2.status).to.equal(200);
@@ -737,7 +737,7 @@ describe('/update-team', () => {
             updateOwnerData(updates[1].body.app_metadata);
 
             // Try to re-add the user, nope:
-            const response3 = await updateTeam(functionServer, ownerAuthToken, {
+            const response3 = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [memberEmail]
             });
             expect(response3.status).to.equal(403); // Rejected: User is now locked
@@ -768,7 +768,7 @@ describe('/update-team', () => {
             const getUserUpdates = await watchUserUpdates();
 
             // Add the user once:
-            const response1 = await updateTeam(functionServer, ownerAuthToken, {
+            const response1 = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [memberEmail]
             });
             expect(response1.status).to.equal(200);
@@ -789,7 +789,7 @@ describe('/update-team', () => {
             await givenUser(replacementMemberId, replacementMemberEmail);
 
             // Remove them and then add a new user, with our one license:
-            const response2 = await updateTeam(functionServer, ownerAuthToken, {
+            const response2 = await updateTeam(apiServer, ownerAuthToken, {
                 idsToRemove: [memberId],
                 emailsToAdd: [replacementMemberEmail]
             });
@@ -821,7 +821,7 @@ describe('/update-team', () => {
             const getUserUpdates = await watchUserUpdates();
 
             // Add the user once:
-            const response1 = await updateTeam(functionServer, ownerAuthToken, {
+            const response1 = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [memberEmail]
             });
             expect(response1.status).to.equal(200);
@@ -837,7 +837,7 @@ describe('/update-team', () => {
             updateOwnerData(updates[1].body.app_metadata);
 
             // Remove the user again:
-            const response2 = await updateTeam(functionServer, ownerAuthToken, {
+            const response2 = await updateTeam(apiServer, ownerAuthToken, {
                 idsToRemove: [memberId]
             });
             expect(response2.status).to.equal(200);
@@ -857,7 +857,7 @@ describe('/update-team', () => {
             });
 
             // Try to re-add the user:
-            const response3 = await updateTeam(functionServer, ownerAuthToken, {
+            const response3 = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [memberEmail]
             });
             expect(response3.status).to.equal(200); // <-- Now OK, since the lock has expired

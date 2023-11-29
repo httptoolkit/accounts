@@ -59,10 +59,10 @@ const triggerWebhook = async (
     unsignedBody: Partial<PayProWebhookData>,
     options: { expectedStatus: number } = { expectedStatus: 200 }
 ) => {
-    const functionServerUrl = `http://localhost:${(server.address() as net.AddressInfo).port}`;
+    const apiServerUrl = `http://localhost:${(server.address() as net.AddressInfo).port}`;
 
     const result = await fetch(
-        `${functionServerUrl}/.netlify/functions/paypro-webhook`,
+        `${apiServerUrl}/api/paypro-webhook`,
         getPayProWebhookData(unsignedBody)
     );
 
@@ -80,10 +80,10 @@ function formatRenewalDate(date: Moment) {
 
 describe('PayPro webhooks', () => {
 
-    let functionServer: stoppable.StoppableServer;
+    let apiServer: stoppable.StoppableServer;
 
     beforeEach(async () => {
-        functionServer = await startServer();
+        apiServer = await startServer();
         await auth0Server.start(AUTH0_PORT);
         await auth0Server.forPost('/oauth/token').thenReply(200);
 
@@ -91,7 +91,7 @@ describe('PayPro webhooks', () => {
     });
 
     afterEach(async () => {
-        await new Promise((resolve) => functionServer.stop(resolve));
+        await new Promise((resolve) => apiServer.stop(resolve));
         await auth0Server.stop();
         await profitwellApiServer.stop();
     });
@@ -103,7 +103,7 @@ describe('PayPro webhooks', () => {
             .asPriority(100)
             .thenReply(200);
 
-        await triggerWebhook(functionServer, {
+        await triggerWebhook(apiServer, {
             IPN_TYPE_NAME: 'OrderCharged',
             ORDER_ITEM_SKU: 'pro-monthly',
             CUSTOMER_ID: '123',
@@ -146,7 +146,7 @@ describe('PayPro webhooks', () => {
 
             const nextRenewal = moment('2025-01-01');
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 IPN_TYPE_NAME: 'OrderCharged',
                 ORDER_ITEM_SKU: 'pro-monthly',
                 CUSTOMER_ID: '123',
@@ -196,7 +196,7 @@ describe('PayPro webhooks', () => {
 
             const nextRenewal = moment('2025-01-01');
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 IPN_TYPE_NAME: 'OrderCharged',
                 ORDER_ITEM_SKU: 'pro-monthly',
                 CUSTOMER_ID: '123',
@@ -241,7 +241,7 @@ describe('PayPro webhooks', () => {
                 .forPatch('/api/v2/users/' + userId)
                 .thenReply(200);
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 IPN_TYPE_NAME: 'SubscriptionChargeSucceed',
                 ORDER_ITEM_SKU: 'pro-annual',
                 SUBSCRIPTION_ID: '456',
@@ -282,7 +282,7 @@ describe('PayPro webhooks', () => {
                 .forPatch('/api/v2/users/' + userId)
                 .thenReply(200);
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 IPN_TYPE_NAME: 'SubscriptionTerminated',
                 ORDER_ITEM_SKU: 'pro-annual',
                 SUBSCRIPTION_ID: '456',
@@ -323,7 +323,7 @@ describe('PayPro webhooks', () => {
                 .forPatch('/api/v2/users/' + userId)
                 .thenReply(200);
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 IPN_TYPE_NAME: 'SubscriptionSuspended',
                 ORDER_ITEM_SKU: 'pro-annual',
                 SUBSCRIPTION_ID: '456',
@@ -364,7 +364,7 @@ describe('PayPro webhooks', () => {
                 .forPatch('/api/v2/users/' + userId)
                 .thenReply(200);
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 IPN_TYPE_NAME: 'SubscriptionChargeFailed',
                 ORDER_ITEM_SKU: 'pro-annual',
                 SUBSCRIPTION_ID: '456',
@@ -416,7 +416,7 @@ describe('PayPro webhooks', () => {
             const subscriptionCreation = moment.utc('2020-01-01');
             const nextRenewal = moment.utc('2025-01-01');
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 IPN_TYPE_NAME: 'OrderCharged',
                 ORDER_ITEM_SKU: 'pro-monthly',
                 CUSTOMER_ID: '123',
@@ -438,7 +438,7 @@ describe('PayPro webhooks', () => {
                 subscription_expiry: nextRenewal.valueOf()
             });
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 IPN_TYPE_NAME: 'SubscriptionTerminated',
                 ORDER_ITEM_SKU: 'pro-annual',
                 SUBSCRIPTION_ID: '456',
@@ -494,7 +494,7 @@ describe('PayPro webhooks', () => {
                 .forPatch('/api/v2/users/' + userId)
                 .thenReply(200);
 
-            await triggerWebhook(functionServer, {
+            await triggerWebhook(apiServer, {
                 IPN_TYPE_NAME: 'OrderChargedBack',
                 CUSTOMER_EMAIL: userEmail
             });

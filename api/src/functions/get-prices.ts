@@ -1,7 +1,7 @@
 import { initSentry, catchErrors, reportError } from '../errors';
 initSentry();
 
-import { SubscriptionPricing } from '../../../module/src/types';
+import { SubscriptionPricing } from '@httptoolkit/accounts';
 
 import { getCorsResponseHeaders } from '../cors';
 import { getAllPrices } from '../pricing';
@@ -10,16 +10,15 @@ import { PricedSKUs, ProductDetails } from '../products';
 import { getIpData } from '../ip-geolocate';
 
 export const handler = catchErrors(async (event) => {
-    let headers = getCorsResponseHeaders(event, /.*/); // Pricing data is CORS-accessible anywhere
+    let headers = getCorsResponseHeaders(event, { allowAnyOrigin: true }); // Pricing data is CORS-accessible anywhere
 
     if (event.httpMethod !== 'OPTIONS') {
         // Cache the per-user result for 1 hour
         headers['Cache-Control'] = 'private, max-age=3600';
     }
 
-    const sourceIp = event.headers['x-nf-client-connection-ip']
-        ?? event.requestContext?.identity.sourceIp;
-
+    const sourceIp = event.headers['x-nf-client-connection-ip'] // Netlify
+        ?? event.requestContext?.identity.sourceIp; // Direct source - also populated by Express wrapper
 
     // Only sent by old clients, parsed here for backward compat:
     const { product_ids } = event.queryStringParameters as { product_ids?: string };

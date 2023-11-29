@@ -5,7 +5,7 @@ import fetch from 'node-fetch';
 import * as moment from 'moment';
 
 import { reportError, StatusError } from './errors';
-import { SKU, TransactionData } from "../../module/src/types";
+import { SKU, TransactionData } from "@httptoolkit/accounts";
 import { getLatestRates } from './exchange-rates';
 
 const PAYPRO_API_BASE_URL = process.env.PAYPRO_API_BASE_URL

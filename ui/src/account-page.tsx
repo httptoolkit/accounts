@@ -5,7 +5,7 @@ import {
     formatDistanceStrict, format, formatDistanceToNow
 } from 'date-fns';
 
-import { getPlanByCode, SubscriptionPlans } from '../../module/src/plans';
+import { getPlanByCode, SubscriptionPlans } from '@httptoolkit/accounts';
 
 import { styled, media } from './styles';
 import { Icon } from './icons';

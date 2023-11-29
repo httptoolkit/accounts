@@ -1,5 +1,5 @@
 import * as auth0 from 'auth0';
-import { SubscriptionStatus, SKU } from '../../module/src/types';
+import { SubscriptionStatus, SKU } from '@httptoolkit/accounts';
 
 const {
     AUTH0_DOMAIN,

@@ -5,13 +5,10 @@ import { parseISO } from 'date-fns';
 
 import { styled } from './styles';
 
-import type {
-    Transaction
-} from '../../module/src/auth';
-
 import {
+    Transaction,
     getPlanByCode
-} from '../../module/src/plans';
+} from '@httptoolkit/accounts';
 
 export const Transactions = observer((p: {
     transactions: Transaction[],

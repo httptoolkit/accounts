@@ -14,7 +14,7 @@ import {
     PADDLE_PORT,
     startServer
 } from './test-util';
-import type { SKU } from '../../module/src/types';
+import type { SKU } from '@httptoolkit/accounts';
 
 const getCheckoutUrl = (
     server: net.Server,
@@ -28,13 +28,13 @@ const getCheckoutUrl = (
 ) => fetch(
     `http://localhost:${
         (server.address() as net.AddressInfo).port
-    }/redirect-to-checkout?sku=${sku}&email=${email}&source=site.example${
+    }/api/redirect-to-checkout?sku=${sku}&email=${email}&source=site.example${
         options.passthrough ? `&passthrough=${encodeURIComponent(options.passthrough)}` : ''
     }${
         options.quantity !== undefined ? `&quantity=${options.quantity}` : ''
     }`, {
         headers: {
-            'x-nf-client-connection-ip': options.ip ?? '1.1.1.1'
+            'X-Forwarded-For': options.ip ?? '1.1.1.1'
         },
         redirect: 'manual'
     }
@@ -42,10 +42,10 @@ const getCheckoutUrl = (
 
 describe('/redirect-to-checkout', () => {
 
-    let functionServer: stoppable.StoppableServer;
+    let apiServer: stoppable.StoppableServer;
 
     beforeEach(async () => {
-        functionServer = await startServer();
+        apiServer = await startServer();
 
         // Return checkout URLs containing the raw params explicitly to assert on:
         await paddleServer.start(PADDLE_PORT);
@@ -89,7 +89,7 @@ describe('/redirect-to-checkout', () => {
     });
 
     afterEach(async () => {
-        await new Promise((resolve) => functionServer.stop(resolve));
+        await new Promise((resolve) => apiServer.stop(resolve));
         await paddleServer.stop();
         await exchangeRateServer.stop();
         await ipApiServer.stop();
@@ -98,7 +98,7 @@ describe('/redirect-to-checkout', () => {
     it("redirects to Paddle by default for Pro-Monthly", async () => {
         await givenExchangeRate('USD', 2);
         const response = await getCheckoutUrl(
-            functionServer,
+            apiServer,
             'test@email.example',
             'pro-monthly'
         );
@@ -115,7 +115,7 @@ describe('/redirect-to-checkout', () => {
     it("redirects to Paddle by default for Pro-Annual", async () => {
         await givenExchangeRate('USD', 2);
         const response = await getCheckoutUrl(
-            functionServer,
+            apiServer,
             'annual-test@email.example',
             'pro-annual'
         );
@@ -130,7 +130,7 @@ describe('/redirect-to-checkout', () => {
     it("includes IP source data in passthrough by default", async () => {
         await givenExchangeRate('USD', 2);
         const response = await getCheckoutUrl(
-            functionServer,
+            apiServer,
             'test@email.example',
             'pro-monthly'
         );
@@ -154,7 +154,7 @@ describe('/redirect-to-checkout', () => {
     it("combines provided & IP-based passthrough data", async () => {
         await givenExchangeRate('USD', 2);
         const response = await getCheckoutUrl(
-            functionServer,
+            apiServer,
             'test@email.example',
             'pro-monthly',
             { passthrough: JSON.stringify({ testParam: 'testValue' }) }
@@ -179,7 +179,7 @@ describe('/redirect-to-checkout', () => {
     it("fails if no SKU is provided", async () => {
         await givenExchangeRate('USD', 2);
         const response = await getCheckoutUrl(
-            functionServer,
+            apiServer,
             'test@email.example',
             '' as any
         );
@@ -190,7 +190,7 @@ describe('/redirect-to-checkout', () => {
     it("fails if no email is provided", async () => {
         await givenExchangeRate('USD', 2);
         const response = await getCheckoutUrl(
-            functionServer,
+            apiServer,
             '',
             'pro-monthly'
         );
@@ -202,7 +202,7 @@ describe('/redirect-to-checkout', () => {
         await givenExchangeRate('USD', 2);
 
         const response = await getCheckoutUrl(
-            functionServer,
+            apiServer,
             '*',
             'pro-monthly'
         );
@@ -218,7 +218,7 @@ describe('/redirect-to-checkout', () => {
     it("redirects to Paddle by default for Team-Annual", async () => {
         await givenExchangeRate('USD', 2);
         const response = await getCheckoutUrl(
-            functionServer,
+            apiServer,
             'test@email.example',
             'team-annual',
             { quantity: 5 }
@@ -236,7 +236,7 @@ describe('/redirect-to-checkout', () => {
     it("fails for team SKUs if no quantity is provided", async () => {
         await givenExchangeRate('USD', 2);
         const response = await getCheckoutUrl(
-            functionServer,
+            apiServer,
             'test@email.example',
             'team-annual'
         );
@@ -245,8 +245,5 @@ describe('/redirect-to-checkout', () => {
         const responseBody = await response.text()
         expect(responseBody).to.equal('Quantity parameter is required for team SKUs');
     });
-
-    // TODO: For now this always redirects to Paddle - later it will
-    // intelligently route to the correct payment gateway.
 
 });

@@ -8,7 +8,11 @@ import { mgmtClient } from '../api/src/auth0';
     const email = process.argv[2];
     const durationString = process.argv[3];
 
-    const [, durationLength, durationType] = /(\d+)(\w+)/.exec(durationString);
+    if (!durationString) {
+        throw new Error('Duration must be provided');
+    }
+
+    const [, durationLength, durationType] = /(\d+)(\w+)/.exec(durationString)!;
     const duration = moment.duration(
         parseInt(durationLength, 10),
         durationType as any
@@ -45,9 +49,8 @@ import { mgmtClient } from '../api/src/auth0';
 
     mgmtClient.updateAppMetadata({ id: userId! }, {
         subscription_status: 'trialing',
-        subscription_plan_id: 550380, // Pro monthly
+        subscription_sku: 'pro-monthly',
         subscription_expiry: Date.now() + duration.asMilliseconds(),
-        subscription_id: -1,
         subscription_quantity: 1
     });
 })();

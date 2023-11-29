@@ -6,7 +6,7 @@ import fetch, { RequestInit } from 'node-fetch';
 import Serialize from 'php-serialize';
 import NodeCache from 'node-cache';
 import moment from 'moment';
-import { TypedError } from 'typed-error';
+import { CustomError } from '@httptoolkit/util';
 
 import { reportError, StatusError } from './errors';
 import { getLatestRates } from './exchange-rates';
@@ -15,7 +15,7 @@ import {
     SubscriptionPricing,
     SubscriptionStatus,
     TransactionData
-} from '../../module/src/types';
+} from '@httptoolkit/accounts';
 
 const PADDLE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 ${process.env.PADDLE_PUBLIC_KEY}
@@ -174,7 +174,7 @@ export function validatePaddleWebhook(webhookData: PaddleWebhookData) {
     if (!verification) throw new Error('Webhook signature was invalid');
 }
 
-export class PaddleApiError extends TypedError {
+export class PaddleApiError extends CustomError {
     constructor(
         public readonly code?: number,
         public readonly message: string = 'Unknown Paddle error'
@@ -237,7 +237,7 @@ export async function getPrices(productIds: string[], sourceIp: string): Promise
 export async function getPaddleUserIdFromSubscription(
     subscriptionId: number | string | undefined
 ): Promise<number | undefined> {
-    if (!subscriptionId) return undefined;
+    if (!subscriptionId || subscriptionId.toString() === '-1') return undefined;
 
     const response = await makePaddleApiRequest(
         `/api/2.0/subscription/users`, {

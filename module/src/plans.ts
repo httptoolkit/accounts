@@ -1,7 +1,8 @@
 import * as _ from 'lodash';
+import { delay, doWhile } from '@httptoolkit/util';
 import { SKU, SubscriptionPricing } from './types';
 
-import { delay, doWhile, ACCOUNTS_API_BASE } from './util';
+import { ACCOUNTS_API_BASE } from './util';
 
 export interface SubscriptionPlan {
     paddleId: number;

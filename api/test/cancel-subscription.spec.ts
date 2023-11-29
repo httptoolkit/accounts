@@ -19,7 +19,7 @@ import {
 } from './test-util';
 
 const cancelSubscription = (server: net.Server, authToken?: string) => fetch(
-    `http://localhost:${(server.address() as net.AddressInfo).port}/cancel-subscription`,
+    `http://localhost:${(server.address() as net.AddressInfo).port}/api/cancel-subscription`,
     {
         method: 'POST',
         headers: authToken
@@ -30,10 +30,10 @@ const cancelSubscription = (server: net.Server, authToken?: string) => fetch(
 
 describe('Subscription cancellation API', () => {
 
-    let functionServer: stoppable.StoppableServer;
+    let apiServer: stoppable.StoppableServer;
 
     beforeEach(async () => {
-        functionServer = await startServer();
+        apiServer = await startServer();
         await auth0Server.start(AUTH0_PORT);
         await auth0Server.forPost('/oauth/token').thenReply(200);
         auth0Server.enableDebug();
@@ -43,7 +43,7 @@ describe('Subscription cancellation API', () => {
     });
 
     afterEach(async () => {
-        await new Promise((resolve) => functionServer.stop(resolve));
+        await new Promise((resolve) => apiServer.stop(resolve));
         await auth0Server.stop();
 
         await paddleServer.stop();
@@ -51,7 +51,7 @@ describe('Subscription cancellation API', () => {
     });
 
     it("should return a 401 for unauthenticated requests", async () => {
-        const response = await cancelSubscription(functionServer);
+        const response = await cancelSubscription(apiServer);
         expect(response.status).to.equal(401);
     });
 
@@ -70,7 +70,7 @@ describe('Subscription cancellation API', () => {
         const cancelEndpoint = await paddleServer.forPost('/api/2.0/subscription/users_cancel')
             .thenJson(200, { success: true });
 
-        const response = await cancelSubscription(functionServer, authToken);
+        const response = await cancelSubscription(apiServer, authToken);
         expect(response.status).to.equal(200);
 
         const paddleRequests = await cancelEndpoint.getSeenRequests();
@@ -94,7 +94,7 @@ describe('Subscription cancellation API', () => {
         const cancelEndpoint = await payproApiServer.forPost('/api/Subscriptions/Terminate')
             .thenJson(200, { isSuccess: true });
 
-        const response = await cancelSubscription(functionServer, authToken);
+        const response = await cancelSubscription(apiServer, authToken);
         expect(response.status).to.equal(200);
 
         const paddleRequests = await cancelEndpoint.getSeenRequests();
@@ -114,7 +114,7 @@ describe('Subscription cancellation API', () => {
         const cancelEndpoint = await paddleServer.forPost('/api/2.0/subscription/users_cancel')
             .thenJson(200, { success: true });
 
-        const response = await cancelSubscription(functionServer, authToken);
+        const response = await cancelSubscription(apiServer, authToken);
         expect(response.status).to.equal(400);
 
         const paddleRequests = await cancelEndpoint.getSeenRequests();
@@ -139,7 +139,7 @@ describe('Subscription cancellation API', () => {
         const cancelEndpoint = await paddleServer.forPost('/api/2.0/subscription/users_cancel')
             .thenJson(200, { success: true });
 
-        const response = await cancelSubscription(functionServer, authToken);
+        const response = await cancelSubscription(apiServer, authToken);
         expect(response.status).to.equal(200);
 
         const paddleRequests = await cancelEndpoint.getSeenRequests();
@@ -169,7 +169,7 @@ describe('Subscription cancellation API', () => {
         const cancelEndpoint = await paddleServer.forPost('/api/2.0/subscription/users_cancel')
             .thenJson(200, { success: true });
 
-        const response = await cancelSubscription(functionServer, authToken);
+        const response = await cancelSubscription(apiServer, authToken);
         expect(response.status).to.equal(400);
 
         const paddleRequests = await cancelEndpoint.getSeenRequests();
@@ -191,7 +191,7 @@ describe('Subscription cancellation API', () => {
         const cancelEndpoint = await paddleServer.forPost('/api/2.0/subscription/users_cancel')
             .thenJson(200, { success: true });
 
-        const response = await cancelSubscription(functionServer, authToken);
+        const response = await cancelSubscription(apiServer, authToken);
         expect(response.status).to.equal(400);
 
         const paddleRequests = await cancelEndpoint.getSeenRequests();
