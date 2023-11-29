@@ -16,13 +16,13 @@ ${process.env.SIGNING_PRIVATE_KEY}
 
 export const authClient = new auth0.AuthenticationClient({
     domain: AUTH0_DOMAIN!,
-    clientId: AUTH0_APP_CLIENT_ID
+    clientId: AUTH0_APP_CLIENT_ID!
 });
 
 export const mgmtClient = new auth0.ManagementClient({
     domain: AUTH0_DOMAIN!,
-    clientId: AUTH0_MGMT_CLIENT_ID,
-    clientSecret: AUTH0_MGMT_CLIENT_SECRET
+    clientId: AUTH0_MGMT_CLIENT_ID!,
+    clientSecret: AUTH0_MGMT_CLIENT_SECRET!
 });
 
 export type User = auth0.User;

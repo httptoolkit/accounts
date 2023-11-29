@@ -17,7 +17,7 @@ export function id() {
 
 function generateKeyPair() {
     return crypto.generateKeyPairSync('rsa', {
-        modulusLength: 512,
+        modulusLength: 2048,
         privateKeyEncoding: {
             type: "pkcs1",
             format: 'pem'
