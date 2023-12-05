@@ -136,6 +136,7 @@ jobs:
           server: ${{ vars.FTP_HOSTNAME }}
           username: ${{ vars.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
+          timeout: 60000
 
   post-deploy:
     name: Update CDN after deploy
