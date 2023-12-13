@@ -73,9 +73,10 @@ module.exports = {
             process: 'process/browser'
         }),
         new Webpack.EnvironmentPlugin({
-            'VERSION': null,
-            'ACCOUNTS_API': null,
-            'SENTRY_DSN': null
+            'ACCOUNTS_API': null, // Always optional
+            // Both required in production builds:
+            'VERSION': process.env.NODE_ENV === 'production' ? undefined : null,
+            'SENTRY_DSN': process.env.NODE_ENV === 'production' ? undefined : null,
         })
     ]
 };

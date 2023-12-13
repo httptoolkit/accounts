@@ -1,6 +1,9 @@
 import * as Sentry from '@sentry/browser';
 
-const { SENTRY_DSN, VERSION } = process.env;
+// N.b. this can't use destructuring, or it won't work with Webpack's
+// EnvironmentPlugin that inserts these values at build time:
+const SENTRY_DSN = process.env.SENTRY_DSN;
+const VERSION = process.env.VERSION;
 
 let sentryInitialized = false;
 
