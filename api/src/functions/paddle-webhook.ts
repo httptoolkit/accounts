@@ -167,7 +167,8 @@ export const handler = catchErrors(async (event) => {
 
     // Record successful checkouts in our accounting backend & metrics:
     if (paddleData.alert_name === 'subscription_created') {
-        try {
+        // Run actual recording asynchronously - no need to block responding to Paddle on this.
+        (async () => {
             const parsedPassthrough = parseCheckoutPassthrough(paddleData.passthrough);
             const countryCode = parsedPassthrough?.country;
             await Promise.all([
@@ -177,10 +178,10 @@ export const handler = catchErrors(async (event) => {
                 }),
                 reportSuccessfulCheckout(parsedPassthrough?.id)
             ]);
-        } catch (e: any) {
+        })().catch((e) => {
             console.log(e);
             reportError(`Failed to record new Paddle subscription: ${e.message || e}`);
-        }
+        });
     }
 
     // All done
