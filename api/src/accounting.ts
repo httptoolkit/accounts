@@ -5,6 +5,7 @@ import { delay } from "@httptoolkit/util";
 
 import { getPaddleIdForSku } from "./paddle";
 import { getSkuInterval } from "./products";
+import { reportError } from "./errors";
 
 const PROFITWELL_PRIVATE_TOKEN = process.env.PROFITWELL_PRIVATE_TOKEN;
 const PROFITWELL_API_BASE_URL = process.env.PROFITWELL_API_BASE_URL
@@ -38,6 +39,11 @@ export async function setRevenueTraits(email: string, traits: Traits, retries = 
 
         if (response.status === 400 && responseBody?.includes('Customer already has trait')) {
             // This is totally fine, if it's already set then we're happy regardless.
+            return;
+        } else if (response.status === 400 && responseBody?.includes('hit trait limit')) {
+            // Too many traits (max 100 => most likely not a top 100 country). Annoying but
+            // an unavoidable limitation of Profitwell, so we report but consider as OK for now.
+            reportError(`Unable to log ${trait}=${category} for ${email} due to trait limit`);
             return;
         } else if (!response.ok) {
             console.log(`${response.status} Profitwell traits response:`);
