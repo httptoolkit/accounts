@@ -20,6 +20,8 @@ const DEFAULT_PROFITWELL_RETRIES = 10;
 // Attempt to update the user to log subscription metadata (e.g. the provider used) so
 // we can work out where the actual money is later on.
 export async function setRevenueTraits(email: string, traits: Traits, retries = DEFAULT_PROFITWELL_RETRIES) {
+    console.log(`Setting traits for ${email} (retry ${DEFAULT_PROFITWELL_RETRIES - retries})`);
+
     await Promise.all(Object.entries(traits).map(async ([category, trait]) => {
         if (!trait) return;
 
@@ -38,6 +40,7 @@ export async function setRevenueTraits(email: string, traits: Traits, retries = 
             // This is totally fine, if it's already set then we're happy regardless.
             return;
         } else if (!response.ok) {
+            console.log(`${response.status} Profitwell traits response:`);
             console.log(responseBody);
             throw new Error(`Failed to set Profitwell ${category}:${trait} on ${email} (${response.status})`);
         } else {
@@ -50,12 +53,20 @@ export async function setRevenueTraits(email: string, traits: Traits, retries = 
         // own processing hasn't completed yet and so the customer isn't recognized.
         if (retries > 0) {
             // Exponentially increasing retries (maximum ~24 hours total)
-            await delay(1000 * 3 ^ (DEFAULT_PROFITWELL_RETRIES - retries));
+            const sleepTime = 1000 * (3 ^ (DEFAULT_PROFITWELL_RETRIES - retries));
+
+            console.log(`Sleeping for ${sleepTime} between ${email} trait retries`);
+            await delay(sleepTime);
+            console.log(`Retrying ${email} trait...`);
+
             return setRevenueTraits(email, traits, retries - 1);
         } else {
+            console.log('Out of retries, failing...')
             throw e;
         }
     });
+
+    console.log(`Trait update for ${email} complete`);
 }
 
 export async function recordSubscription(
@@ -94,7 +105,12 @@ export async function recordSubscription(
         })
     });
 
-    if (!response.ok) throw new Error(`Unexpected ${response.status} from Profitwell`);
+    if (!response.ok) {
+        const body = await response.text().catch(() => {});
+        console.log(`${response.status} Profitwell sub creation response:`);
+        console.log(body);
+        throw new Error(`Unexpected ${response.status} from Profitwell`);
+    }
 
     await setRevenueTraits(email, traits);
 }
