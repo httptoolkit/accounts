@@ -92,20 +92,6 @@ export async function recordSubscription(
         ? 'month'
         : 'year';
 
-    const subscriptionData = {
-        email: email,
-        user_alias: email,
-        subscription_alias: subscription.id,
-        plan_id: getPaddleIdForSku(subscription.sku),
-        plan_interval: profitWellInterval,
-        plan_currency: subscription.currency.toLowerCase(),
-        value: subscription.price * 100,
-        effective_date: Math.round(subscription.effectiveDate.getTime() / 1000)
-    };
-
-    console.log('Profitwell new subscription data:');
-    console.log(subscriptionData);
-
     // Record the new subscription in Profitwell:
     const response = await fetch(`${PROFITWELL_API_BASE_URL}/v2/subscriptions/`, {
         method: 'POST',
@@ -113,7 +99,16 @@ export async function recordSubscription(
             'Authorization': PROFITWELL_PRIVATE_TOKEN!,
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify(subscriptionData)
+        body: JSON.stringify({
+            email: email,
+            user_alias: email,
+            subscription_alias: subscription.id,
+            plan_id: getPaddleIdForSku(subscription.sku),
+            plan_interval: profitWellInterval,
+            plan_currency: subscription.currency.toLowerCase(),
+            value: Math.round(subscription.price * 100), // Integer cents (or equivalent)
+            effective_date: Math.round(subscription.effectiveDate.getTime() / 1000)
+        })
     });
 
     if (!response.ok) {
