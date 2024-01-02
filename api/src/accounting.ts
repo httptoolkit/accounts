@@ -59,7 +59,7 @@ export async function setRevenueTraits(email: string, traits: Traits, retries = 
         // own processing hasn't completed yet and so the customer isn't recognized.
         if (retries > 0) {
             // Exponentially increasing retries (maximum ~24 hours total)
-            const sleepTime = 1000 * (3 ^ (DEFAULT_PROFITWELL_RETRIES - retries));
+            const sleepTime = 1000 * (3 ** (DEFAULT_PROFITWELL_RETRIES - retries));
 
             console.log(`Sleeping for ${sleepTime} between ${email} trait retries`);
             await delay(sleepTime);
