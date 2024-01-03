@@ -69,7 +69,7 @@ export async function getUserId(accessToken: string): Promise<string> {
     let userId = tokenIdCache[accessToken];
 
     if (userId) {
-        console.log(`Matched token to user id ${userId} from cache`);
+        console.debug(`Matched token to user id ${userId} from cache`);
         return userId;
     } else {
         // getProfile is only minimal data, updated at last login (/userinfo - 5 req/minute/user)
@@ -83,7 +83,7 @@ export async function getUserId(accessToken: string): Promise<string> {
         }
 
         userId = tokenIdCache[accessToken] = user.sub;
-        console.log(`Looked up user id ${userId} from token`);
+        console.debug(`Looked up user id ${userId} from token`);
         return userId;
     }
 }
