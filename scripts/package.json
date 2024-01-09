@@ -5,6 +5,7 @@
   "author": "Tim Perry <tim@httptoolkit.tech>",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
+    "@types/prompts": "^2.4.9",
     "moment": "^2.29.4",
     "prompts": "^2.4.2",
     "ts-node": "^10.9.1"
