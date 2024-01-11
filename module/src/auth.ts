@@ -6,7 +6,8 @@ import { CustomError } from '@httptoolkit/util';
 import {
     jwtVerify,
     importSPKI,
-    decodeJwt
+    decodeJwt,
+    JWTPayload
 } from 'jose';
 
 import * as Auth0 from 'auth0-js';
@@ -341,7 +342,21 @@ const anonBillingAccount = (): BillingAccount => ({ transactions: [], banned: fa
  */
 export function getLastUserData(): User {
     try {
-        const jwtData = getUnverifiedJwtPayload<UserAppData>(localStorage.getItem('last_jwt'));
+        const rawJwt = localStorage.getItem('last_jwt');
+        const jwtData = getUnverifiedJwtPayload<UserAppData>(rawJwt);
+
+        if (jwtData) {
+            // Validate what we can synchronously:
+            if (!jwtData.exp) throw new Error('Missing expiry in JWT data');
+            if (jwtData.exp < Date.now()) throw new Error('Last JWT expired');
+
+            // Async we do actually validate sigs etc, we just don't wait for it.
+            getVerifiedJwtPayload(rawJwt, 'app').catch((e) => {
+                localStorage.removeItem('last_jwt');
+                console.log('Last JWT no longer valid - now cleared', e);
+            });
+        }
+
         return parseUserData(jwtData);
     } catch (e) {
         console.warn("Couldn't parse saved user data", e);
@@ -358,8 +373,6 @@ export function getLastUserData(): User {
  * this returns an empty (logged out) user.
  */
 export async function getLatestUserData(): Promise<User> {
-    const lastUserData = getLastUserData();
-
     try {
         const userRawJwt = await requestUserData('app');
         const jwtData = await getVerifiedJwtPayload(userRawJwt, 'app');
@@ -369,7 +382,17 @@ export async function getLatestUserData(): Promise<User> {
     } catch (e) {
         loginEvents.emit('authorization_error', e);
         loginEvents.emit('app_error', e);
-        return lastUserData;
+
+        try {
+            // Unlike getLastUserData, this does synchronously fully validate the data
+            const lastUserData = localStorage.getItem('last_jwt');
+            const jwtData = await getVerifiedJwtPayload(lastUserData, 'app');
+            const userData = await parseUserData(jwtData);
+            return userData;
+        } catch (e) {
+            console.log('Failed to validate last user JWT when updating', e);
+            return anonUser();
+        }
     }
 }
 
@@ -379,10 +402,9 @@ export async function getBillingData(): Promise<BillingAccount> {
     return parseBillingData(jwtData);
 }
 
-function getUnverifiedJwtPayload<T>(jwt: string | null): T | null {
+function getUnverifiedJwtPayload<T>(jwt: string | null): (T & JWTPayload) | null {
     if (!jwt) return null;
-
-    return decodeJwt(jwt) as T;
+    return decodeJwt(jwt);
 }
 
 async function getVerifiedJwtPayload(jwt: string | null, type: 'app'): Promise<UserAppData>;
