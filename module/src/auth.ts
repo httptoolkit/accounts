@@ -3,7 +3,12 @@ import { Mutex } from 'async-mutex';
 import { EventEmitter } from 'events';
 import { CustomError } from '@httptoolkit/util';
 
-import * as jwt from 'jsonwebtoken';
+import {
+    jwtVerify,
+    importSPKI,
+    decodeJwt
+} from 'jose';
+
 import * as Auth0 from 'auth0-js';
 import { Auth0LockPasswordless } from '@httptoolkit/auth0-lock';
 const auth0Dictionary = require('@httptoolkit/auth0-lock/lib/i18n/en').default;
@@ -29,7 +34,8 @@ jEEjeSlAFnwJZgeEMFeYni7W/rQ8seU8y3YMIg2UyHpeVNnuWbJFFwGq8Aumg4SC
 mCVpul3MYubdv034/ipGZSKJTwgubiHocrSBdeImNe3xdxOw/Mo04r0kcZBg2l/b
 7QIDAQAB
 -----END PUBLIC KEY-----
-`;
+`.trim();
+const auth0PublicKey = importSPKI(AUTH0_DATA_PUBLIC_KEY, 'RS256');
 
 export class TokenRejectedError extends CustomError {
     constructor() {
@@ -335,7 +341,8 @@ const anonBillingAccount = (): BillingAccount => ({ transactions: [], banned: fa
  */
 export function getLastUserData(): User {
     try {
-        return parseUserData(localStorage.getItem('last_jwt'));
+        const jwtData = getUnverifiedJwtPayload<UserAppData>(localStorage.getItem('last_jwt'));
+        return parseUserData(jwtData);
     } catch (e) {
         console.warn("Couldn't parse saved user data", e);
         return anonUser();
@@ -354,9 +361,10 @@ export async function getLatestUserData(): Promise<User> {
     const lastUserData = getLastUserData();
 
     try {
-        const userJwt = await requestUserData('app');
-        const userData = parseUserData(userJwt);
-        localStorage.setItem('last_jwt', userJwt);
+        const userRawJwt = await requestUserData('app');
+        const jwtData = await getVerifiedJwtPayload(userRawJwt, 'app');
+        const userData = await parseUserData(jwtData);
+        localStorage.setItem('last_jwt', userRawJwt);
         return userData;
     } catch (e) {
         loginEvents.emit('authorization_error', e);
@@ -366,18 +374,33 @@ export async function getLatestUserData(): Promise<User> {
 }
 
 export async function getBillingData(): Promise<BillingAccount> {
-    const userJwt = await requestUserData('billing');
-    return parseBillingData(userJwt);
+    const userRawJwt = await requestUserData('billing');
+    const jwtData = await getVerifiedJwtPayload(userRawJwt, 'billing');
+    return parseBillingData(jwtData);
 }
 
-function parseUserData(userJwt: string | null): User {
-    if (!userJwt) return anonUser();
+function getUnverifiedJwtPayload<T>(jwt: string | null): T | null {
+    if (!jwt) return null;
 
-    const appData = <UserAppData>jwt.verify(userJwt, AUTH0_DATA_PUBLIC_KEY, {
+    return decodeJwt(jwt) as T;
+}
+
+async function getVerifiedJwtPayload(jwt: string | null, type: 'app'): Promise<UserAppData>;
+async function getVerifiedJwtPayload(jwt: string | null, type: 'billing'): Promise<UserBillingData>;
+async function getVerifiedJwtPayload(jwt: string | null, type: 'app' | 'billing') {
+    if (!jwt) return null;
+
+    const decodedJwt = await jwtVerify(jwt, await auth0PublicKey, {
         algorithms: ['RS256'],
-        audience: 'https://httptoolkit.tech/app_data',
+        audience: `https://httptoolkit.tech/${type}_data`,
         issuer: 'https://httptoolkit.tech/'
     });
+
+    return decodedJwt.payload as any;
+}
+
+function parseUserData(appData: UserAppData | null): User {
+    if (!appData) return anonUser();
 
     return {
         email: appData.email,
@@ -387,14 +410,8 @@ function parseUserData(userJwt: string | null): User {
     };
 }
 
-function parseBillingData(userJwt: string | null): BillingAccount {
-    if (!userJwt) return anonBillingAccount();
-
-    const billingData = <UserBillingData>jwt.verify(userJwt, AUTH0_DATA_PUBLIC_KEY, {
-        algorithms: ['RS256'],
-        audience: 'https://httptoolkit.tech/billing_data',
-        issuer: 'https://httptoolkit.tech/'
-    });
+async function parseBillingData(billingData: UserBillingData | null): Promise<BillingAccount> {
+    if (!billingData) return anonBillingAccount();
 
     const transactions = billingData.transactions?.map((transaction) => ({
         orderId: transaction.order_id,
