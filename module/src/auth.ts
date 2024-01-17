@@ -36,7 +36,9 @@ mCVpul3MYubdv034/ipGZSKJTwgubiHocrSBdeImNe3xdxOw/Mo04r0kcZBg2l/b
 7QIDAQAB
 -----END PUBLIC KEY-----
 `.trim();
-const auth0PublicKey = importSPKI(AUTH0_DATA_PUBLIC_KEY, 'RS256');
+const auth0PublicKey = globalThis?.crypto?.subtle
+    ? importSPKI(AUTH0_DATA_PUBLIC_KEY, 'RS256')
+    : Promise.reject(new Error('WebCrypto not available in your browser. Auth is only possible in secure contexts (HTTPS).'));
 
 export class TokenRejectedError extends CustomError {
     constructor() {
