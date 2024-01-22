@@ -350,7 +350,7 @@ export function getLastUserData(): User {
         if (jwtData) {
             // Validate what we can synchronously:
             if (!jwtData.exp) throw new Error('Missing expiry in JWT data');
-            if (jwtData.exp < Date.now()) throw new Error('Last JWT expired');
+            if ((jwtData.exp * 1000) < Date.now()) throw new Error('Last JWT expired');
 
             // Async we do actually validate sigs etc, we just don't wait for it.
             getVerifiedJwtPayload(rawJwt, 'app').catch((e) => {
