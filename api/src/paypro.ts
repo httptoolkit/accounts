@@ -3,6 +3,7 @@ import * as crypto from 'crypto';
 import * as forge from 'node-forge';
 import fetch from 'node-fetch';
 import * as moment from 'moment';
+import * as log from 'loglevel';
 
 import { reportError, StatusError } from './errors';
 import { SKU, TransactionData } from "@httptoolkit/accounts";
@@ -306,7 +307,7 @@ export async function cancelSubscription(subscriptionId: string | number) {
     });
 
     if (!response.ok) {
-        console.log(`${response.status} ${response.statusText}`,
+        log.error(`${response.status} ${response.statusText}`,
             response.headers,
             await response.text().catch(() => '')
         );
@@ -315,7 +316,7 @@ export async function cancelSubscription(subscriptionId: string | number) {
 
     const responseBody = await response.json();
     if (!responseBody.isSuccess) {
-        console.log('PayPro errors:', responseBody.errors);
+        log.error('PayPro errors:', responseBody.errors);
         throw new Error(`PayPro cancellation request failed`);
     }
 }
@@ -370,7 +371,7 @@ export async function lookupPayProOrders(email: string): Promise<TransactionData
     });
 
     if (!listResponse.ok) {
-        console.log(`${listResponse.status} ${listResponse.statusText}`,
+        log.error(`${listResponse.status} ${listResponse.statusText}`,
             listResponse.headers,
             await listResponse.text().catch(() => '')
         );
@@ -379,7 +380,7 @@ export async function lookupPayProOrders(email: string): Promise<TransactionData
 
     const listResponseBody = await listResponse.json();
     if (!listResponseBody.isSuccess) {
-        console.log('PayPro errors:', listResponseBody.errors);
+        log.error('PayPro errors:', listResponseBody.errors);
         throw new Error(`PayPro order listing request failed`);
     }
 
@@ -397,7 +398,7 @@ export async function lookupPayProOrders(email: string): Promise<TransactionData
         });
 
         if (!orderResponse.ok) {
-            console.log(`${orderResponse.status} ${orderResponse.statusText}`,
+            log.error(`${orderResponse.status} ${orderResponse.statusText}`,
                 orderResponse.headers,
                 await orderResponse.text().catch(() => '')
             );
@@ -406,7 +407,7 @@ export async function lookupPayProOrders(email: string): Promise<TransactionData
 
         const orderResponseBody = await orderResponse.json();
         if (!orderResponseBody.isSuccess) {
-            console.log('PayPro errors:', orderResponseBody.errors);
+            log.error('PayPro errors:', orderResponseBody.errors);
             throw new Error(`PayPro order detail lookup request failed`);
         }
 

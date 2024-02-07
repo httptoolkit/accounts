@@ -1,5 +1,7 @@
 import * as _ from 'lodash';
 import fetch from 'node-fetch';
+import * as log from 'loglevel';
+
 import { reportError } from './errors';
 
 const EXCHANGE_RATE_API_TOKEN = process.env.EXCHANGE_RATE_API_TOKEN;
@@ -40,7 +42,7 @@ async function getRates(currency: SUPPORTED_TARGET_CURRENCY) {
     for (let rateSource of getExchangeRateSources(currency)) {
         const { url, test, ratesField, ratesTransform } = rateSource;
         const rateHost = new URL(url).hostname;
-        console.log(`Loading exchange rates from ${rateHost}`);
+        log.info(`Loading exchange rates from ${rateHost}`);
 
         try {
             const response = await fetch(url);
@@ -66,7 +68,7 @@ async function getRates(currency: SUPPORTED_TARGET_CURRENCY) {
 
             if (rates) break;
         } catch (e: any) {
-            console.error(`Lookup from ${rateHost} failed: ${e.message}`);
+            log.error(`Lookup from ${rateHost} failed: ${e.message}`);
             reportError(e);
         }
     }
@@ -89,7 +91,7 @@ export function getLatestRates(currency: SUPPORTED_TARGET_CURRENCY) {
     const lastRates = latestRates[currency];
     if (lastRates) return lastRates;
 
-    console.log(`Doing initial ${currency} exchange rate lookup...`);
+    log.info(`Doing initial ${currency} exchange rate lookup...`);
 
     // Otherwise, if there were no known rates yet, we block while getting new rates:
     const rateLookup = latestRates[currency] = getRates(currency)
@@ -98,7 +100,7 @@ export function getLatestRates(currency: SUPPORTED_TARGET_CURRENCY) {
             // and then fail for real:
             latestRates[currency] = undefined;
 
-            console.error(`Exchange rates lookup failed entirely with ${e.message ?? e}`);
+            log.error(`Exchange rates lookup failed entirely with ${e.message ?? e}`);
             reportError(e);
             throw e;
         });
@@ -106,14 +108,14 @@ export function getLatestRates(currency: SUPPORTED_TARGET_CURRENCY) {
     const ratesUpdateInterval = setInterval(() => {
         // Subsequently, we try to refresh every hour, but just keep the
         // old rates indefinitely (until next refresh) if it fails:
-        console.log(`Updating ${currency} exchange rates...`);
+        log.info(`Updating ${currency} exchange rates...`);
 
         getRates(currency)
         .then((rates) => {
             latestRates[currency] = Promise.resolve(rates);
         })
         .catch((e) => {
-            console.warn(`Exchange rates async update failed with ${e.message ?? e}`);
+            log.warn(`Exchange rates async update failed with ${e.message ?? e}`);
             reportError(e);
         });
     }, 1000 * 60 * 60);

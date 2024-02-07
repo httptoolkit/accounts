@@ -4,6 +4,7 @@ initSentry();
 import _ from 'lodash';
 import moment from 'moment';
 import * as querystring from 'querystring';
+import * as log from 'loglevel';
 
 import {
     PayingUserMetadata
@@ -123,7 +124,7 @@ function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<Payin
 
 export const handler = catchErrors(async (event) => {
     const paddleData = querystring.parse(event.body || '') as unknown as PaddleWebhookData;
-    console.log('Received Paddle webhook', JSON.stringify(paddleData));
+    log.debug('Received Paddle webhook', JSON.stringify(paddleData));
 
     validatePaddleWebhook(paddleData);
 
@@ -142,10 +143,10 @@ export const handler = catchErrors(async (event) => {
         const sku = getSku(userData);
 
         if (isTeamSubscription(sku)) {
-            console.log(`Updating team user ${email}`);
+            log.info(`Updating Team user ${email} to ${JSON.stringify(userData)}`);
             await updateTeamData(email, userData);
         } else if (isProSubscription(sku)) {
-            console.log(`Updating Pro user ${email} to ${JSON.stringify(userData)}`);
+            log.info(`Updating Pro user ${email} to ${JSON.stringify(userData)}`);
             await updateProUserData(email, userData);
         } else {
             throw new Error(`Webhook received for unknown subscription type: ${
@@ -162,7 +163,7 @@ export const handler = catchErrors(async (event) => {
         // at startup, telling them to contact support and then insta-closing the app.
         await banUser(email);
     } else {
-        console.log(`Ignoring ${paddleData.alert_name} event`);
+        log.debug(`Ignoring ${paddleData.alert_name} event`);
     }
 
     // Record successful checkouts in our accounting backend & metrics:
@@ -179,7 +180,7 @@ export const handler = catchErrors(async (event) => {
                 reportSuccessfulCheckout(parsedPassthrough?.id)
             ]);
         })().catch((e) => {
-            console.log(e);
+            log.warn(e);
             reportError(`Failed to record new Paddle subscription: ${e.message || e}`);
         });
     }

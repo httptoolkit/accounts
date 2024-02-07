@@ -3,6 +3,7 @@ initSentry();
 
 import * as querystring from 'querystring';
 import moment from 'moment';
+import * as log from 'loglevel';
 import { SubscriptionStatus } from '@httptoolkit/accounts';
 
 import { SKUs } from '../products';
@@ -19,7 +20,7 @@ import {
 
 export const handler = catchErrors(async (event) => {
     const eventData = querystring.parse(event.body || '') as unknown as PayProWebhookData;
-    console.log('Received PayPro webhook', JSON.stringify(eventData, null, 2));
+    log.debug('Received PayPro webhook', JSON.stringify(eventData, null, 2));
 
     validatePayProWebhook(eventData);
 
@@ -35,7 +36,7 @@ export const handler = catchErrors(async (event) => {
         'SubscriptionTerminated', // Subscription permanently cancelled
         'SubscriptionSuspended' // Subscription not going to renew for now
     ].includes(eventType)) {
-        console.log(`Updating user data from ${eventType} event`);
+        log.info(`Updating user data from PayPro ${eventType} event`);
 
         const sku = eventData.ORDER_ITEM_SKU;
         if (!SKUs.includes(sku)) throw new Error(`Received webhook for unrecognized SKU: ${sku}`);
@@ -99,11 +100,11 @@ export const handler = catchErrors(async (event) => {
                         "Country code": countryCode
                     })
                 ]).catch((e: any) => {
-                    console.warn(e);
+                    log.warn(e);
                     reportError(`Failed to record new PayPro subscription: ${e.message || e}`);
                 });
             } else if (eventType === 'SubscriptionTerminated' || eventType === 'SubscriptionSuspended') {
-                const existingExpiry = await getExistingSubscriptionExpiry(email).catch(console.log);
+                const existingExpiry = await getExistingSubscriptionExpiry(email).catch(log.warn);
 
                 await recordCancellation(
                     subscriptionId,
@@ -111,7 +112,7 @@ export const handler = catchErrors(async (event) => {
                 )
             }
         } catch (e: any) {
-            console.log(e);
+            log.warn(e);
             reportError('Failed to record PayPro subscription update');
         }
     } else if (eventType === 'OrderChargedBack') {
@@ -121,7 +122,7 @@ export const handler = catchErrors(async (event) => {
             banned: true // And block the user automatically until the context support to resolve
         });
     } else {
-        console.log(`Ignoring ${eventType} event`);
+        log.debug(`Ignoring ${eventType} event`);
     }
 
     // All done

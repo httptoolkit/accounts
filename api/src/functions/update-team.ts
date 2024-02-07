@@ -1,4 +1,6 @@
 import * as _ from 'lodash';
+import * as log from 'loglevel';
+
 import { initSentry, catchErrors, reportError, StatusError } from '../errors';
 initSentry();
 
@@ -69,7 +71,7 @@ export const handler = catchErrors(async (event) => {
         const idsToRemove = input.idsToRemove ?? [];
         const emailsToAdd = input.emailsToAdd ?? [];
 
-        console.log(`For team ${ownerId}: add ${
+        log.info(`For team ${ownerId}: add ${
             emailsToAdd.join(', ') || 'nobody'
         } and remove ${
             idsToRemove.join(', ') || 'nobody'
@@ -185,7 +187,7 @@ async function unlinkTeamMembers(idsToRemove: string[]) {
             })
             .then(() => true)
             .catch((e) => {
-                console.log(`Failed to remove team member ${idToRemove}`, e);
+                log.warn(`Failed to remove team member ${idToRemove}`, e);
                 return e; // Return error but successfully
             })
         )
@@ -193,7 +195,7 @@ async function unlinkTeamMembers(idsToRemove: string[]) {
 
     const removalErrors = removalResult.filter(r => _.isError(r));
     if (removalErrors.length > 0) {
-        console.log(`${
+        log.info(`${
             removalErrors.length
         } errors removing ${
             idsToRemove.length
@@ -240,7 +242,7 @@ async function linkNewTeamMembers(ownerId: string, membersToAdd: Array<User | st
             return updatePromise
                 .then(({ user_id }) => user_id!)
                 .catch((e) => {
-                    console.log(`Failed to add team member ${
+                    log.warn(`Failed to add team member ${
                         _.isObject(user) ? user.user_id : user
                     }`, e);
                     return e; // Return error but successfully
@@ -250,7 +252,7 @@ async function linkNewTeamMembers(ownerId: string, membersToAdd: Array<User | st
 
     const linkUserErrors = linkUserResults.filter(r => _.isError(r));
     if (linkUserErrors.length > 0) {
-        console.log(`${
+        log.warn(`${
             linkUserErrors.length
         } errors adding ${
             membersToAdd.length

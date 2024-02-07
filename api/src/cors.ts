@@ -1,4 +1,5 @@
 import { APIGatewayProxyEvent } from "aws-lambda";
+import * as log from 'loglevel';
 
 const ONE_DAY_IN_SECONDS = 60 * 60 * 24;
 
@@ -35,7 +36,7 @@ export function getCorsResponseHeaders(
     if (allowedOrigin) {
         corsHeaders['Access-Control-Allow-Origin'] = allowedOrigin;
     } else if (origin) {
-        console.warn('CORS request from invalid origin!', origin);
+        log.warn('CORS request from invalid origin!', origin);
     }
 
     return corsHeaders;

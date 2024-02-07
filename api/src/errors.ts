@@ -2,6 +2,9 @@ import * as Sentry from '@sentry/node';
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Handler } from 'aws-lambda';
 import { CustomError } from '@httptoolkit/util';
 
+import * as log from 'loglevel';
+log.setLevel(process.env.LOGLEVEL as any ?? 'info');
+
 const { SENTRY_DSN, VERSION } = process.env;
 
 let sentryInitialized = false;
@@ -11,7 +14,7 @@ export function initSentry() {
     if (SENTRY_DSN) {
         Sentry.init({ dsn: SENTRY_DSN, release: VERSION });
         sentryInitialized = true;
-        console.log("Sentry initialized");
+        log.info("Sentry initialized");
     }
 }
 
@@ -31,17 +34,22 @@ export class StatusError extends CustomError {
     }
 }
 
+export const formatErrorMessage = (error: any) => error.name === 'AggregateError'
+    ? `[AggregateError]:\n${
+        error.errors?.map((error: Error) => ` - ${error.message}`).join('\n')
+    }`
+    : (error.message ?? error);
+
 export async function reportError(error: Error | Auth0RequestError | string, eventContext?: APIGatewayProxyEvent) {
     if (error instanceof Error && 'requestInfo' in error) {
-        console.warn(`${
-            error.requestInfo.method
-        } request to ${
+        log.error(`${
+            (error.requestInfo.method || '???').toUpperCase()
+        } request to '${
             error.requestInfo.url
-        } failed with status ${error.statusCode}: ${error.message}`);
-
-        console.warn(error.originalError);
+        }' failed with status ${error.statusCode}: ${error.message}`);
+        log.debug(`Caused by: ${formatErrorMessage(error.originalError)}`);
     } else {
-        console.warn(error);
+        log.error(error);
     }
 
     if (!sentryInitialized) return;
@@ -74,8 +82,6 @@ export async function reportError(error: Error | Auth0RequestError | string, eve
         }
     });
 
-    // Cast required temporarily - this is new in 4.6.0, and isn't in
-    // the typings quite yet.
     await Sentry.flush();
 }
 

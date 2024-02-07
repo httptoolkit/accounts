@@ -6,6 +6,7 @@ import fetch, { RequestInit } from 'node-fetch';
 import Serialize from 'php-serialize';
 import NodeCache from 'node-cache';
 import moment from 'moment';
+import * as log from 'loglevel';
 import { CustomError } from '@httptoolkit/util';
 
 import { reportError, StatusError } from './errors';
@@ -191,7 +192,7 @@ async function makePaddleApiRequest(url: string, options: RequestInit = {}) {
     const response = await fetch(url, options);
 
     if (!response.ok) {
-        console.log(`${response.status} ${response.statusText}`,
+        log.error(`${response.status} ${response.statusText}`,
             response.headers,
             await response.text().catch(() => '')
         );
@@ -201,7 +202,7 @@ async function makePaddleApiRequest(url: string, options: RequestInit = {}) {
     const data = await response.json();
 
     if (!data.success) {
-        console.log(`Unsuccessful Paddle response: `, JSON.stringify(data));
+        log.error(`Unsuccessful Paddle response: `, JSON.stringify(data));
         const errorCode = data.error?.code;
         const errorMessage = data.error?.message;
         throw new PaddleApiError(errorCode, errorMessage);
@@ -223,7 +224,7 @@ export async function getPrices(productIds: string[], sourceIp: string): Promise
     // we need an extra error case to check that:
     const foundAllProducts = products.length === productIds.length;
     if (!foundAllProducts) {
-        console.log(`Missing products. Expected ${productIds.join(',')}, found ${
+        log.error(`Missing products. Expected ${productIds.join(',')}, found ${
             products.map((p: any) => p.product_id)
         }`);
         throw new StatusError(404,
@@ -385,7 +386,7 @@ export async function createCheckout(options: {
         const eurRate = allEurRates[options.currency];
 
         if (!eurRate) {
-            console.log(`Missing rate for ${options.currency}, available rates are:`, allEurRates);
+            log.error(`Missing rate for ${options.currency}, available rates are:`, allEurRates);
             throw new Error(
                 `Can't show Paddle checkout for currency ${
                     options.currency

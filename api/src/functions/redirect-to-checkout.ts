@@ -1,6 +1,8 @@
 import { initSentry, catchErrors, StatusError } from '../errors';
 initSentry();
 
+import * as log from 'loglevel';
+
 import type { PricedSKU } from '@httptoolkit/accounts';
 
 import * as Paddle from '../paddle';
@@ -53,7 +55,7 @@ export const handler = catchErrors(async (event) => {
         paymentProvider?: 'paddle' | 'paypro'
     };
 
-    console.log('Checkout query params:', event.queryStringParameters);
+    log.debug('Checkout query params:', event.queryStringParameters);
 
     const sourceIp = event.headers['x-nf-client-connection-ip'] // Netlify
         ?? event.requestContext?.identity.sourceIp; // Direct source - also populated by Express wrapper

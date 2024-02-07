@@ -1,5 +1,6 @@
 import type { Application } from 'express';
 import * as ipAddr from 'ipaddr.js';
+import * as log from 'loglevel';
 
 import { reportError } from './errors';
 
@@ -26,7 +27,7 @@ try {
 } catch {}
 
 export function configureAppProxyTrust(app: Application) {
-    console.log(`Loaded ${bunnyCachedIPs.length} CDN IPs from disk`);
+    log.info(`Loaded ${bunnyCachedIPs.length} CDN IPs from disk`);
     app.set('trust proxy', [
         ...TRUSTED_IP_SOURCES,
         ...bunnyCachedIPs.filter(ip => ipAddr.isValid(ip))
@@ -53,9 +54,9 @@ export function configureAppProxyTrust(app: Application) {
                 ...bunnyIPv6s
             ]);
 
-            console.log(`Updated to trust ${bunnyIPs.length} CDN IPs`);
+            log.info(`Updated to trust ${bunnyIPs.length} CDN IPs`);
         } catch (e: any) {
-            console.log(e);
+            log.warn(e);
             reportError(`Failed to update CDN IPs: ${e.message || e}`);
             // Retry every minute until success:
             setTimeout(updateTrustedProxySources, 1000 * 10);

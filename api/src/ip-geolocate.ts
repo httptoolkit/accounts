@@ -1,5 +1,7 @@
 import NodeCache from 'node-cache';
 import fetch from 'node-fetch';
+import * as log from 'loglevel';
+
 import { reportError } from './errors';
 
 const IP_API_KEY = process.env.IP_API_KEY;
@@ -70,7 +72,7 @@ export async function getIpData(ip: string | undefined, retries = 2) {
         return ipData;
     } catch (e: any) {
         if (retries > 0) {
-            console.log(e);
+            log.warn(e);
             return getIpData(ip, retries - 1);
         }
 

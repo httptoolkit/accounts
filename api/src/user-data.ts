@@ -1,7 +1,8 @@
 import * as _ from 'lodash';
 import NodeCache from 'node-cache';
+import * as log from 'loglevel';
 
-import { reportError, StatusError } from './errors';
+import { formatErrorMessage, reportError, StatusError } from './errors';
 
 import type {
     TransactionData,
@@ -69,7 +70,7 @@ export async function getUserId(accessToken: string): Promise<string> {
     let userId = tokenIdCache[accessToken];
 
     if (userId) {
-        console.debug(`Matched token to user id ${userId} from cache`);
+        log.debug(`Matched token to user id ${userId} from cache`);
         return userId;
     } else {
         // getProfile is only minimal data, updated at last login (/userinfo - 5 req/minute/user)
@@ -78,12 +79,12 @@ export async function getUserId(accessToken: string): Promise<string> {
         if (!user) {
             throw new Error("User could not be found in getUserId");
         } else if (typeof user.sub !== 'string') {
-            console.log(JSON.stringify(user));
+            log.warn(JSON.stringify(user));
             throw new Error(`Unexpected getProfile result: ${user}`);
         }
 
         userId = tokenIdCache[accessToken] = user.sub;
-        console.debug(`Looked up user id ${userId} from token`);
+        log.debug(`Looked up user id ${userId} from token`);
         return userId;
     }
 }
@@ -92,14 +93,7 @@ async function getUserProfile(accessToken: string, options: {
     isRetry?: boolean
 } = {}): Promise<{ sub: string } | undefined> {
     return authClient.getProfile(accessToken).catch((error) => {
-        if (error.name === 'AggregateError') {
-            console.warn([
-                'Auth0 getProfile request failed due to multiple errors:',
-                ...error.errors?.map((error: Error) => ` - ${error.message}`)
-            ].join('\n'));
-        } else {
-            console.warn('Auth0 getProfile request failed with:', error.message);
-        }
+        log.warn(`Auth0 getProfile request failed with: ${formatErrorMessage(error)}`);
 
         if (error.message === 'Request failed with status code 401') {
             throw new StatusError(401, "Unauthorized");
@@ -390,7 +384,7 @@ async function getTransactions(rawMetadata: RawMetadata) {
         // If there's no cached data, we just wait until the full request is done, like normal:
         return Promise.race([
             transactionsRequest.catch((e) => {
-                console.log(`Failed to look up transactions for ${rawMetadata.email}: ${e.message}`);
+                log.warn(`Failed to look up transactions for ${rawMetadata.email}: ${e.message}`);
                 reportError(e);
                 return null;
             }),

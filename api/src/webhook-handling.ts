@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import * as log from 'loglevel';
 
 import {
     AppMetadata,
@@ -9,7 +10,7 @@ import {
     TeamMemberMetadata,
     User
 } from './auth0';
-import { reportError, StatusError } from './errors';
+import { formatErrorMessage, reportError, StatusError } from './errors';
 import { flushMetrics, trackEvent } from './metrics';
 
 async function getOrCreateUserData(email: string): Promise<User> {
@@ -106,8 +107,8 @@ export function parseCheckoutPassthrough(passthroughData: string | undefined) {
 
         return parsedPassthrough as Record<string, string | undefined>;
     } catch (e) {
-        console.log(e);
-        reportError(`Failed to parse passthrough data: ${(e as Error).message ?? e}`);
+        log.error(e);
+        reportError(`Failed to parse passthrough data: ${formatErrorMessage(e)}`);
         // We report errors here, but continue - we'll just skip metrics in this case
     }
 }

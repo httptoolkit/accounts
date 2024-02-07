@@ -1,4 +1,6 @@
 import * as _ from 'lodash';
+import * as log from 'loglevel';
+
 import { delay } from '@httptoolkit/util';
 import { initSentry, catchErrors, reportError, StatusError } from '../errors';
 initSentry();
@@ -76,7 +78,7 @@ export const handler = catchErrors(async (event) => {
             throw new StatusError(409, "Cannot downgrade subscription below the number of assigned licenses");
         }
 
-        console.log(`For team ${ownerId}: update quantity to ${newTeamSize}`);
+        log.info(`For team ${ownerId}: update quantity to ${newTeamSize}`);
 
         try {
             await updateSubscriptionQuantity(ownerData.subscription_id, newTeamSize, {

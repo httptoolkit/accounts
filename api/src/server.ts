@@ -1,6 +1,7 @@
 import * as http from 'http';
 import express = require('express');
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import * as log from 'loglevel';
 
 import { getCorsResponseHeaders } from './cors';
 import { configureAppProxyTrust } from './trusted-xff-ip-setup';
@@ -73,12 +74,10 @@ apiRouter.options('*', (req, res) => {
     }
 });
 
-if (process.env.LOG_REQUESTS) {
-    apiRouter.use((req, _res, next) => {
-        console.log(`Request from ${req.ip}: ${req.method} ${req.url} ${JSON.stringify(req.headers, null, 2)}`);
-        next();
-    });
-}
+apiRouter.use((req, _res, next) => {
+    log.debug(`Request from ${req.ip}: ${req.method} ${req.url} ${JSON.stringify(req.headers, null, 2)}`);
+    next();
+});
 
 apiRouter.get('/get-prices', lambdaWrapper('get-prices'));
 apiRouter.get('/get-app-data', lambdaWrapper('get-app-data'));
@@ -96,7 +95,7 @@ apiRouter.post('/cancel-subscription', lambdaWrapper('cancel-subscription'));
 
 export function startApiServer() {
     const server = app.listen(process.env.PORT ?? 3000, () => {
-        console.log(`Server (version ${process.env.VERSION}) listening on port ${(server.address() as any).port}`);
+        log.info(`Server (version ${process.env.VERSION}) listening on port ${(server.address() as any).port}`);
     });
 
     return new Promise<http.Server>((resolve) =>
