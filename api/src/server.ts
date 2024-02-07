@@ -1,17 +1,56 @@
 import * as http from 'http';
 import express = require('express');
+import * as ipAddr from 'ipaddr.js';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
 import { getCorsResponseHeaders } from './cors';
+import { reportError } from './errors';
 
 const app = express();
 
-app.use(express.text({ type: '*/*' }));
-app.set('trust proxy', [
+const TRUSTED_IP_SOURCES = [
     'loopback',
     'uniquelocal',
     '100.64.0.0/10' // Private network shared address space, used by Scaleway
-]);
+];
+
+app.use(express.text({ type: '*/*' }));
+
+// We need to know our traffic sources to be able to know when to trust the X-Forwarded-For header,
+// so that we can accurately work out the original IP source of incoming requests. Unfortunately,
+// Bunny (our CDN) uses IPs that may change, so we have dynamically update those here:
+app.set('trust proxy', TRUSTED_IP_SOURCES);
+async function updateTrustedProxySources() {
+    try {
+        const [
+            bunnyIPv4s,
+            bunnyIPv6s
+        ] = (await Promise.all<Array<string>>([
+            fetch('https://bunnycdn.com/api/system/edgeserverlist').then(r => r.json()),
+            fetch('https://bunnycdn.com/api/system/edgeserverlist/IPv6').then(r => r.json())
+        ]));
+
+        const bunnyIPs = [
+            ...bunnyIPv4s,
+            ...bunnyIPv6s
+        ].filter(ip => ipAddr.isValid(ip));
+
+        app.set('trust proxy', [
+            ...TRUSTED_IP_SOURCES,
+            ...bunnyIPv4s,
+            ...bunnyIPv6s
+        ]);
+
+        console.log(`Updated to trust ${bunnyIPs.length} IPs`);
+    } catch (e: any) {
+        console.log(e);
+        reportError(`Failed to update Bunny CDN IPs: ${e.message || e}`);
+    }
+}
+
+// On startup, and then every hour, update trusted Bunny CDN IPs:
+updateTrustedProxySources();
+setInterval(updateTrustedProxySources, 1000 * 60 * 60);
 
 const apiRouter = express.Router();
 app.use('/api', apiRouter);
@@ -78,7 +117,7 @@ apiRouter.options('*', (req, res) => {
 
 if (process.env.LOG_REQUESTS) {
     apiRouter.use((req, _res, next) => {
-        console.log(`Request: ${req.method} ${req.url} ${JSON.stringify(req.headers, null, 2)}`);
+        console.log(`Request from ${req.ip}: ${req.method} ${req.url} ${JSON.stringify(req.headers, null, 2)}`);
         next();
     });
 }
