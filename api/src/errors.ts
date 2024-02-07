@@ -46,8 +46,8 @@ export async function reportError(error: Error | Auth0RequestError | string, eve
             (error.requestInfo.method || '???').toUpperCase()
         } request to '${
             error.requestInfo.url
-        }' failed with status ${error.statusCode}: ${error.message}`);
-        log.debug(`Caused by: ${formatErrorMessage(error.originalError)}`);
+        }' failed with status ${error.statusCode}: ${formatErrorMessage(error)}`);
+        log.debug(`Caused by:`, error);
     } else {
         log.error(error);
     }
