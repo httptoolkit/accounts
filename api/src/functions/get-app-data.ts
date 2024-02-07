@@ -41,7 +41,12 @@ export const handler = catchErrors(async (event) => {
 
     const signedAppData = jwt.sign(userData, AUTH0_DATA_SIGNING_PRIVATE_KEY, {
         algorithm: 'RS256',
-        expiresIn: '7d',
+        // This sets the validity of the JWT, not necessarily the account. This is
+        // how long you can use a paid account offline without talking to the account
+        // servers. If the user account expires (needs to renew) before this time,
+        // they'll need a new JWT before this deadline anyway. The JWT is generally
+        // refreshed every time the app starts and every 10 minutes while it's running.
+        expiresIn: '60d',
         audience: 'https://httptoolkit.tech/app_data',
         issuer: 'https://httptoolkit.tech/'
     });
