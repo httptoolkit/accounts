@@ -92,7 +92,14 @@ async function getUserProfile(accessToken: string, options: {
     isRetry?: boolean
 } = {}): Promise<{ sub: string } | undefined> {
     return authClient.getProfile(accessToken).catch((error) => {
-        console.warn('Auth0 getProfile request rejected:', error.message);
+        if (error.name === 'AggregateError') {
+            console.warn([
+                'Auth0 getProfile request failed due to multiple errors:',
+                ...error.errors?.map((error: Error) => ` - ${error.message}`)
+            ].join('\n'));
+        } else {
+            console.warn('Auth0 getProfile request failed with:', error.message);
+        }
 
         if (error.message === 'Request failed with status code 401') {
             throw new StatusError(401, "Unauthorized");
