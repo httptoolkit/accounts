@@ -50,7 +50,7 @@ async function updateTrustedProxySources() {
 
 // On startup, and then every hour, update trusted Bunny CDN IPs:
 updateTrustedProxySources();
-setInterval(updateTrustedProxySources, 1000 * 60 * 60);
+setInterval(updateTrustedProxySources, 1000 * 60 * 60).unref();
 
 const apiRouter = express.Router();
 app.use('/api', apiRouter);
