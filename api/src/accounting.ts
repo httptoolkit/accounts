@@ -47,8 +47,7 @@ export async function setRevenueTraits(email: string, traits: Traits, retries = 
             reportError(`Unable to log ${trait}=${category} for ${email} due to trait limit`);
             return;
         } else if (!response.ok) {
-            log.warn(`${response.status} Profitwell traits response:`);
-            log.warn(responseBody);
+            log.warn(`${response.status} Profitwell traits response: ${responseBody}`);
             throw new Error(`Failed to set Profitwell ${category}:${trait} on ${email} (${response.status})`);
         } else {
             // Trait set OK, all good.
@@ -62,7 +61,7 @@ export async function setRevenueTraits(email: string, traits: Traits, retries = 
             // Exponentially increasing retries (maximum ~24 hours total)
             const sleepTime = 1000 * (3 ** (DEFAULT_PROFITWELL_RETRIES - retries));
 
-            log.debug(`Sleeping for ${sleepTime} between ${email} trait retries`);
+            log.info(`Sleeping for ${sleepTime} between ${email} trait retries`);
             await delay(sleepTime);
             log.debug(`Retrying ${email} trait...`);
 
