@@ -40,9 +40,12 @@ export const formatErrorMessage = (error: any) => error.name === 'AggregateError
     }`
     : (error.message ?? error);
 
-export async function reportError(error: Error | Auth0RequestError | string, eventContext?: APIGatewayProxyEvent) {
+export async function reportError(error: Error | Auth0RequestError | string, metadata?: {
+    eventContext?: APIGatewayProxyEvent,
+    cause?: Error
+}) {
     if (error instanceof Error && 'requestInfo' in error) {
-        log.error(`${
+        log.error(`Auth0 ${
             (error.requestInfo.method || '???').toUpperCase()
         } request to '${
             error.requestInfo.url
@@ -56,7 +59,8 @@ export async function reportError(error: Error | Auth0RequestError | string, eve
 
     Sentry.withScope((scope) => {
         scope.addEventProcessor((event) => {
-            if (eventContext) {
+            if (metadata?.eventContext) {
+                const eventContext = metadata?.eventContext;
                 const request = event.request || {};
                 request.method = request.method || eventContext.httpMethod;
                 request.url = request.url || eventContext.path;
@@ -64,11 +68,19 @@ export async function reportError(error: Error | Auth0RequestError | string, eve
                 event.request = request;
             }
 
+            event.extra = event.extra ?? {};
+
             if (error instanceof Error && 'originalError' in error) {
-                event.extra = Object.assign(event.extra || {}, {
+                Object.assign(event.extra, {
                     originalName: error.originalError.name,
                     originalMessage: error.originalError.message,
                     originalStack: error.originalError.stack
+                });
+            }
+
+            if (metadata?.cause) {
+                Object.assign(event.extra, {
+                    cause: metadata.cause
                 });
             }
 
@@ -92,11 +104,26 @@ export function catchErrors(handler: ApiHandler): ApiHandler {
         // Make sure AWS doesn't wait for an empty event loop, as that
         // can break things with Sentry
         context.callbackWaitsForEmptyEventLoop = false;
+
+        // This catches sync errors & promise rejections, because we're async
         try {
             return await (handler.call as any)(this, ...arguments);
         } catch (e: any) {
-            // Catches sync errors & promise rejections, because we're async
-            await reportError(e, event);
+            await Promise.all([
+                // Report the URL failure itself as a separate type of error to track:
+                reportError(`${
+                    event.httpMethod ?? '???'
+                } request to ${event.path} failed with ${
+                    e instanceof StatusError
+                    ? e.statusCode
+                    : '500'
+                } due to ${formatErrorMessage(e)}`, {
+                    eventContext: event,
+                    cause: e
+                }),
+                // Report the specific low-level exception too, to track both independently:
+                reportError(e, { eventContext: event })
+            ]);
 
             if (e instanceof StatusError) {
                 return {
