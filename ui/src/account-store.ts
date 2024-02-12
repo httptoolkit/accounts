@@ -117,6 +117,7 @@ export class AccountStore {
 
         try {
             yield updateTeamMembers(idsToRemove, emailsToAdd);
+            yield delay(1000); // Wait to reduce race conditions during updates here
             yield this.updateUser(); // Reload the billing data after changes
         } catch (e) {
             // Undo our optimistic update:
