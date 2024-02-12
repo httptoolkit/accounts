@@ -2,7 +2,7 @@ import * as crypto from 'crypto';
 import * as net from 'net';
 import fetch from 'node-fetch';
 import moment from 'moment';
-import stoppable from 'stoppable';
+import { DestroyableServer } from 'destroyable-server';
 
 import { expect } from 'chai';
 
@@ -11,8 +11,6 @@ import {
     privateKey,
     auth0Server,
     AUTH0_PORT,
-    profitwellApiServer,
-    PROFITWELL_API_PORT,
     givenUser,
     givenNoUsers
 } from './test-util';
@@ -60,23 +58,18 @@ const triggerWebhook = async (
 
 describe('Paddle webhooks', () => {
 
-    let apiServer: stoppable.StoppableServer;
+    let apiServer: DestroyableServer;
 
     beforeEach(async () => {
         apiServer = await startServer();
 
         await auth0Server.start(AUTH0_PORT);
         await auth0Server.forPost('/oauth/token').thenJson(200, {});
-
-        // We don't test Profitwell for now, we just need it to not crash:
-        await profitwellApiServer.start(PROFITWELL_API_PORT);
-        await profitwellApiServer.forAnyRequest().thenReply(200);
     });
 
     afterEach(async () => {
-        await new Promise((resolve) => apiServer.stop(resolve));
+        await apiServer.destroy();
         await auth0Server.stop();
-        await profitwellApiServer.stop();
     });
 
     describe("for Pro subscriptions", () => {

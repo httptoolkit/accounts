@@ -1,7 +1,7 @@
 import * as net from 'net';
 import fetch from 'node-fetch';
 import * as jwt from 'jsonwebtoken';
-import stoppable from 'stoppable';
+import { DestroyableServer } from 'destroyable-server';
 import moment from 'moment';
 
 import { expect } from 'chai';
@@ -55,7 +55,7 @@ const getJwtData = (jwtString: string): any => {
 
 describe('/get-billing-data', () => {
 
-    let apiServer: stoppable.StoppableServer;
+    let apiServer: DestroyableServer;
 
     beforeEach(async () => {
         apiServer = await startServer();
@@ -68,7 +68,7 @@ describe('/get-billing-data', () => {
     });
 
     afterEach(async () => {
-        await new Promise((resolve) => apiServer.stop(resolve));
+        await apiServer.destroy();
         await auth0Server.stop();
         await paddleServer.stop();
         await payproApiServer.stop();

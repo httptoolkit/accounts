@@ -3,7 +3,7 @@ import * as crypto from 'crypto';
 import * as net from 'net';
 import fetch from 'node-fetch';
 import moment, { Moment } from 'moment';
-import stoppable from 'stoppable';
+import { DestroyableServer } from 'destroyable-server';
 
 import { expect } from 'chai';
 
@@ -80,20 +80,17 @@ function formatRenewalDate(date: Moment) {
 
 describe('PayPro webhooks', () => {
 
-    let apiServer: stoppable.StoppableServer;
+    let apiServer: DestroyableServer;
 
     beforeEach(async () => {
         apiServer = await startServer();
         await auth0Server.start(AUTH0_PORT);
         await auth0Server.forPost('/oauth/token').thenJson(200, {});
-
-        await profitwellApiServer.start(PROFITWELL_API_PORT);
     });
 
     afterEach(async () => {
-        await new Promise((resolve) => apiServer.stop(resolve));
+        await apiServer.destroy();
         await auth0Server.stop();
-        await profitwellApiServer.stop();
     });
 
     it('should reject invalid webhooks', async () => {

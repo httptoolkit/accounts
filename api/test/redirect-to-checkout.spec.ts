@@ -1,6 +1,6 @@
 import * as net from 'net';
 import fetch from 'node-fetch';
-import stoppable from 'stoppable';
+import { DestroyableServer } from 'destroyable-server';
 
 import { expect } from 'chai';
 
@@ -42,7 +42,7 @@ const getCheckoutUrl = (
 
 describe('/redirect-to-checkout', () => {
 
-    let apiServer: stoppable.StoppableServer;
+    let apiServer: DestroyableServer;
 
     beforeEach(async () => {
         apiServer = await startServer();
@@ -89,7 +89,7 @@ describe('/redirect-to-checkout', () => {
     });
 
     afterEach(async () => {
-        await new Promise((resolve) => apiServer.stop(resolve));
+        await apiServer.destroy();
         await paddleServer.stop();
         await exchangeRateServer.stop();
         await ipApiServer.stop();

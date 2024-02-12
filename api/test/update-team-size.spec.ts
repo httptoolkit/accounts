@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import * as net from 'net';
 import fetch from 'node-fetch';
-import stoppable from 'stoppable';
+import { DestroyableServer } from 'destroyable-server';
 
 import { expect } from 'chai';
 
@@ -33,7 +33,7 @@ const updateTeamSize = (server: net.Server, authToken: string | undefined, newTe
 
 describe('/update-team-size', () => {
 
-    let apiServer: stoppable.StoppableServer;
+    let apiServer: DestroyableServer;
 
     beforeEach(async () => {
         apiServer = await startServer();
@@ -45,7 +45,7 @@ describe('/update-team-size', () => {
     });
 
     afterEach(async () => {
-        await new Promise((resolve) => apiServer.stop(resolve));
+        await apiServer.destroy();
         await auth0Server.stop();
         await paddleServer.stop();
     });

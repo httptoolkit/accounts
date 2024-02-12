@@ -2,7 +2,8 @@ import _ from 'lodash';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { getLocal } from 'mockttp';
-import stoppable from 'stoppable';
+
+import { makeDestroyable } from 'destroyable-server';
 
 import { AppMetadata } from '../src/auth0';
 import { PayProOrderDetails, PayProOrderListing } from '../src/paypro';
@@ -385,5 +386,16 @@ export const startServer = async () => {
     // ensure the env vars above are all set first:
     const { startApiServer } = await import('../src/server');
     const server = await startApiServer();
-    return stoppable(server, 0);
+    return makeDestroyable(server);
 }
+
+beforeEach(async () => {
+    // Weneed to make sure the Profitwell API responds, or incidental requests
+    // in tests will retry for hours, stopping the tests exiting:
+    await profitwellApiServer.start(PROFITWELL_API_PORT);
+    await profitwellApiServer.forUnmatchedRequest().thenReply(200);
+});
+
+afterEach(async () => {
+    await profitwellApiServer.stop();
+});

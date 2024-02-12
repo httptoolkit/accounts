@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import * as net from 'net';
 import fetch from 'node-fetch';
-import stoppable from 'stoppable';
+import { DestroyableServer } from 'destroyable-server';
 
 import { expect } from 'chai';
 
@@ -30,7 +30,7 @@ const cancelSubscription = (server: net.Server, authToken?: string) => fetch(
 
 describe('Subscription cancellation API', () => {
 
-    let apiServer: stoppable.StoppableServer;
+    let apiServer: DestroyableServer;
 
     beforeEach(async () => {
         apiServer = await startServer();
@@ -43,7 +43,7 @@ describe('Subscription cancellation API', () => {
     });
 
     afterEach(async () => {
-        await new Promise((resolve) => apiServer.stop(resolve));
+        await apiServer.destroy();
         await auth0Server.stop();
 
         await paddleServer.stop();

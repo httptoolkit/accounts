@@ -1,6 +1,6 @@
 import * as net from 'net';
 import fetch from 'node-fetch';
-import stoppable from 'stoppable';
+import { DestroyableServer } from 'destroyable-server';
 import { RulePriority } from 'mockttp';
 
 import { expect } from 'chai';
@@ -44,7 +44,7 @@ interface PaddleProduct {
 
 describe('/get-prices', () => {
 
-    let apiServer: stoppable.StoppableServer;
+    let apiServer: DestroyableServer;
 
     beforeEach(async () => {
         apiServer = await startServer();
@@ -57,7 +57,7 @@ describe('/get-prices', () => {
     });
 
     afterEach(async () => {
-        await new Promise((resolve) => apiServer.stop(resolve));
+        await apiServer.destroy();
         await ipApiServer.stop();
     });
 
