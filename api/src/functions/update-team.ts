@@ -5,12 +5,15 @@ import { initSentry, catchErrors, reportError, StatusError } from '../errors';
 initSentry();
 
 import {
-    mgmtClient,
     AppMetadata,
     TeamMemberMetadata,
     TeamOwnerMetadata,
     User,
-    LICENSE_LOCK_DURATION_MS
+    LICENSE_LOCK_DURATION_MS,
+    getUserById,
+    getUsersByEmail,
+    updateUserMetadata,
+    createUser
 } from '../auth0';
 import { getCorsResponseHeaders } from '../cors';
 import { getMaxTeamSize, getTeamMemberData, getUserId } from '../user-data';
@@ -50,7 +53,7 @@ export const handler = catchErrors(async (event) => {
         const ownerId = await getUserId(accessToken);
 
         const [userData, memberData] = await Promise.all([
-            mgmtClient.getUser({ id: ownerId }),
+            getUserById(ownerId),
             getTeamMemberData(ownerId)
         ]);
 
@@ -106,7 +109,7 @@ export const handler = catchErrors(async (event) => {
         // For each new member, get either their current data, or just keep their email
         // (we'll create new accounts for those in a minute)
         const newMemberAccounts = await Promise.all(emailsToAdd.map(async (email) => {
-            const matchingUsers = (await mgmtClient.getUsersByEmail(email));
+            const matchingUsers = await getUsersByEmail(email);
             if (matchingUsers.length === 1) {
                 return matchingUsers[0];
             } else if (matchingUsers.length > 1) {
@@ -135,7 +138,7 @@ export const handler = catchErrors(async (event) => {
                 lock + LICENSE_LOCK_DURATION_MS >= Date.now()
             );
 
-        await mgmtClient.updateAppMetadata({ id: ownerId }, {
+        await updateUserMetadata(ownerId, {
             team_member_ids: updatedTeamIds,
             locked_licenses: updatedLicenseLocks
         } as TeamOwnerMetadata);
@@ -181,7 +184,7 @@ function validateTeamMembersBeforeRemove(
 async function unlinkTeamMembers(idsToRemove: string[]) {
     const removalResult = await Promise.all<boolean | Error>(
         idsToRemove.map(async (idToRemove) =>
-            mgmtClient.updateAppMetadata({ id: idToRemove }, {
+            updateUserMetadata(idToRemove, {
                 subscription_owner_id: null,
                 joined_team_at: null
             })
@@ -231,8 +234,8 @@ async function linkNewTeamMembers(ownerId: string, membersToAdd: Array<User | st
             } as TeamMemberMetadata;
 
             const updatePromise = _.isObject(user)
-                ? mgmtClient.updateAppMetadata({ id: user.user_id! }, appMetadata)
-                : mgmtClient.createUser({
+                ? updateUserMetadata(user.user_id!, appMetadata)
+                : createUser({
                     email: user,
                     email_verified: true,
                     connection: 'email',

@@ -4,24 +4,27 @@ import * as log from 'loglevel';
 import {
     AppMetadata,
     LICENSE_LOCK_DURATION_MS,
-    mgmtClient,
     PayingUserMetadata,
     TeamOwnerMetadata,
     TeamMemberMetadata,
-    User
+    User,
+    getUsersByEmail,
+    createUser,
+    updateUserMetadata,
+    getUserById
 } from './auth0';
 import { formatErrorMessage, reportError, StatusError } from './errors';
 import { flushMetrics, trackEvent } from './metrics';
 
 async function getOrCreateUserData(email: string): Promise<User> {
-    const users = await mgmtClient.getUsersByEmail(email);
+    const users = await getUsersByEmail(email);
     if (users.length > 1) {
         throw new Error(`More than one user found for ${email}`);
     } else if (users.length === 1) {
         return users[0];
     } else {
         // Create the user, if they don't already exist:
-        return mgmtClient.createUser({
+        return createUser({
             email,
             connection: 'email',
             email_verified: true, // This ensures users don't receive an email code or verification
@@ -38,7 +41,7 @@ function dropUndefinedValues(obj: { [key: string]: any }) {
 
 export async function banUser(email: string) {
     const user = await getOrCreateUserData(email);
-    await mgmtClient.updateAppMetadata({ id: user.user_id! }, { banned: true });
+    await updateUserMetadata(user.user_id!, { banned: true });
 }
 
 export async function updateProUserData(email: string, subscription: Partial<PayingUserMetadata>) {
@@ -49,7 +52,7 @@ export async function updateProUserData(email: string, subscription: Partial<Pay
 
     // Is the user already a member of a team?
     if (appData && 'subscription_owner_id' in appData) {
-        const owner = await mgmtClient.getUser({ id: appData.subscription_owner_id! });
+        const owner = await getUserById(appData.subscription_owner_id!);
         const ownerData = owner.app_metadata as TeamOwnerMetadata;
 
         if (ownerData.subscription_expiry > Date.now() && ownerData.subscription_status === 'active') {
@@ -60,12 +63,12 @@ export async function updateProUserData(email: string, subscription: Partial<Pay
         // Otherwise, the owner's team subscription must have been cancelled now, so we just need to
         // update the membership state on both sides:
         const updatedTeamMembers = ownerData.team_member_ids.filter(id => id !== user.user_id);
-        await mgmtClient.updateAppMetadata({ id: appData.subscription_owner_id! }, { team_member_ids: updatedTeamMembers });
+        await updateUserMetadata(appData.subscription_owner_id!, { team_member_ids: updatedTeamMembers });
         (subscription as Partial<TeamMemberMetadata>).subscription_owner_id = null as any; // Setting to null deletes the property
     }
 
     if (!_.isEmpty(subscription)) {
-        await mgmtClient.updateAppMetadata({ id: user.user_id! }, subscription);
+        await updateUserMetadata(user.user_id!, subscription);
     }
 }
 
@@ -89,7 +92,7 @@ export async function updateTeamData(email: string, subscription: Partial<Paying
     dropUndefinedValues(newMetadata);
 
     if (!_.isEmpty(newMetadata)) {
-        await mgmtClient.updateAppMetadata({ id: currentUserData.user_id! }, newMetadata);
+        await updateUserMetadata(currentUserData.user_id!, newMetadata);
     }
 }
 

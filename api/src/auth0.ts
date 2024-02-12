@@ -14,18 +14,39 @@ ${process.env.SIGNING_PRIVATE_KEY}
 -----END RSA PRIVATE KEY-----
 `;
 
-export const authClient = new auth0.AuthenticationClient({
-    domain: AUTH0_DOMAIN!,
-    clientId: AUTH0_APP_CLIENT_ID!
+const userInfoClient = new auth0.UserInfoClient({
+    domain: AUTH0_DOMAIN!
 });
 
-export const mgmtClient = new auth0.ManagementClient({
+export const getUserInfoFromToken = async (accessToken: string) =>
+    (await userInfoClient.getUserInfo(accessToken)).data;
+
+const mgmtClient = new auth0.ManagementClient({
     domain: AUTH0_DOMAIN!,
     clientId: AUTH0_MGMT_CLIENT_ID!,
     clientSecret: AUTH0_MGMT_CLIENT_SECRET!
 });
 
-export type User = auth0.User;
+export const getUserById = async (userId: string) =>
+    (await mgmtClient.users.get({ id: userId })).data as User;
+
+export const getUsersByEmail = async (email: string) =>
+    (await mgmtClient.usersByEmail.getByEmail({ email })).data as User[];
+
+export const searchUsers = async (query: auth0.GetUsersRequest) =>
+    (await mgmtClient.users.getAll(query)).data as User[];
+
+export const updateUserMetadata = async <A extends AppMetadata>(id: string, update: {
+    [K in keyof A]?: A[K] | null // All optional, can pass null to delete
+}) =>
+    (await mgmtClient.users.update({ id }, { app_metadata: update })).data as User;
+
+export const createUser = async (parameters: auth0.UserCreate) =>
+    (await mgmtClient.users.create(parameters)).data as User;
+
+export type User = auth0.GetUsers200ResponseOneOfInner & {
+    app_metadata: AppMetadata
+};
 
 // The AppMetadata schema for the data we store in Auth0:
 export type AppMetadata =

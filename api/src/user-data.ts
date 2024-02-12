@@ -18,13 +18,15 @@ import {
     getSkuForPaddleId
 } from './paddle';
 import {
-    authClient,
-    mgmtClient,
     LICENSE_LOCK_DURATION_MS,
     AppMetadata,
     TeamOwnerMetadata,
     TeamMemberMetadata,
-    PayingUserMetadata
+    PayingUserMetadata,
+    User,
+    getUserInfoFromToken,
+    getUserById,
+    searchUsers
 } from './auth0';
 import {
     getSku,
@@ -92,10 +94,10 @@ export async function getUserId(accessToken: string): Promise<string> {
 async function getUserProfile(accessToken: string, options: {
     isRetry?: boolean
 } = {}): Promise<{ sub: string } | undefined> {
-    return authClient.getProfile(accessToken).catch((error) => {
+    return getUserInfoFromToken(accessToken).catch((error) => {
         log.warn(`Auth0 getProfile request failed with: ${formatErrorMessage(error)}`);
 
-        if (error.message === 'Request failed with status code 401') {
+        if (error.statusCode === 401) {
             throw new StatusError(401, "Unauthorized");
         }
 
@@ -110,13 +112,13 @@ async function getUserProfile(accessToken: string, options: {
 
 async function loadRawUserData(userId: string): Promise<RawMetadata> {
     // getUser is full live data for the user (/users/{id} - 15 req/second)
-    const userData = await mgmtClient.getUser({ id: userId });
+    const userData = await getUserById(userId);
 
     const metadata = userData.app_metadata;
 
     return migrateOldUserData({
-        email: userData.email!,
-        ...metadata
+        ...metadata,
+        email: userData.email!
     });
 }
 
@@ -220,12 +222,11 @@ async function buildUserAppData(userId: string, rawMetadata: RawMetadata) {
     if (userMetadata.subscription_owner_id) {
         // If there's a subscription owner for this user (e.g. they're a member of a team)
         // read the basic subscription details from the real owner across to this user.
-        const subOwnerData = await mgmtClient.getUser({
-            id: userMetadata.subscription_owner_id
-        }).catch(async (e) => {
-            await reportError(e);
-            return { app_metadata: undefined };
-        });
+        const subOwnerData = await getUserById(userMetadata.subscription_owner_id)
+            .catch(async (e) => {
+                await reportError(e);
+                return { app_metadata: undefined };
+            });
 
         const subOwnerMetadata = subOwnerData.app_metadata as TeamOwnerMetadata;
         const teamSku = getSku(subOwnerMetadata);
@@ -463,7 +464,7 @@ async function getTeamMembers(userId: string, rawMetadata: RawMetadata) {
 }
 
 export async function getTeamMemberData(teamOwnerId: string) {
-    return mgmtClient.getUsers({
+    return searchUsers({
         q: `app_metadata.subscription_owner_id:${teamOwnerId}`,
         // 100 is the max value. If we have a team of >100 users, we'll need some paging
         // on our end in the UI anyway, so this'll do for now.

@@ -1,4 +1,3 @@
-import * as _ from 'lodash';
 import * as log from 'loglevel';
 
 import { delay } from '@httptoolkit/util';
@@ -6,8 +5,8 @@ import { initSentry, catchErrors, reportError, StatusError } from '../errors';
 initSentry();
 
 import {
-    mgmtClient,
-    TeamOwnerMetadata
+    TeamOwnerMetadata,
+    getUserById
 } from '../auth0';
 import { getCorsResponseHeaders } from '../cors';
 import { getUserId } from '../user-data';
@@ -51,7 +50,7 @@ export const handler = catchErrors(async (event) => {
 
     try {
         const ownerId = await getUserId(accessToken);
-        const userData = await mgmtClient.getUser({ id: ownerId });
+        const userData = await getUserById(ownerId);
         const ownerData = userData.app_metadata as TeamOwnerMetadata;
 
         const sku = getSku(ownerData);
@@ -96,7 +95,7 @@ export const handler = catchErrors(async (event) => {
         // Wait up to 30 seconds for the payment & webhook to arrive:
         const startTime = Date.now();
         while (Date.now() - startTime < 30_000) {
-            const userData = await mgmtClient.getUser({ id: ownerId });
+            const userData = await getUserById(ownerId);
             const ownerData = userData.app_metadata as TeamOwnerMetadata;
             if (ownerData.subscription_quantity === newTeamSize) {
                 return { statusCode: 200, headers, body: 'success' };

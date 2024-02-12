@@ -8,7 +8,7 @@ import { SubscriptionStatus } from '@httptoolkit/accounts';
 
 import { SKUs } from '../products';
 import { recordCancellation, recordSubscription } from '../accounting';
-import { mgmtClient, PayingUserMetadata } from '../auth0';
+import { PayingUserMetadata, getUsersByEmail } from '../auth0';
 import { parseCheckoutPassthrough, reportSuccessfulCheckout, updateProUserData } from '../webhook-handling';
 import {
     parsePayProCustomFields,
@@ -130,7 +130,7 @@ export const handler = catchErrors(async (event) => {
 });
 
 async function getExistingSubscriptionExpiry(email: string) {
-    const users = await mgmtClient.getUsersByEmail(email);
+    const users = await getUsersByEmail(email);
     if (users.length !== 1) throw new Error(`${users.length} users with email ${email}`);
     const user = users[0];
 

@@ -61,7 +61,7 @@ describe('/get-billing-data', () => {
         apiServer = await startServer();
 
         await auth0Server.start(AUTH0_PORT);
-        await auth0Server.forPost('/oauth/token').thenReply(200);
+        await auth0Server.forPost('/oauth/token').thenJson(200, {});
 
         await paddleServer.start(PADDLE_PORT);
         await payproApiServer.start(PAYPRO_API_PORT);

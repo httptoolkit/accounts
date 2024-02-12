@@ -48,7 +48,7 @@ describe('/get-app-data', () => {
     beforeEach(async () => {
         apiServer = await startServer();
         await auth0Server.start(AUTH0_PORT);
-        await auth0Server.forPost('/oauth/token').thenReply(200);
+        await auth0Server.forPost('/oauth/token').thenJson(200, {});
     });
 
     afterEach(async () => {

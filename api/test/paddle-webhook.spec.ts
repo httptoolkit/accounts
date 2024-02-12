@@ -66,7 +66,7 @@ describe('Paddle webhooks', () => {
         apiServer = await startServer();
 
         await auth0Server.start(AUTH0_PORT);
-        await auth0Server.forPost('/oauth/token').thenReply(200);
+        await auth0Server.forPost('/oauth/token').thenJson(200, {});
 
         // We don't test Profitwell for now, we just need it to not crash:
         await profitwellApiServer.start(PROFITWELL_API_PORT);
@@ -88,7 +88,7 @@ describe('Paddle webhooks', () => {
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             const nextRenewal = moment('2025-01-01');
 
@@ -133,7 +133,7 @@ describe('Paddle webhooks', () => {
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             const nextRenewal = moment('2025-01-01');
 
@@ -197,11 +197,11 @@ describe('Paddle webhooks', () => {
 
             const ownerUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + ownerId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             const memberUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + memberId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             const nextRenewal = moment('2025-01-01');
 
@@ -266,11 +266,11 @@ describe('Paddle webhooks', () => {
 
             const ownerUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + ownerId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             const memberUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + memberId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             const nextRenewal = moment('2025-01-01');
 
@@ -311,7 +311,7 @@ describe('Paddle webhooks', () => {
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             await triggerWebhook(apiServer, {
                 alert_name: 'subscription_payment_succeeded',
@@ -356,7 +356,7 @@ describe('Paddle webhooks', () => {
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             await triggerWebhook(apiServer, {
                 alert_name: 'subscription_cancelled',
@@ -400,7 +400,7 @@ describe('Paddle webhooks', () => {
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             // Initial renewal failure:
 
@@ -507,7 +507,7 @@ describe('Paddle webhooks', () => {
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             const nextRenewal = moment('2025-01-01');
 
@@ -554,7 +554,7 @@ describe('Paddle webhooks', () => {
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             const nextRenewal = moment('2025-01-01');
 
@@ -605,7 +605,7 @@ describe('Paddle webhooks', () => {
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             const nextRenewal = moment('2025-01-01');
 
@@ -651,7 +651,7 @@ describe('Paddle webhooks', () => {
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             const nextRenewal = moment('2025-01-01');
 
@@ -695,7 +695,7 @@ describe('Paddle webhooks', () => {
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             await triggerWebhook(apiServer, {
                 alert_name: 'payment_dispute_created',

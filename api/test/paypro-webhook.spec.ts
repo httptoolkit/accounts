@@ -85,7 +85,7 @@ describe('PayPro webhooks', () => {
     beforeEach(async () => {
         apiServer = await startServer();
         await auth0Server.start(AUTH0_PORT);
-        await auth0Server.forPost('/oauth/token').thenReply(200);
+        await auth0Server.forPost('/oauth/token').thenJson(200, {});
 
         await profitwellApiServer.start(PROFITWELL_API_PORT);
     });
@@ -142,7 +142,7 @@ describe('PayPro webhooks', () => {
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             const nextRenewal = moment('2025-01-01');
 
@@ -192,7 +192,7 @@ describe('PayPro webhooks', () => {
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             const nextRenewal = moment('2025-01-01');
 
@@ -239,7 +239,7 @@ describe('PayPro webhooks', () => {
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             await triggerWebhook(apiServer, {
                 IPN_TYPE_NAME: 'SubscriptionChargeSucceed',
@@ -280,7 +280,7 @@ describe('PayPro webhooks', () => {
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             await triggerWebhook(apiServer, {
                 IPN_TYPE_NAME: 'SubscriptionTerminated',
@@ -321,7 +321,7 @@ describe('PayPro webhooks', () => {
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             await triggerWebhook(apiServer, {
                 IPN_TYPE_NAME: 'SubscriptionSuspended',
@@ -362,7 +362,7 @@ describe('PayPro webhooks', () => {
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             await triggerWebhook(apiServer, {
                 IPN_TYPE_NAME: 'SubscriptionChargeFailed',
@@ -397,7 +397,7 @@ describe('PayPro webhooks', () => {
 
             await auth0Server
                 .forPatch('/api/v2/users/' + userId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             const subscriptionId = '456';
 
@@ -492,7 +492,7 @@ describe('PayPro webhooks', () => {
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
-                .thenReply(200);
+                .thenJson(200, {});
 
             await triggerWebhook(apiServer, {
                 IPN_TYPE_NAME: 'OrderChargedBack',

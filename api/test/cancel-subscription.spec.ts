@@ -35,7 +35,7 @@ describe('Subscription cancellation API', () => {
     beforeEach(async () => {
         apiServer = await startServer();
         await auth0Server.start(AUTH0_PORT);
-        await auth0Server.forPost('/oauth/token').thenReply(200);
+        await auth0Server.forPost('/oauth/token').thenJson(200, {});
         auth0Server.enableDebug();
 
         await paddleServer.start(PADDLE_PORT);
