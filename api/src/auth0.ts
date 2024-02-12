@@ -3,7 +3,6 @@ import { SubscriptionStatus, SKU } from '@httptoolkit/accounts';
 
 const {
     AUTH0_DOMAIN,
-    AUTH0_APP_CLIENT_ID,
     AUTH0_MGMT_CLIENT_ID,
     AUTH0_MGMT_CLIENT_SECRET
 } = process.env;
