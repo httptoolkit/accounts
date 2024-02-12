@@ -2,7 +2,7 @@ import type { Application } from 'express';
 import * as ipAddr from 'ipaddr.js';
 import * as log from 'loglevel';
 
-import { reportError } from './errors';
+import { formatErrorMessage, reportError } from './errors';
 
 // We need to know our traffic sources to be able to know when to trust the X-Forwarded-For header,
 // so that we can accurately work out the original IP source of incoming requests. We trust local
@@ -26,6 +26,22 @@ try {
     bunnyCachedIPs.push(...require('../.bunny-ipv6-ips.json'))
 } catch {}
 
+async function getIPs(url: string) {
+    try {
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            const body = response.text().catch(() => {});
+            throw new Error(`Unexpected ${response.status} loading XFF IPs from ${url}:\n${body}`);
+        }
+
+        return response.json();
+    } catch (e: any) {
+        console.warn(e);
+        throw new Error(`Unexpected ${formatErrorMessage(e)} error getting IPs from ${url}`)
+    }
+}
+
 export function configureAppProxyTrust(app: Application) {
     log.info(`Loaded ${bunnyCachedIPs.length} CDN IPs from disk`);
     app.set('trust proxy', [
@@ -39,8 +55,8 @@ export function configureAppProxyTrust(app: Application) {
                 bunnyIPv4s,
                 bunnyIPv6s
             ] = (await Promise.all<Array<string>>([
-                fetch('https://bunnycdn.com/api/system/edgeserverlist').then(r => r.json()),
-                fetch('https://bunnycdn.com/api/system/edgeserverlist/IPv6').then(r => r.json())
+                getIPs('https://bunnycdn.com/api/system/edgeserverlist'),
+                getIPs('https://bunnycdn.com/api/system/edgeserverlist/IPv6')
             ]));
 
             const bunnyIPs = [
