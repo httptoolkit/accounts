@@ -62,7 +62,7 @@ export async function setRevenueTraits(email: string, traits: Traits, retries = 
             const sleepTime = 1000 * (3 ** (DEFAULT_PROFITWELL_RETRIES - retries));
 
             log.info(`Sleeping for ${sleepTime} between ${email} trait retries`);
-            await delay(sleepTime);
+            await delay(sleepTime, { unref: true });
             log.debug(`Retrying ${email} trait...`);
 
             return setRevenueTraits(email, traits, retries - 1);

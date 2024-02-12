@@ -393,7 +393,7 @@ async function getTransactions(rawMetadata: RawMetadata) {
             // genuinely hit this sometimes because Paddle is remarkably astonishingly bad. On
             // the plus side, caching means the user can refresh in a minute and this will be
             // available immediately.
-            delay(15_000).then(() => null)
+            delay(15_000, { unref: true }).then(() => null)
         ]);
     }
 }
