@@ -19,13 +19,6 @@ export function initSentry() {
     }
 }
 
-interface Auth0RequestError extends Error {
-    // See https://github.com/auth0/node-auth0/blob/master/src/errors.js
-    statusCode: number | string | undefined,
-    requestInfo: { method?: string, url?: string },
-    originalError: Error
-};
-
 export class StatusError extends CustomError {
     constructor(
         public readonly statusCode: number,
@@ -35,25 +28,64 @@ export class StatusError extends CustomError {
     }
 }
 
-export const formatErrorMessage = (error: any) => error.name === 'AggregateError'
-    ? `[AggregateError]:\n${
-        error.errors?.map((error: Error) => ` - ${error.message}`).join('\n')
-    }`
-    : (error.message ?? error);
+function getErrorCause(error: any) {
+    let underlyingCause = error;
 
-export async function reportError(error: Error | Auth0RequestError | string, metadata?: {
+    while ((underlyingCause as any)?.cause) {
+        underlyingCause = (underlyingCause as any).cause;
+    }
+
+    return underlyingCause;
+}
+
+const ellipsise = (msg: string) => {
+    if (msg?.length > 100) {
+        return msg.slice(0, 97) + '...';
+    } else {
+        return msg;
+    }
+}
+
+export const formatErrorMessage = (error: any): string => {
+    if (error.name === 'AggregateError') {
+        return `[AggregateError]:\n${
+            error.errors?.map((error: Error) => ` - ${formatErrorMessage(error)}`).join('\n')
+        }`
+    }
+
+    // Auth0 response error messages aren't very helpful:
+    if (error instanceof ResponseError) {
+        return `Auth0 response error (returned ${error.statusCode}: ${ellipsise(error.body) || '<empty body>'})`
+    }
+
+    // Always skip logging FetchError messages - they're an annoying Auth0 wrapper
+    if (error instanceof FetchError) {
+        return `Auth0 FetchError - ${formatErrorMessage(error.cause)}`;
+    }
+
+    const cause = getErrorCause(error);
+    if (cause !== error) {
+        return `${error.message ?? error} (caused by ${formatErrorMessage(cause)})`;
+    }
+
+    return error.message ?? error;
+};
+
+export async function reportError(error: Error | ResponseError | string, metadata?: {
     eventContext?: APIGatewayProxyEvent,
     cause?: Error
 }) {
-    if (error instanceof Error && 'requestInfo' in error) {
-        log.error(`Auth0 ${
-            (error.requestInfo.method || '???').toUpperCase()
-        } request to '${
-            error.requestInfo.url
-        }' failed with status ${error.statusCode}: ${formatErrorMessage(error)}`);
-        log.debug(`Caused by:`, error);
+    // Recurse down to find the underlying causes, if possible:
+    const underlyingCause = getErrorCause(metadata?.cause) ?? getErrorCause(error);
+
+    if (error instanceof ResponseError || error instanceof FetchError) {
+        log.error(`Upstream Auth0 request failed with: ${formatErrorMessage(error)}`);
     } else {
         log.error(error);
+    }
+
+    if (underlyingCause !== error) {
+        log.debug(underlyingCause);
     }
 
     if (!sentryInitialized) return;
@@ -71,17 +103,9 @@ export async function reportError(error: Error | Auth0RequestError | string, met
 
             event.extra = event.extra ?? {};
 
-            if (error instanceof Error && 'originalError' in error) {
+            if (underlyingCause) {
                 Object.assign(event.extra, {
-                    originalName: error.originalError.name,
-                    originalMessage: error.originalError.message,
-                    originalStack: error.originalError.stack
-                });
-            }
-
-            if (metadata?.cause) {
-                Object.assign(event.extra, {
-                    cause: metadata.cause
+                    cause: underlyingCause
                 });
             }
 
@@ -121,7 +145,7 @@ export function catchErrors(handler: ApiHandler): ApiHandler {
                 : undefined;
 
             await Promise.all([
-                // Report the URL failure itself as a separate type of error to track:
+                // Report the handler failure itself, as a separate type of error to track:
                 reportError(`${
                     event.httpMethod ?? '???'
                 } request to ${event.path} failed with ${

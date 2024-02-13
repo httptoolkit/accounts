@@ -32,11 +32,11 @@ export async function runWithRetries<R, F extends () => Promise<R>>(
         }
 
         if (options.retries <= 0) {
-            log.warn(`Out of retries for ${name} - failing`)
+            log.warn(`Out of retries for ${name} - failing due to: ${formatErrorMessage(e)}`);
             throw e;
         }
 
-        log.info(`${name} failed with ${formatErrorMessage(e)}, retrying in ${options.delay}ms`);
+        log.info(`${name} failed with '${formatErrorMessage(e)}', retrying in ${options.delay}ms`);
 
         await delay(options.delay);
         return runWithRetries(name, fnCall, { ...options, retries: options.retries - 1 });
