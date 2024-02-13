@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/node';
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Handler } from 'aws-lambda';
+import { FetchError, ResponseError } from 'auth0';
 import { CustomError } from '@httptoolkit/util';
 
 import * as log from 'loglevel';
@@ -109,25 +110,34 @@ export function catchErrors(handler: ApiHandler): ApiHandler {
         try {
             return await (handler.call as any)(this, ...arguments);
         } catch (e: any) {
+            const specificFailureStatus =
+                // The handler threw an error for a specific status response (e.g. 401):
+                e instanceof StatusError
+                    ? e.statusCode
+                // Some kind of upstream Auth0 error:
+                : e instanceof ResponseError || e instanceof FetchError
+                    ? 502
+                // Generic error (this will be thrown -> automatic 500 later)
+                : undefined;
+
             await Promise.all([
                 // Report the URL failure itself as a separate type of error to track:
                 reportError(`${
                     event.httpMethod ?? '???'
                 } request to ${event.path} failed with ${
-                    e instanceof StatusError
-                    ? e.statusCode
-                    : '500'
-                } due to ${formatErrorMessage(e)}`, {
+                    specificFailureStatus ?? 500
+                } due to: ${formatErrorMessage(e)}`, {
                     eventContext: event,
                     cause: e
                 }),
+
                 // Report the specific low-level exception too, to track both independently:
                 reportError(e, { eventContext: event })
             ]);
 
-            if (e instanceof StatusError) {
+            if (specificFailureStatus) {
                 return {
-                    statusCode: e.statusCode,
+                    statusCode: specificFailureStatus,
                     headers: { 'Cache-Control': 'no-store' },
                     body: e.message
                 }

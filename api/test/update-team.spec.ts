@@ -357,7 +357,9 @@ describe('/update-team', () => {
             });
         });
 
-        it("reports failures for internal API issues", async () => {
+        it("reports failures for internal API issues, after retries", async function () {
+            this.timeout(5000);
+
             const team = [
                 undefined
             ] as const;
@@ -369,13 +371,16 @@ describe('/update-team', () => {
 
             await givenUser(newUserId, newUserEmail);
 
-            await withUserUpdateNetworkFailures();
+            const userUpdateEndpoint = await withUserUpdateNetworkFailures();
 
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [newUserEmail]
             });
 
             expect(response.status).to.equal(500);
+
+            const updateRequests = await userUpdateEndpoint.getSeenRequests();
+            expect(updateRequests.length).to.equal(4); // Attempt + 3 retries
         });
 
         it("does not allow adding team members beyond the subscribed quantity", async () => {

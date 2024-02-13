@@ -75,8 +75,7 @@ export async function getUserId(accessToken: string): Promise<string> {
         log.debug(`Matched token to user id ${userId} from cache`);
         return userId;
     } else {
-        // getProfile is only minimal data, updated at last login (/userinfo - 5 req/minute/user)
-        const user = await getUserProfile(accessToken);
+        const user = await getUserInfoFromToken(accessToken);
 
         if (!user) {
             throw new Error("User could not be found in getUserId");
@@ -91,27 +90,7 @@ export async function getUserId(accessToken: string): Promise<string> {
     }
 }
 
-async function getUserProfile(accessToken: string, options: {
-    isRetry?: boolean
-} = {}): Promise<{ sub: string } | undefined> {
-    return getUserInfoFromToken(accessToken).catch((error) => {
-        log.warn(`Auth0 getProfile request failed with: ${formatErrorMessage(error)}`);
-
-        if (error.statusCode === 401) {
-            throw new StatusError(401, "Unauthorized");
-        }
-
-        // Most other errors are intermittent, so retry, if we haven't already:
-        if (!options.isRetry) {
-            return getUserProfile(accessToken, { isRetry: true });
-        } else {
-            throw new StatusError(502, "Unexpected error from Auth0");
-        }
-    });
-}
-
 async function loadRawUserData(userId: string): Promise<RawMetadata> {
-    // getUser is full live data for the user (/users/{id} - 15 req/second)
     const userData = await getUserById(userId);
 
     const metadata = userData.app_metadata;

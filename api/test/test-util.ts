@@ -371,7 +371,7 @@ export async function watchUserUpdates() {
 }
 
 export async function withUserUpdateNetworkFailures() {
-    await auth0Server
+    return auth0Server
         .forPatch(/\/api\/v2\/users\/[^\/]+/)
         .thenCloseConnection();
 }

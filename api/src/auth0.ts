@@ -1,6 +1,9 @@
 import * as auth0 from 'auth0';
 import { SubscriptionStatus, SKU } from '@httptoolkit/accounts';
 
+import { withRetries } from './retries';
+import { StatusError } from './errors';
+
 const {
     AUTH0_DOMAIN,
     AUTH0_MGMT_CLIENT_ID,
@@ -17,8 +20,18 @@ const userInfoClient = new auth0.UserInfoClient({
     domain: AUTH0_DOMAIN!
 });
 
-export const getUserInfoFromToken = async (accessToken: string) =>
-    (await userInfoClient.getUserInfo(accessToken)).data;
+// Querying user info by token returns minimal data, updated at last login (RL @ 5 req/minute/user)
+export const getUserInfoFromToken = withRetries('getUserInfoFromToken', async (accessToken: string) =>
+    (await userInfoClient.getUserInfo(accessToken)).data,
+    {
+        shouldThrow: (e) => {
+            // Don't retry 401 errors - return a 401 status immediately.
+            if (e?.statusCode === 401) {
+                return new StatusError(401, "Unauthorized")
+            } else return undefined;
+        }
+    }
+);
 
 const mgmtClient = new auth0.ManagementClient({
     domain: AUTH0_DOMAIN!,
@@ -26,19 +39,29 @@ const mgmtClient = new auth0.ManagementClient({
     clientSecret: AUTH0_MGMT_CLIENT_SECRET!
 });
 
-export const getUserById = async (userId: string) =>
-    (await mgmtClient.users.get({ id: userId })).data as User;
 
-export const getUsersByEmail = async (email: string) =>
-    (await mgmtClient.usersByEmail.getByEmail({ email })).data as User[];
+// All the below returns full live data for the user (RL @ 500 req/minute total, 40/s bursts)
+export const getUserById = withRetries('getUserById', async (userId: string) =>
+    (await mgmtClient.users.get({ id: userId })).data as User
+);
 
-export const searchUsers = async (query: auth0.GetUsersRequest) =>
-    (await mgmtClient.users.getAll(query)).data as User[];
+export const getUsersByEmail = withRetries('getUsersByEmail', async (email: string) =>
+    (await mgmtClient.usersByEmail.getByEmail({ email })).data as User[]
+);
 
-export const updateUserMetadata = async <A extends AppMetadata>(id: string, update: {
-    [K in keyof A]?: A[K] | null // All optional, can pass null to delete
-}) =>
-    (await mgmtClient.users.update({ id }, { app_metadata: update })).data as User;
+export const searchUsers = withRetries('searchUsers', async (query: auth0.GetUsersRequest) =>
+    (await mgmtClient.users.getAll(query)).data as User[]
+);
+
+// Updating the user has RL @ 200/minute total (20/s bursts)
+export const updateUserMetadata = withRetries('updateUserMetadata', async <A extends AppMetadata>(
+    id: string,
+    update: {
+        [K in keyof A]?: A[K] | null // All optional, can pass null to delete
+    }
+) =>
+    (await mgmtClient.users.update({ id }, { app_metadata: update })).data as User
+);
 
 export const createUser = async (parameters: auth0.UserCreate) =>
     (await mgmtClient.users.create(parameters)).data as User;

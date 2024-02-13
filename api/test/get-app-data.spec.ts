@@ -107,7 +107,9 @@ describe('/get-app-data', () => {
             expect(data).to.deep.equal({ email: userEmail });
         });
 
-        it("retries to work around intermittent Auth0 connection errors", async () => {
+        it("retries to work around intermittent Auth0 connection errors", async function () {
+            this.timeout(5000);
+
             const authToken = freshAuthToken();
             const userId = "abc";
             const userEmail = 'user@example.com';
@@ -119,20 +121,38 @@ describe('/get-app-data', () => {
             await givenAuthToken(authToken, userId);
             await givenUser(userId, userEmail, {});
 
+            const startTime = Date.now();
             const response = await getAppData(apiServer, authToken);
+            const duration = Date.now() - startTime;
+
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({ email: userEmail });
+
+            // There should have been a delay in here during the retry:
+            expect(duration).to.be.greaterThan(1000);
         });
 
-        it("returns a 502 for persistent upstream Auth0 errors", async () => {
-            await auth0Server.forGet('/userinfo')
+        it("returns a 502 for persistent upstream Auth0 errors, after retries", async function () {
+            this.timeout(5000);
+
+            const userInfoEndpoint = await auth0Server.forGet('/userinfo')
                 .always()
                 .thenReply(500, 'OH NO');
 
+            const startTime = Date.now();
             const response = await getAppData(apiServer, 'VALID_TOKEN');
+            const duration = Date.now() - startTime;
+
             expect(response.status).to.equal(502);
+
+            // We should have done some retries here first:
+            const userInfoRequests = await userInfoEndpoint.getSeenRequests();
+            expect(userInfoRequests.length).to.equal(4);
+
+            // There should have been some delay within here during the retries:
+            expect(duration).to.be.greaterThan(3000);
         });
     });
 
