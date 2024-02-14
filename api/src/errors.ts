@@ -1,10 +1,24 @@
+import { randomUUID } from 'crypto';
+
 import * as Sentry from '@sentry/node';
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Handler } from 'aws-lambda';
 import { FetchError, ResponseError } from 'auth0';
 import { CustomError } from '@httptoolkit/util';
 
-import * as log from 'loglevel';
+import log from 'loglevel';
+
 log.setLevel(process.env.LOGLEVEL as any ?? 'info');
+
+const logId = randomUUID().slice(0, 8);
+const originalFactory = log.methodFactory;
+log.methodFactory = function (
+    method: log.LogLevelNames,
+    level: log.LogLevelNumbers,
+    logger: string | symbol
+) {
+    return originalFactory(method, level, logger).bind(console, `${logId}:`);
+};
+log.rebuild();
 
 const { SENTRY_DSN, VERSION } = process.env;
 
