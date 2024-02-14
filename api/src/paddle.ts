@@ -22,8 +22,8 @@ const PADDLE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 ${process.env.PADDLE_PUBLIC_KEY}
 -----END PUBLIC KEY-----`;
 
-const PADDLE_VENDOR_ID = process.env.PADDLE_ID;
-const PADDLE_KEY = process.env.PADDLE_KEY;
+const PADDLE_VENDOR_ID = process.env.PADDLE_ID!;
+const PADDLE_KEY = process.env.PADDLE_KEY!;
 
 const PADDLE_BASE_URL = process.env.PADDLE_BASE_URL || "https://vendors.paddle.com";
 

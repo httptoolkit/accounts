@@ -6,6 +6,8 @@ import * as log from 'loglevel';
 import { getCorsResponseHeaders } from './cors';
 import { configureAppProxyTrust } from './trusted-xff-ip-setup';
 
+import './connectivity-check';
+
 const app = express();
 
 app.use(express.text({ type: '*/*' }));

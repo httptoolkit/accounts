@@ -37,7 +37,7 @@ async function getIPs(url: string) {
 
         return response.json();
     } catch (e: any) {
-        console.warn(e);
+        log.warn(e);
         throw new Error(`Unexpected ${formatErrorMessage(e)} error getting IPs from ${url}`)
     }
 }
