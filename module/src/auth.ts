@@ -296,6 +296,13 @@ interface BaseAccountData {
 
 export interface User extends BaseAccountData {
     featureFlags: string[];
+
+    /**
+     * This represents a subscription for which this user is the _owner_
+     * but is not a _member_. The user should not be treated as having
+     * an active subscription for the main tool.
+     */
+    teamSubscription?: Subscription;
 }
 
 const anonUser = (): User => ({ featureFlags: [], banned: false });
@@ -429,6 +436,9 @@ function parseUserData(appData: UserAppData | null): User {
     return {
         email: appData.email,
         subscription: parseSubscriptionData(appData),
+        teamSubscription: appData.team_subscription
+            ? parseSubscriptionData(appData.team_subscription)
+            : undefined,
         featureFlags: appData.feature_flags || [],
         banned: !!appData.banned
     };
