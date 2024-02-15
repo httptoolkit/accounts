@@ -63,8 +63,9 @@ export const updateUserMetadata = withRetries('updateUserMetadata', async <A ext
     (await mgmtClient.users.update({ id }, { app_metadata: update })).data as User
 );
 
-export const createUser = async (parameters: auth0.UserCreate) =>
-    (await mgmtClient.users.create(parameters)).data as User;
+export const createUser = withRetries('createUser', async (parameters: auth0.UserCreate) =>
+    (await mgmtClient.users.create(parameters)).data as User
+);
 
 export type User = auth0.GetUsers200ResponseOneOfInner & {
     app_metadata: AppMetadata
