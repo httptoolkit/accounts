@@ -108,5 +108,12 @@ export function startApiServer() {
 // Start the server if run directly (this is how things work normally). When run
 // in tests, this is imported and the server is started & stopped manually instead.
 if (require.main === module) {
-    startApiServer();
+    const serverStartDelay = parseInt(process.env.SERVER_START_DELAY || '', 10);
+    if (serverStartDelay) {
+        // We add a delay in some environments, where it's useful to ensure the
+        // server is totally 100% ready before we accept requests.
+        setTimeout(startApiServer, serverStartDelay);
+    } else {
+        startApiServer();
+    }
 }
