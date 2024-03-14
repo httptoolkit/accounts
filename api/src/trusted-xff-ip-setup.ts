@@ -74,8 +74,8 @@ export function configureAppProxyTrust(app: Application) {
         } catch (e: any) {
             log.warn(e);
             reportError(`Failed to update CDN IPs: ${e.message || e}`);
-            // Retry every minute until success:
-            setTimeout(updateTrustedProxySources, 1000 * 10);
+            // Retry every 5 minutes until success:
+            setTimeout(updateTrustedProxySources, 1000 * 60 * 5);
         }
     }
 
