@@ -183,14 +183,17 @@ export async function createCheckout(options: {
         productParams.set(`price[USD][Amount]`, usdRate.toString());
     }
 
+    const productId = SKU_TO_PAYPRO_ID[options.sku].toString();
+
     // Encrypt our params, ready for use by PayPro's checkout:
-    const cipher = forge.aes.createEncryptionCipher(PAYPRO_PARAM_KEY, 'CBC');
+    const encryptionKey = PAYPRO_PARAM_KEY + productId; // Key depends on product id
+    const cipher = forge.aes.createEncryptionCipher(encryptionKey, 'CBC');
     cipher.start(PAYPRO_PARAM_IV);
     cipher.update(forge.util.createBuffer(productParams.toString()));
     cipher.finish();
     const encryptedParams = cipher.output;
 
-    checkoutParams.set('products[1][id]', SKU_TO_PAYPRO_ID[options.sku].toString());
+    checkoutParams.set('products[1][id]', productId);
     if (options.quantity) checkoutParams.set('products[1][qty]', options.quantity.toString());
     checkoutParams.set('products[1][data]', forge.util.encode64(encryptedParams.bytes()));
 
