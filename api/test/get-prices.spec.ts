@@ -193,10 +193,10 @@ describe('/get-prices', () => {
         }));
 
         expect(products).to.deep.equal([
-            { sku: 'pro-monthly', price: 7, currency: 'EUR' },
-            { sku: 'pro-annual', price: 60, currency: 'EUR' },
-            { sku: 'team-monthly', price: 11, currency: 'EUR' },
-            { sku: 'team-annual', price: 96, currency: 'EUR' }
+            { sku: 'pro-monthly', price: 8, currency: 'EUR' },
+            { sku: 'pro-annual', price: 72, currency: 'EUR' },
+            { sku: 'team-monthly', price: 12, currency: 'EUR' },
+            { sku: 'team-annual', price: 108, currency: 'EUR' }
         ]);
     });
 
@@ -218,10 +218,10 @@ describe('/get-prices', () => {
         }));
 
         expect(products).to.deep.equal([
-            { sku: 'pro-monthly', price: 20, currency: 'BRL' },
-            { sku: 'pro-annual', price: 168, currency: 'BRL' },
-            { sku: 'team-monthly', price: 30, currency: 'BRL' },
-            { sku: 'team-annual', price: 264, currency: 'BRL' }
+            { sku: 'pro-monthly', price: 24, currency: 'BRL' },
+            { sku: 'pro-annual', price: 192, currency: 'BRL' },
+            { sku: 'team-monthly', price: 36, currency: 'BRL' },
+            { sku: 'team-annual', price: 300, currency: 'BRL' }
         ]);
     });
 
