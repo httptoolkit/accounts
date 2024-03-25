@@ -1,5 +1,5 @@
 import * as moment from 'moment';
-import { mgmtClient } from '../api/src/auth0';
+import { getUsersByEmail, createUser, updateUserMetadata } from '../api/src/auth0';
 
 // Add a trial subscription in Auth0 for the target user. Occasionally useful
 // for actual custom trials in some cases, but mostly for open-source contributors
@@ -20,7 +20,7 @@ import { mgmtClient } from '../api/src/auth0';
 
     console.log(`Adding ${duration.asDays()} day subscription for ${email}`);
 
-    const users = await mgmtClient.getUsersByEmail(email);
+    const users = await getUsersByEmail(email);
 
     let userId: string;
     if (users.length === 1) {
@@ -36,7 +36,7 @@ import { mgmtClient } from '../api/src/auth0';
 
         userId = users[0].user_id!;
     } else if (users.length === 0) {
-        const user = await mgmtClient.createUser({
+        const user = await createUser({
             email,
             email_verified: true,
             connection: 'email'
@@ -47,7 +47,7 @@ import { mgmtClient } from '../api/src/auth0';
         return process.exit(1);
     }
 
-    mgmtClient.updateAppMetadata({ id: userId! }, {
+    updateUserMetadata(userId!, {
         subscription_status: 'trialing',
         subscription_sku: 'pro-monthly',
         subscription_expiry: Date.now() + duration.asMilliseconds(),

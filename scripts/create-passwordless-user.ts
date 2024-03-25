@@ -1,9 +1,9 @@
-import { mgmtClient } from '../api/src/auth0';
+import { createUser } from '../api/src/auth0';
 
 const email = process.argv[2];
 console.log(`Creating user ${email}`);
 
-mgmtClient.createUser({
+createUser({
     email,
     email_verified: true,
     connection: 'email'
