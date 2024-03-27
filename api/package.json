@@ -41,7 +41,7 @@
     "@httptoolkit/util": "^0.1.2",
     "@sentry/node": "^4.6.1",
     "auth0": "^4.3.1",
-    "express": "^4.18.2",
+    "express": "^4.19.2",
     "ipaddr.js": "^2.1.0",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
