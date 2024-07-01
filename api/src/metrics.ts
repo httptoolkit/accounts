@@ -1,5 +1,6 @@
 import * as crypto from 'crypto';
 import { PostHog } from 'posthog-node';
+import { reportError } from './errors';
 
 const POSTHOG_KEY = process.env.POSTHOG_KEY;
 
@@ -52,5 +53,5 @@ export function trackEvent(
  */
 export async function flushMetrics() {
     if (!posthog) return;
-    await posthog.flushAsync();
+    await posthog.flushAsync().catch(reportError);
 }
