@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
 import { PostHog } from 'posthog-node';
 import { reportError } from './errors';
+import { delay } from '@httptoolkit/util';
 
 const POSTHOG_KEY = process.env.POSTHOG_KEY;
 
@@ -53,5 +54,8 @@ export function trackEvent(
  */
 export async function flushMetrics() {
     if (!posthog) return;
-    await posthog.flushAsync().catch(reportError);
+    await Promise.race([
+        posthog.flushAsync().catch(reportError),
+        delay(500).then(() => reportError('Metrics flush timed out'))
+    ]);
 }
