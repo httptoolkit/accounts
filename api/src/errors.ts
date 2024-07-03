@@ -87,7 +87,8 @@ export const formatErrorMessage = (error: any): string => {
 
 export async function reportError(error: Error | ResponseError | string, metadata?: {
     eventContext?: APIGatewayProxyEvent,
-    cause?: Error
+    cause?: Error,
+    extraMetadata?: any
 }) {
     // Recurse down to find the underlying causes, if possible:
     const underlyingCause = getErrorCause(metadata?.cause) ?? getErrorCause(error);
@@ -115,13 +116,14 @@ export async function reportError(error: Error | ResponseError | string, metadat
                 event.request = request;
             }
 
-            event.extra = event.extra ?? {};
-
-            if (underlyingCause) {
-                Object.assign(event.extra, {
-                    cause: underlyingCause
-                });
-            }
+            event.extra = {
+                ...event.extra,
+                ...metadata?.extraMetadata,
+                ...(underlyingCause
+                    ? { cause: underlyingCause }
+                    : {}
+                )
+            };
 
             return event;
         });
