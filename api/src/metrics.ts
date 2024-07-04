@@ -55,7 +55,7 @@ export function trackEvent(
 export async function flushMetrics() {
     if (!posthog) return;
     await Promise.race([
-        posthog.flushAsync().catch(reportError),
+        posthog.flush().catch(reportError),
         delay(500).then(() => reportError('Metrics flush timed out'))
     ]);
 }
