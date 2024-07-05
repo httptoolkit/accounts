@@ -54,8 +54,11 @@ export function trackEvent(
  */
 export async function flushMetrics() {
     if (!posthog) return;
+    const start = Date.now();
     await Promise.race([
-        posthog.flush().catch(reportError),
+        posthog.flush()
+            .then(() => console.log(`Metrics flushed after ${Date.now() - start}ms`))
+            .catch(reportError),
         delay(500).then(() => reportError('Metrics flush timed out'))
     ]);
 }
