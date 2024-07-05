@@ -14,12 +14,12 @@ export const handler = catchErrors(async (event) => {
     let returnUrl = customParams.get('x-return-url');
     if (!returnUrl) {
         reportError('Received paypro-thank-you without a return URL defined', {
-            extraMetadata: { checkoutData }
+            extraMetadata: { checkoutData, headers: event.headers }
         });
         returnUrl = "https://httptoolkit.com/web-purchase-thank-you/";
     } else if (!returnUrl.match(/^https:\/\/httptoolkit.com\/(web|app)-purchase-thank-you/)) {
         reportError(`Received paypro-thank-you with an unrecognized return URL: ${returnUrl}`, {
-            extraMetadata: { checkoutData }
+            extraMetadata: { checkoutData, headers: event.headers }
         });
         returnUrl = "https://httptoolkit.com/web-purchase-thank-you/";
     }
