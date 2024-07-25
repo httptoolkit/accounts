@@ -99,21 +99,20 @@ export const handler = catchErrors(async (event) => {
                         "Payment provider": 'paypro',
                         "Country code": countryCode
                     })
-                ]).catch((e: any) => {
-                    log.warn(e);
-                    reportError(`Failed to record new PayPro subscription: ${e.message || e}`);
-                });
+                ]);
             } else if (eventType === 'SubscriptionTerminated' || eventType === 'SubscriptionSuspended') {
                 const existingExpiry = await getExistingSubscriptionExpiry(email).catch(log.warn);
 
                 await recordCancellation(
                     subscriptionId,
                     (existingExpiry ?? Date.now()) / 1000
-                )
+                );
             }
         } catch (e: any) {
-            log.warn(e);
-            reportError('Failed to record PayPro subscription update');
+            reportError(`Failed to record PayPro ${eventType}: ${e.message || e}`, {
+                cause: e,
+                extraMetadata: { email }
+            });
         }
     } else if (eventType === 'OrderChargedBack') {
         await updateProUserData(email, {
