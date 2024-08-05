@@ -2,7 +2,7 @@ import fetch from "node-fetch";
 import * as log from 'loglevel';
 
 import { SKU } from "@httptoolkit/accounts";
-import { delay } from "@httptoolkit/util";
+import { CustomError, delay } from "@httptoolkit/util";
 
 import { getPaddleIdForSku } from "./paddle";
 import { getSkuInterval } from "./products";
@@ -18,6 +18,16 @@ interface Traits {
 }
 
 const DEFAULT_PROFITWELL_RETRIES = 10;
+
+export class AccountingError extends CustomError {
+    constructor(
+        statusCode: number,
+        message: string,
+        public readonly body: string
+    ) {
+        super(message, { statusCode });
+    }
+}
 
 // Attempt to update the user to log subscription metadata (e.g. the provider used) so
 // we can work out where the actual money is later on.
@@ -112,10 +122,10 @@ export async function recordSubscription(
     });
 
     if (!response.ok) {
-        const body = await response.text().catch(() => {});
+        const body = await response.text().catch(() => '');
         log.warn(`${response.status} Profitwell sub creation response:`);
         log.warn(body);
-        throw new Error(`Unexpected ${response.status} from Profitwell`);
+        throw new AccountingError(response.status, `Unexpected ${response.status} from Profitwell`, body);
     }
 
     await setRevenueTraits(email, traits);
@@ -137,5 +147,10 @@ export async function recordCancellation(
         }
     });
 
-    if (!response.ok) throw new Error(`Unexpected ${response.status} from Profitwell`);
+    if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        log.warn(`${response.status} Profitwell sub cancellation response:`);
+        log.warn(body);
+        throw new AccountingError(response.status, `Unexpected ${response.status} from Profitwell`, body);
+    }
 }

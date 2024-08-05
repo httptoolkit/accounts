@@ -177,7 +177,7 @@ export function validatePaddleWebhook(webhookData: PaddleWebhookData) {
 
 export class PaddleApiError extends CustomError {
     constructor(
-        public readonly code?: number,
+        public readonly code?: string,
         public readonly message: string = 'Unknown Paddle error'
     ) {
         super(`Unsuccessful response from Paddle API: ${message} (${code})`);
@@ -203,7 +203,7 @@ async function makePaddleApiRequest(url: string, options: RequestInit = {}) {
 
     if (!data.success) {
         log.error(`Unsuccessful Paddle response: `, JSON.stringify(data));
-        const errorCode = data.error?.code;
+        const errorCode = data.error?.code?.toString();
         const errorMessage = data.error?.message;
         throw new PaddleApiError(errorCode, errorMessage);
     }
@@ -466,7 +466,7 @@ export async function createCheckout(options: {
 
         return response.url as string;
     } catch (e) {
-        if (e instanceof PaddleApiError && e.code === 175) {
+        if (e instanceof PaddleApiError && e.code === '175') {
             // 175 => Invalid country code (https://developer.paddle.com/api-reference/324ed7bfd28c8-api-error-codes#list-of-error-codes-and-messages)
 
             reportError(`Paddle checkout creation failure due to ${options.countryCode} country code`);
