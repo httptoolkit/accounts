@@ -94,7 +94,8 @@ export async function recordSubscription(
         price: number,
         effectiveDate: Date
     },
-    traits: Traits
+    traits: Traits,
+    retries = DEFAULT_PROFITWELL_RETRIES
 ) {
     const interval = getSkuInterval(subscription.sku);
     if (interval === 'perpetual') return; // We don't record these, they don't matter
@@ -125,6 +126,33 @@ export async function recordSubscription(
         const body = await response.text().catch(() => '');
         log.warn(`${response.status} Profitwell sub creation response:`);
         log.warn(body);
+
+        // Profitwell has a ridiculous 8-subscription limit per user. To work around this, we fudge
+        // the email addresses to treat this as a 'new' user instead. Silly but whatever.
+        if (
+            response.status === 400 &&
+            body.includes("Subscription limit of 8 reached for this user. Cannot create more.")
+        ) {
+            return recordSubscription(
+                email + `.OVERLIMIT-${new Date().getFullYear()}`,
+                subscription,
+                traits,
+                retries
+            );
+        }
+
+        // Retry on 502s, as they're likely transient and we don't want to lose data
+        if (response.status === 502 && retries > 0) {
+            // Exponentially increasing retries (maximum ~24 hours total)
+            const sleepTime = 1000 * (3 ** (DEFAULT_PROFITWELL_RETRIES - retries));
+
+            log.info(`Sleeping for ${sleepTime} between ${email} sub creation event retries`);
+            await delay(sleepTime, { unref: true });
+            log.debug(`Retrying recording sub creation for ${email}...`);
+
+            return recordSubscription(email, subscription, traits, retries - 1);
+        }
+
         throw new AccountingError(response.status, `Unexpected ${response.status} from Profitwell`, body);
     }
 
@@ -133,7 +161,8 @@ export async function recordSubscription(
 
 export async function recordCancellation(
     subscriptionId: string,
-    effectiveDate: number
+    effectiveDate: number,
+    retries = DEFAULT_PROFITWELL_RETRIES
 ) {
     // Record the subscription cancellation in Profitwell:
     const response = await fetch(`${PROFITWELL_API_BASE_URL}/v2/subscriptions/${
@@ -151,6 +180,19 @@ export async function recordCancellation(
         const body = await response.text().catch(() => '');
         log.warn(`${response.status} Profitwell sub cancellation response:`);
         log.warn(body);
+
+        // Retry on 502s, as they're likely transient and we don't want to lose data
+        if (response.status === 502 && retries > 0) {
+            // Exponentially increasing retries (maximum ~24 hours total)
+            const sleepTime = 1000 * (3 ** (DEFAULT_PROFITWELL_RETRIES - retries));
+
+            log.info(`Sleeping for ${sleepTime} between ${subscriptionId} sub cancellation event retries`);
+            await delay(sleepTime, { unref: true });
+            log.debug(`Retrying recording sub cancellation for ${subscriptionId}...`);
+
+            return recordCancellation(subscriptionId, effectiveDate, retries - 1);
+        }
+
         throw new AccountingError(response.status, `Unexpected ${response.status} from Profitwell`, body);
     }
 }
