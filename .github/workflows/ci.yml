@@ -107,7 +107,7 @@ jobs:
           build-args: VERSION=${{ github.sha }}
 
       - name: Redeploy container
-        uses: thibaultchazal/scaleway-serverless-container-deploy-action@0d290edda0c3359e51442bd8bf730eafef4e290f
+        uses: httptoolkit/scaleway-serverless-container-deploy-action@v1
         with:
           container_id: ${{ vars.SCW_API_CONTAINER_ID }}
           region: ${{ vars.SCW_API_CONTAINER_REGION }}
@@ -115,7 +115,7 @@ jobs:
           registry_image_url: "registry.hub.docker.com/httptoolkit/accounts-api:prod"
 
       - name: Redeploy failover container
-        uses: thibaultchazal/scaleway-serverless-container-deploy-action@0d290edda0c3359e51442bd8bf730eafef4e290f
+        uses: httptoolkit/scaleway-serverless-container-deploy-action@v1
         with:
           container_id: ${{ vars.SCW_FAILOVER_API_CONTAINER_ID }}
           region: ${{ vars.SCW_FAILOVER_API_CONTAINER_REGION }}
@@ -158,9 +158,6 @@ jobs:
     steps:
       - name: Flush CDN cache
         run: |
-          # Wait a little - the redeploy command doesn't wait for the container to start up
-          sleep 30
-
           # Clear CDN cache to re-request content:
           curl -f --request POST \
             --url https://api.bunny.net/pullzone/$BUNNY_PULL_ZONE_ID/purgeCache \
