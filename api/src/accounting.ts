@@ -134,7 +134,7 @@ export async function recordSubscription(
             body.includes("Subscription limit of 8 reached for this user. Cannot create more.")
         ) {
             return recordSubscription(
-                email + `.overlimit-${new Date().getFullYear()}`,
+                email + `.extra-${new Date().getFullYear().toString().slice(2)}`,  // .extra-24 (36 char limit on emails!)
                 subscription,
                 traits,
                 retries
