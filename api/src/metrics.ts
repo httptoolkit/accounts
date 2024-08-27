@@ -60,7 +60,6 @@ export async function flushMetrics() {
         posthog.flush()
             .then(() => {
                 done = true;
-                console.log(`Metrics flushed after ${Date.now() - start}ms`);
             })
             .catch(reportError),
         delay(500).then(() => {
