@@ -8,8 +8,8 @@ import "@fontsource/dm-mono";
 
 const fontSizes = {
     textInputFontSize: '13px',
-    textSize: '15px',
-    subHeadingSize: '18px',
+    textSize: '14.5px',
+    subHeadingSize: '17px',
     headingSize: '20px',
     largeHeadingSize: '24px',
     loudHeadingSize: '38px',
@@ -22,20 +22,20 @@ export const theme = {
     monoFontFamily: '"DM Mono", monospace',
 
     mainBackground: '#fafafa',
-    mainLowlightBackground: '#eaeaea',
-    mainColor: '#222',
+    mainLowlightBackground: '#f2f2f2',
+    mainColor: '#1e2028',
 
     lowlightTextOpacity: 0.65,
     pillContrast: 0.8,
 
     primaryInputBackground: '#1076b9',
-    primaryInputColor: '#fafafa',
+    primaryInputColor: '#ffffff',
 
-    secondaryInputBorder: '#7ab2e2',
-    secondaryInputColor: '#1665af',
+    secondaryInputBorder: '#6284fa',
+    secondaryInputColor: '#2d4cbd',
 
-    textInputBackground: '#fafafa',
-    textInputColor: '#222222',
+    textInputBackground: '#ffffff',
+    textInputColor: '#1e2028',
 
     highlightBackground: '#ffffff',
     highlightColor: '#222',
@@ -48,9 +48,9 @@ export const theme = {
     successColor: '#097123',
     successBackground: '#4caf7d40',
 
-    containerBackground: '#d8e2e6',
-    containerWatermark: '#a0afaf',
-    containerBorder: '#888',
+    containerBackground: '#e4e8ed',
+    containerWatermark: '#818490',
+    containerBorder: '#9a9da8',
 
     // These are the same as the standard defaults
     linkColor: '#0000EE',
