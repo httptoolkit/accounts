@@ -137,7 +137,7 @@ jobs:
           path: dashboard-dist
 
       - name: Publish to Bunny.net FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           local-dir: ./dashboard-dist/
           server-dir: /${{ vars.FTP_USERNAME }}/
