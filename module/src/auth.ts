@@ -15,7 +15,7 @@ import { Auth0LockPasswordless } from '@httptoolkit/auth0-lock';
 const auth0Dictionary = require('@httptoolkit/auth0-lock/lib/i18n/en').default;
 import * as dedent from 'dedent';
 
-import { SKU, SubscriptionData, UserAppData, UserBillingData } from "./types";
+import { Interval, SKU, SubscriptionData, TierCode, UserAppData, UserBillingData } from "./types";
 import { ACCOUNTS_API_BASE } from './util';
 import { getSKUForPaddleId } from './plans';
 
@@ -279,9 +279,19 @@ export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'deleted';
 
 interface Subscription {
     status: SubscriptionStatus;
-    plan: SKU;
     quantity: number;
     expiry: Date;
+
+    sku: SKU;
+    tierCode: TierCode;
+    interval: Interval;
+    /**
+     * Preserved for backward compat - but generally we use `sku` now.
+     *
+     * @deprecated
+     */
+    plan: SKU;
+
     updateBillingDetailsUrl?: string;
     cancelSubscriptionUrl?: string;
     lastReceiptUrl?: string;
@@ -470,10 +480,19 @@ async function parseBillingData(billingData: UserBillingData | null): Promise<Bi
 }
 
 function parseSubscriptionData(rawData: SubscriptionData) {
+    const sku = rawData.subscription_sku
+        ?? getSKUForPaddleId(rawData.subscription_plan_id);
+
+    const [tierCode, interval] = sku
+        ? sku.split('-') as [TierCode, Interval]
+        : [];
+
     const subscription = {
         status: rawData.subscription_status,
-        plan: rawData.subscription_sku
-            ?? getSKUForPaddleId(rawData.subscription_plan_id),
+        plan: sku,
+        sku: sku,
+        tierCode,
+        interval,
         quantity: rawData.subscription_quantity,
         expiry: rawData.subscription_expiry ? new Date(rawData.subscription_expiry) : undefined,
         updateBillingDetailsUrl: rawData.update_url,

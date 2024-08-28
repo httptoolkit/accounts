@@ -13,6 +13,8 @@ export type SubscriptionStatus =
     | 'past_due'
     | 'deleted';
 
+export type TierCode = 'pro' | 'team';
+
 export type Interval =
     | 'monthly'
     | 'annual'
@@ -114,22 +116,4 @@ export interface TransactionData {
 
     currency: string; // Shown together as total paid
     amount: string;
-}
-
-// User model in JS
-export interface User {
-    email?: string;
-    subscription?: Subscription;
-    featureFlags: string[];
-}
-
-// Subscription data model in JS
-export interface Subscription {
-    id: number;
-    status: SubscriptionStatus;
-    plan: SKU;
-    expiry: Date;
-    updateBillingDetailsUrl?: string;
-    cancelSubscriptionUrl?: string;
-    lastReceiptUrl?: string;
 }
