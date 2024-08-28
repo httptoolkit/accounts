@@ -2,7 +2,6 @@ const path = require('path');
 const Webpack = require('webpack');
 
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const GoogleFontsPlugin = require('@beyonk/google-fonts-webpack-plugin');
 
 const SRC_DIR = path.resolve(__dirname, 'src');
 const OUTPUT_DIR = path.resolve(__dirname, '..', 'dist');
@@ -59,15 +58,6 @@ module.exports = {
     plugins: [
         new HtmlWebpackPlugin({
             template: INDEX_HTML
-        }),
-        new GoogleFontsPlugin({
-            fonts: [
-                { family: "Fira Mono" },
-                { family: "Lato" }
-            ],
-            formats: ['woff2'], // Supported by Chrome, FF, Edge, Safari 12+
-            filename: 'fonts.css',
-            apiUrl: 'https://gwfh.mranftl.com/api/fonts'
         }),
         new Webpack.ProvidePlugin({
             process: 'process/browser'

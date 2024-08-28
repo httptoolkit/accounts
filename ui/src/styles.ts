@@ -3,6 +3,9 @@ import type { ThemeProps } from 'styled-components';
 
 import reset from 'styled-reset';
 
+import "@fontsource/dm-sans";
+import "@fontsource/dm-mono";
+
 const fontSizes = {
     textInputFontSize: '13px',
     textSize: '15px',
@@ -15,8 +18,8 @@ const fontSizes = {
 export const warningColor = '#f1971f';
 
 export const theme = {
-    fontFamily: 'Lato, Arial, sans-serif',
-    monoFontFamily: "'Fira Mono', monospace",
+    fontFamily: '"DM Sans", Arial, sans-serif',
+    monoFontFamily: '"DM Mono", monospace',
 
     mainBackground: '#fafafa',
     mainLowlightBackground: '#eaeaea',
