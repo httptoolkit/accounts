@@ -8,6 +8,7 @@ export interface SubscriptionPlan {
     paddleId: number;
     name: string;
     prices?: {
+        rawTotal: number;
         currency: string;
         monthly: string;
         total: string;
@@ -56,6 +57,7 @@ async function loadPlanPrices() {
             : totalPrice;
 
         plan.prices = {
+            rawTotal: totalPrice,
             currency: currency,
             total: formatPrice(currency, totalPrice),
             monthly: formatPrice(currency, monthlyPrice)
