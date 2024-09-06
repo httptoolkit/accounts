@@ -6,6 +6,8 @@
   "license": "AGPL-3.0-or-later",
   "dependencies": {
     "@types/prompts": "^2.4.9",
+    "csv-parser": "^3.0.0",
+    "csv-writer": "^1.6.0",
     "moment": "^2.29.4",
     "prompts": "^2.4.2",
     "ts-node": "^10.9.1"
