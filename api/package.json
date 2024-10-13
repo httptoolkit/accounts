@@ -39,9 +39,9 @@
   "dependencies": {
     "@httptoolkit/accounts": "^1.1.1",
     "@httptoolkit/util": "^0.1.5",
-    "@sentry/node": "^4.6.1",
+    "@sentry/node": "^8.34.0",
     "auth0": "^4.3.1",
-    "express": "^4.18.2",
+    "express": "^4.21.1",
     "ipaddr.js": "^2.1.0",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
