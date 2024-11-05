@@ -134,7 +134,8 @@ export async function recordSubscription(
             body.includes("Subscription limit of 8 reached for this user. Cannot create more.")
         ) {
             return recordSubscription(
-                email + `.extra-${new Date().getFullYear().toString().slice(2)}`,  // .extra-24 (36 char limit on emails!)
+                email.replace(/\.([^.@])+$/, `.${new Date().getFullYear().toString().slice(2)}`),
+                // replace (for example) .com with .24 (36 char limit on emails!)
                 subscription,
                 traits,
                 retries
