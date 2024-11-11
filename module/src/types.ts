@@ -36,6 +36,7 @@ export interface SubscriptionPricing {
 
 // User app data, as returned by the API
 export type UserAppData = {
+    user_id: string;
     email: string;
     feature_flags?: string[];
     banned?: boolean;
@@ -49,6 +50,7 @@ export type UserAppData = {
 
 // User billing data, as returned by the API
 export type UserBillingData = {
+    user_id: string;
     email: string;
     banned?: boolean;
     transactions: TransactionData[] | null;

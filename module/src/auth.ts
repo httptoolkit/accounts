@@ -299,6 +299,7 @@ interface Subscription {
 };
 
 interface BaseAccountData {
+    userId?: string;
     email?: string;
     subscription?: Subscription;
     banned: boolean;
@@ -444,6 +445,7 @@ function parseUserData(appData: UserAppData | null): User {
     if (!appData) return anonUser();
 
     return {
+        userId: appData.user_id,
         email: appData.email,
         subscription: parseSubscriptionData(appData),
         teamSubscription: appData.team_subscription
