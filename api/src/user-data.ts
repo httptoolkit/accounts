@@ -35,6 +35,7 @@ import {
 import { lookupPayProOrders } from './paypro';
 
 type RawMetadata = Partial<AppMetadata> & {
+    user_id: string;
     email: string;
 };
 
@@ -44,7 +45,7 @@ type RawMetadata = Partial<AppMetadata> & {
 export async function getUserAppData(accessToken: string): Promise<UserAppData> {
     const userId = await getUserId(accessToken);
     const rawUserData = await loadRawUserData(userId);
-    return await buildUserAppData(userId, rawUserData) as UserAppData;
+    return await buildUserAppData(rawUserData) as UserAppData;
 }
 
 // User billing data is the actual subscription of the user. For Pro that's
@@ -53,7 +54,7 @@ export async function getUserAppData(accessToken: string): Promise<UserAppData> 
 export async function getUserBillingData(accessToken: string) {
     const userId = await getUserId(accessToken);
     const rawUserData = await loadRawUserData(userId);
-    return buildUserBillingData(userId, rawUserData);
+    return buildUserBillingData(rawUserData);
 }
 
 // User base data: the actual data linked to this user, with no extra processing.
@@ -97,6 +98,7 @@ async function loadRawUserData(userId: string): Promise<RawMetadata> {
 
     return migrateOldUserData({
         ...metadata,
+        user_id: userId,
         email: userData.email!
     });
 }
@@ -182,7 +184,8 @@ const DELEGATED_TEAM_SUBSCRIPTION_PROPERTIES = [
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-async function buildUserAppData(userId: string, rawMetadata: RawMetadata) {
+async function buildUserAppData(rawMetadata: RawMetadata) {
+    const userId = rawMetadata.user_id;
     const userMetadata: Partial<UserAppData> = _.cloneDeep(_.omit(rawMetadata, INTERNAL_FIELDS));
 
     const sku = getSku(rawMetadata);
@@ -276,9 +279,10 @@ function countLockedLicenses(userMetadata: TeamOwnerMetadata) {
 }
 
 async function buildUserBillingData(
-    userId: string,
     rawMetadata: RawMetadata & Partial<PayingUserMetadata>
 ): Promise<UserBillingData> {
+    const userId = rawMetadata.user_id;
+
     // Load transactions, team members and team owner in parallel:
     const [transactions, teamMembers, owner, lockedLicenseExpiries] = await Promise.all([
         getTransactions(rawMetadata),
@@ -311,6 +315,7 @@ async function buildUserBillingData(
             ...INTERNAL_FIELDS
         ])),
         can_manage_subscription,
+        user_id: rawMetadata.user_id!,
         email: rawMetadata.email!,
         transactions,
         team_members: teamMembers,

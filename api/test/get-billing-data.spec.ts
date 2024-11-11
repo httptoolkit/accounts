@@ -100,6 +100,7 @@ describe('/get-billing-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: userId,
                 email: userEmail,
                 transactions: [],
                 can_manage_subscription: false
@@ -150,6 +151,7 @@ describe('/get-billing-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: userId,
                 email: userEmail,
                 subscription_expiry: subExpiry,
                 subscription_sku: 'pro-monthly',
@@ -214,6 +216,7 @@ describe('/get-billing-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: userId,
                 email: userEmail,
                 subscription_expiry: subExpiry,
                 subscription_sku: 'pro-monthly',
@@ -283,6 +286,7 @@ describe('/get-billing-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: userId,
                 email: userEmail,
                 subscription_expiry: subExpiry,
                 subscription_sku: 'pro-monthly',
@@ -387,6 +391,7 @@ describe('/get-billing-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: teamUserId,
                 email: teamUserEmail,
                 team_owner: {
                     id: billingUserId,
@@ -476,6 +481,7 @@ describe('/get-billing-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: billingUserId,
                 email: billingUserEmail,
 
                 subscription_expiry: subExpiry,
@@ -570,6 +576,7 @@ describe('/get-billing-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: billingUserId,
                 email: billingUserEmail,
 
                 subscription_expiry: subExpiry,
@@ -636,6 +643,7 @@ describe('/get-billing-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: teamUserId,
                 email: teamUserEmail,
                 transactions: [],
                 can_manage_subscription: false,
@@ -684,6 +692,7 @@ describe('/get-billing-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: teamUserId,
                 email: teamUserEmail,
                 transactions: [],
                 can_manage_subscription: false,
@@ -730,6 +739,7 @@ describe('/get-billing-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: teamUserId,
                 email: teamUserEmail,
                 transactions: [],
                 can_manage_subscription: false,

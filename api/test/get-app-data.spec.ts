@@ -85,7 +85,10 @@ describe('/get-app-data', () => {
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
-            expect(data).to.deep.equal({ email: userEmail });
+            expect(data).to.deep.equal({
+                user_id: userId,
+                email: userEmail
+            });
         });
 
         it("retries to work around intermittent Auth0 error responses", async () => {
@@ -104,7 +107,10 @@ describe('/get-app-data', () => {
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
-            expect(data).to.deep.equal({ email: userEmail });
+            expect(data).to.deep.equal({
+                user_id: userId,
+                email: userEmail
+            });
         });
 
         it("retries to work around intermittent Auth0 connection errors", async function () {
@@ -128,7 +134,10 @@ describe('/get-app-data', () => {
             expect(response.status).to.equal(200);
 
             const data = getJwtData(await response.text());
-            expect(data).to.deep.equal({ email: userEmail });
+            expect(data).to.deep.equal({
+                user_id: userId,
+                email: userEmail
+            });
 
             // There should have been a delay in here during the retry:
             expect(duration).to.be.greaterThan(1000);
@@ -178,6 +187,7 @@ describe('/get-app-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: userId,
                 email: userEmail,
                 subscription_expiry: subExpiry,
                 subscription_sku: 'pro-monthly',
@@ -246,6 +256,7 @@ describe('/get-app-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: userId,
                 email: userEmail,
                 feature_flags: ['test_flag'],
                 subscription_expiry: subExpiry,
@@ -282,6 +293,7 @@ describe('/get-app-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: userId,
                 email: userEmail,
                 feature_flags: ['test_flag']
             });
@@ -319,6 +331,7 @@ describe('/get-app-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: teamUserId,
                 email: teamUserEmail,
                 subscription_owner_id: billingUserId,
                 subscription_expiry: subExpiry,
@@ -356,6 +369,7 @@ describe('/get-app-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: billingUserId,
                 email: billingUserEmail,
                 feature_flags: ['a flag'],
                 subscription_id: -1,
@@ -400,6 +414,7 @@ describe('/get-app-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: billingUserId,
                 email: billingUserEmail,
                 subscription_owner_id: billingUserId,
                 feature_flags: ['a flag'],
@@ -456,6 +471,7 @@ describe('/get-app-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: teamUserId,
                 email: teamUserEmail
             });
         });
@@ -491,6 +507,7 @@ describe('/get-app-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: teamUserId,
                 email: teamUserEmail
             });
         });
@@ -524,6 +541,7 @@ describe('/get-app-data', () => {
 
             const data = getJwtData(await response.text());
             expect(data).to.deep.equal({
+                user_id: teamUserId,
                 email: teamUserEmail
             });
         });
