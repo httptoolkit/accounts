@@ -7,6 +7,7 @@ import { getCorsResponseHeaders } from './cors';
 import { configureAppProxyTrust } from './trusted-xff-ip-setup';
 
 import './connectivity-check';
+import { reportError } from './errors';
 
 const app = express();
 
@@ -62,7 +63,8 @@ apiRouter.options('*', (req, res) => {
         '/get-billing-data',
         '/update-team',
         '/update-team-size',
-        '/cancel-subscription'
+        '/cancel-subscription',
+        '/log-abuse-report'
     ].includes(req.path)) {
         // Account APIs are limited to our own hosts:
         const headers = getCorsResponseHeaders(event);
@@ -94,6 +96,16 @@ apiRouter.get('/redirect-paypro-to-thank-you', lambdaWrapper('redirect-paypro-to
 apiRouter.post('/update-team', lambdaWrapper('update-team'));
 apiRouter.post('/update-team-size', lambdaWrapper('update-team-size'));
 apiRouter.post('/cancel-subscription', lambdaWrapper('cancel-subscription'));
+apiRouter.post('/log-abuse-report', (req, res) => {
+    reportError(`Abuse report`, {
+        extraMetadata: {
+            from: req.ip?.replace(/\./g, '-'),
+            body: req.body
+        }
+    });
+
+    return res.status(204).send();
+});
 
 export function startApiServer() {
     const server = app.listen(process.env.PORT ?? 3000, () => {
