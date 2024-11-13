@@ -7,7 +7,9 @@ import { StatusError } from './errors';
 const {
     AUTH0_DOMAIN,
     AUTH0_MGMT_CLIENT_ID,
-    AUTH0_MGMT_CLIENT_SECRET
+    AUTH0_MGMT_CLIENT_SECRET,
+    AUTH0_APP_CLIENT_ID,
+    AUTH0_APP_CLIENT_SECRET
 } = process.env;
 
 export const AUTH0_DATA_SIGNING_PRIVATE_KEY = `
@@ -39,7 +41,6 @@ const mgmtClient = new auth0.ManagementClient({
     clientSecret: AUTH0_MGMT_CLIENT_SECRET!
 });
 
-
 // All the below returns full live data for the user (RL @ 500 req/minute total, 40/s bursts)
 export const getUserById = withRetries('getUserById', async (userId: string) =>
     (await mgmtClient.users.get({ id: userId })).data as User
@@ -65,6 +66,19 @@ export const updateUserMetadata = withRetries('updateUserMetadata', async <A ext
 
 export const createUser = withRetries('createUser', async (parameters: auth0.UserCreate) =>
     (await mgmtClient.users.create(parameters)).data as User
+);
+
+const authClient = new auth0.AuthenticationClient({
+    domain: AUTH0_DOMAIN!,
+    clientId: AUTH0_APP_CLIENT_ID!,
+    clientSecret: AUTH0_APP_CLIENT_SECRET!
+});
+
+export const sendPasswordlessEmail = withRetries('sendPWLEmail', async (email: string) =>
+    await authClient.passwordless.sendEmail({
+        email,
+        send: 'code'
+    })
 );
 
 export type User = auth0.GetUsers200ResponseOneOfInner & {

@@ -93,6 +93,8 @@ apiRouter.post('/paypro-webhook', lambdaWrapper('paypro-webhook'));
 apiRouter.get('/redirect-to-checkout', lambdaWrapper('redirect-to-checkout'));
 apiRouter.get('/redirect-paypro-to-thank-you', lambdaWrapper('redirect-paypro-to-thank-you'));
 
+apiRouter.post('/auth/send-code', lambdaWrapper('auth/send-code'));
+
 apiRouter.post('/update-team', lambdaWrapper('update-team'));
 apiRouter.post('/update-team-size', lambdaWrapper('update-team-size'));
 apiRouter.post('/cancel-subscription', lambdaWrapper('cancel-subscription'));
