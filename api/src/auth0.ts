@@ -81,6 +81,14 @@ export const sendPasswordlessEmail = withRetries('sendPWLEmail', async (email: s
     })
 );
 
+export const loginWithPasswordlessCode = withRetries('loginPWL', async (email: string, code: string) =>
+    (await authClient.passwordless.loginWithEmail({
+        email: email,
+        code: code,
+        scope: 'openid email offline_access app_metadata'
+    })).data
+);
+
 export type User = auth0.GetUsers200ResponseOneOfInner & {
     app_metadata: AppMetadata
 };

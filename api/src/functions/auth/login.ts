@@ -13,20 +13,27 @@ export const handler = catchErrors(async (event) => {
         return { statusCode: 405, headers, body: '' };
     }
 
-    let email;
+    let email, code;
     try {
-        ({ email } = JSON.parse(event.body!));
+        ({ email, code } = JSON.parse(event.body!));
     } catch (e) {
         throw new StatusError(400, 'Invalid request body');
     }
 
     if (!email) throw new StatusError(400, 'Email is required');
+    if (!code) throw new StatusError(400, 'Code is required');
 
-    await auth0.sendPasswordlessEmail(email);
+    const result = await auth0.loginWithPasswordlessCode(email, code);
 
     return {
         statusCode: 200,
-        headers,
-        body: ''
+        headers: { ...headers,
+            'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+            accessToken: result.access_token,
+            refreshToken: result.refresh_token,
+            expiresAt: Date.now() + result.expires_in * 1000
+        })
     };
 });
