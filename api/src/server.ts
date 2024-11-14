@@ -61,6 +61,9 @@ apiRouter.options('*', (req, res) => {
     } else if ([
         '/get-app-data',
         '/get-billing-data',
+        '/auth/send-code',
+        '/auth/login',
+        '/auth/refresh-token',
         '/update-team',
         '/update-team-size',
         '/cancel-subscription',
