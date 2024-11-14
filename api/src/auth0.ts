@@ -89,6 +89,13 @@ export const loginWithPasswordlessCode = withRetries('loginPWL', async (email: s
     })).data
 );
 
+export const refreshToken = withRetries('refreshToken', async (refreshToken: string) =>
+    (await authClient.oauth.refreshTokenGrant({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken
+    })).data
+)
+
 export type User = auth0.GetUsers200ResponseOneOfInner & {
     app_metadata: AppMetadata
 };

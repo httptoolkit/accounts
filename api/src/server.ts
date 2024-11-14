@@ -95,6 +95,7 @@ apiRouter.get('/redirect-paypro-to-thank-you', lambdaWrapper('redirect-paypro-to
 
 apiRouter.post('/auth/send-code', lambdaWrapper('auth/send-code'));
 apiRouter.post('/auth/login', lambdaWrapper('auth/login'));
+apiRouter.post('/auth/refresh-token', lambdaWrapper('auth/refresh-token'));
 
 apiRouter.post('/update-team', lambdaWrapper('update-team'));
 apiRouter.post('/update-team-size', lambdaWrapper('update-team-size'));
