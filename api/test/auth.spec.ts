@@ -7,7 +7,7 @@ import { AUTH0_PORT, auth0Server, startServer } from "./test-util";
 const TOKEN_RESPONSE = {
     "access_token": "at",
     "refresh_token": "rt",
-    "scope": "openid email offline_access",
+    "scope": "email offline_access",
     "expires_in": 86400,
     "token_type": "Bearer"
 };
@@ -104,7 +104,7 @@ describe("API auth endpoints", () => {
             expect(await tokenEndpoint.getSeenRequests()).to.have.length(0);
         });
 
-        it("sends a request to Auth0 to start passwordless auth", async () => {
+        it("sends a request to Auth0 to complete passwordless auth", async () => {
             const email = 'test-user@example.test';
             const code = '1234';
 
@@ -113,7 +113,7 @@ describe("API auth endpoints", () => {
                     username: email,
                     realm: 'email',
                     otp: code,
-                    scope: 'openid email offline_access app_metadata',
+                    scope: 'email offline_access app_metadata',
                     grant_type: 'http://auth0.com/oauth/grant-type/passwordless/otp'
                 })
                 .thenJson(200, TOKEN_RESPONSE);
