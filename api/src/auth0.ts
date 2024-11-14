@@ -86,14 +86,34 @@ export const loginWithPasswordlessCode = withRetries('loginPWL', async (email: s
         email: email,
         code: code,
         scope: 'openid email offline_access app_metadata'
-    })).data
+    })).data,
+    {
+        shouldThrow: (e) => {
+            console.log(`PWL login failed with status ${e.statusCode}: ${e.message}`);
+
+            // Don't retry request errors (e.g. auth failure) - return them directly
+            if (e?.statusCode >= 400 && e?.statusCode < 500) {
+                return new StatusError(401, "Login failed")
+            } else return undefined;
+        }
+    }
 );
 
 export const refreshToken = withRetries('refreshToken', async (refreshToken: string) =>
     (await authClient.oauth.refreshTokenGrant({
         grant_type: 'refresh_token',
         refresh_token: refreshToken
-    })).data
+    })).data,
+    {
+        shouldThrow: (e) => {
+            console.log(`Refresh token failed with status ${e.statusCode}: ${e.message}`);
+
+            // Don't retry request errors (e.g. auth failure) - return them directly
+            if (e?.statusCode >= 400 && e?.statusCode < 500) {
+                return new StatusError(401, "Token refresh failed")
+            } else return undefined;
+        }
+    }
 )
 
 export type User = auth0.GetUsers200ResponseOneOfInner & {
