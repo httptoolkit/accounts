@@ -34,7 +34,7 @@ describe("API auth endpoints", () => {
             expect(await pwStartEndpoint.getSeenRequests()).to.have.length(0);
         });
 
-        it("returns a 400 if you don't provide an email", async () => {
+        it("returns a 400 if you don't provide an email or source", async () => {
             const pwStartEndpoint = await auth0Server.forPost('/passwordless/start').thenReply(200);
 
             const response = await fetch(`${apiAddress}/api/auth/send-code`, {
@@ -61,7 +61,7 @@ describe("API auth endpoints", () => {
             const response = await fetch(`${apiAddress}/api/auth/send-code`, {
                 method: 'POST',
                 headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ email })
+                body: JSON.stringify({ email, source: 'test' })
             });
 
             expect(response.status).to.equal(200);

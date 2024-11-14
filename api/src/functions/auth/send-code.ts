@@ -13,16 +13,20 @@ export const handler = catchErrors(async (event) => {
         return { statusCode: 405, headers, body: '' };
     }
 
-    let email;
+    let email, source;
     try {
-        ({ email } = JSON.parse(event.body!));
+        ({ email, source } = JSON.parse(event.body!));
     } catch (e) {
         throw new StatusError(400, 'Invalid request body');
     }
 
     if (!email) throw new StatusError(400, 'Email is required');
+    if (!source) throw new StatusError(400, 'Source is required');
 
     await auth0.sendPasswordlessEmail(email);
+
+    // N.b. we don't actually use the source yet, but we require it here so we
+    // log that later & reset tokens more precisely later, if necessary.
 
     return {
         statusCode: 200,
