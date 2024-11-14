@@ -2,6 +2,7 @@ import * as http from 'http';
 import express = require('express');
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import * as log from 'loglevel';
+import rateLimit from 'express-rate-limit';
 
 import { getCorsResponseHeaders } from './cors';
 import { configureAppProxyTrust } from './trusted-xff-ip-setup';
@@ -86,6 +87,14 @@ apiRouter.use((req, _res, next) => {
     next();
 });
 
+const RATE_LIMIT_PARAMS = {
+    max: 10,
+    windowMs: 60 * 60 * 1000, // 1h window
+    message: { error: 'Too many login attempts, please try again after 1 hour' },
+    standardHeaders: true,
+    legacyHeaders: false
+};
+
 apiRouter.get('/get-prices', lambdaWrapper('get-prices'));
 apiRouter.get('/get-app-data', lambdaWrapper('get-app-data'));
 apiRouter.get('/get-billing-data', lambdaWrapper('get-billing-data'));
@@ -96,9 +105,12 @@ apiRouter.post('/paypro-webhook', lambdaWrapper('paypro-webhook'));
 apiRouter.get('/redirect-to-checkout', lambdaWrapper('redirect-to-checkout'));
 apiRouter.get('/redirect-paypro-to-thank-you', lambdaWrapper('redirect-paypro-to-thank-you'));
 
-apiRouter.post('/auth/send-code', lambdaWrapper('auth/send-code'));
-apiRouter.post('/auth/login', lambdaWrapper('auth/login'));
-apiRouter.post('/auth/refresh-token', lambdaWrapper('auth/refresh-token'));
+apiRouter.post('/auth/send-code', rateLimit(RATE_LIMIT_PARAMS), lambdaWrapper('auth/send-code'));
+apiRouter.post('/auth/login',
+    rateLimit({ ...RATE_LIMIT_PARAMS, skipSuccessfulRequests: true }), // Just limiting failed codes
+    lambdaWrapper('auth/login')
+);
+apiRouter.post('/auth/refresh-token', rateLimit(RATE_LIMIT_PARAMS), lambdaWrapper('auth/refresh-token'));
 
 apiRouter.post('/update-team', lambdaWrapper('update-team'));
 apiRouter.post('/update-team-size', lambdaWrapper('update-team-size'));
