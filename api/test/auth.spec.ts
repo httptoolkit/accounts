@@ -7,7 +7,7 @@ import { AUTH0_PORT, auth0Server, startServer } from "./test-util";
 const TOKEN_RESPONSE = {
     "access_token": "at",
     "refresh_token": "rt",
-    "scope": "openid email offline_access",
+    "scope": "email offline_access",
     "expires_in": 86400,
     "token_type": "Bearer"
 };
