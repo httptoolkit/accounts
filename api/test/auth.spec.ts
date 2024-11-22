@@ -113,7 +113,7 @@ describe("API auth endpoints", () => {
                     username: email,
                     realm: 'email',
                     otp: code,
-                    scope: 'email offline_access app_metadata',
+                    scope: 'email openid offline_access app_metadata',
                     grant_type: 'http://auth0.com/oauth/grant-type/passwordless/otp'
                 })
                 .thenJson(200, TOKEN_RESPONSE);

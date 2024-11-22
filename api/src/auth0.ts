@@ -85,7 +85,7 @@ export const loginWithPasswordlessCode = withRetries('loginPWL', async (email: s
     (await authClient.passwordless.loginWithEmail({
         email: email,
         code: code,
-        scope: 'email offline_access app_metadata'
+        scope: 'email openid offline_access app_metadata'
     })).data,
     {
         shouldThrow: (e) => {
