@@ -1,7 +1,6 @@
 import * as _ from 'lodash';
 import { Mutex } from 'async-mutex';
-import { EventEmitter } from 'events';
-import { CustomError } from '@httptoolkit/util';
+import { asErrorLike, CustomError } from '@httptoolkit/util';
 
 import {
     jwtVerify,
@@ -10,22 +9,14 @@ import {
     JWTPayload
 } from 'jose';
 
-import * as Auth0 from 'auth0-js';
-import { Auth0LockPasswordless } from '@httptoolkit/auth0-lock';
-const auth0Dictionary = require('@httptoolkit/auth0-lock/lib/i18n/en').default;
-import * as dedent from 'dedent';
-
 import { Interval, SKU, SubscriptionData, TierCode, UserAppData, UserBillingData } from "./types";
 import { ACCOUNTS_API_BASE } from './util';
 import { getSKUForPaddleId } from './plans';
 
-const AUTH0_CLIENT_ID = 'KAJyF1Pq9nfBrv5l3LHjT9CrSQIleujj';
-const AUTH0_DOMAIN = 'login.httptoolkit.tech';
-
-// We read data from auth0 (via a netlify function), which includes
-// the users subscription data, signed into a JWT that we can
-// validate using this public key.
-const AUTH0_DATA_PUBLIC_KEY = `
+// We read account data from the API, which includes the users
+// subscription data, signed into a JWT that we can validate
+// using this public key.
+const USER_DATA_PUBLIC_KEY = `
 -----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzRLZvRoiWBQS8Fdqqh/h
 xVDI+ogFZ2LdIiMOQmkq2coYNvBXGX016Uw9KNlweUlCXUaQZkDuQBmwxcs80PEn
@@ -36,222 +27,31 @@ mCVpul3MYubdv034/ipGZSKJTwgubiHocrSBdeImNe3xdxOw/Mo04r0kcZBg2l/b
 7QIDAQAB
 -----END PUBLIC KEY-----
 `.trim();
-const auth0PublicKey = globalThis?.crypto?.subtle
-    ? importSPKI(AUTH0_DATA_PUBLIC_KEY, 'RS256')
+const userDataPublicKey = globalThis?.crypto?.subtle
+    ? importSPKI(USER_DATA_PUBLIC_KEY, 'RS256')
     : Promise.reject(new Error('WebCrypto not available in your browser. Auth is only possible in secure contexts (HTTPS).'));
 
-export class TokenRejectedError extends CustomError {
-    constructor() {
-        super('Auth token rejected');
-    }
-}
 
-export class RefreshRejectedError extends CustomError {
-    constructor(response: { description: string }) {
-        super(`Token refresh failed with: ${response.description}`);
-    }
-}
-
-// Both always set as long as initializeAuthUi has been called.
-let auth0Client: Auth0.Authentication | undefined;
-let auth0Lock: typeof Auth0LockPasswordless | undefined;
-export const loginEvents = new EventEmitter();
-
-export const initializeAuthUi = (options: {
-    /**
-     * Do we want a persistent refresh token, or just a normal session? Defaults to false.
-     */
-    refreshToken?: boolean,
-
-    /**
-     * Should one-click login be available? Should be enabled for cases where you might log
-     * in and out, or be logged out automatically (no refresh token) and disabled for most
-     * long-term persistent usage.
-     *
-     * Defaults to true.
-     */
-    rememberLastLogin?: boolean,
-
-    /**
-     * Allow closing the login UI. This may need to be disabled in some environments (e.g. the dashboard)
-     * where the login prompt is modal, not optional.
-     *
-     * Defaults to true.
-     */
-    closeable?: boolean
-} = {}) => {
-    auth0Client = new Auth0.Authentication({
-        clientID: AUTH0_CLIENT_ID,
-        domain: AUTH0_DOMAIN
-    });
-
-    auth0Lock = new Auth0LockPasswordless(AUTH0_CLIENT_ID, AUTH0_DOMAIN, {
-        configurationBaseUrl: 'https://cdn.eu.auth0.com',
-
-        // Passwordless - email a code, confirm the code
-        allowedConnections: ['email'],
-        passwordlessMethod: 'code',
-
-        auth: {
-            // Entirely within the app please
-            redirect: false,
-
-            // Not used for redirects, but checked against auth0 config. Defaults to current URL, but
-            // unfortunately that is a very large space, and each valid URL needs preconfiguring.
-            redirectUrl: window.location.origin + '/',
-
-            // Required for passwordless (not normally, but it's reset when we use redirectUrl)
-            responseType: options.refreshToken ? 'token' : 'token id_token',
-
-            ...(options.refreshToken
-                ? {
-                    // Include offline_access so that we get a refresh token
-                    params: { scope: 'openid email offline_access app_metadata' }
-                } : {}
-            )
-        },
-
-        // UI config
-        autofocus: true,
-        allowAutocomplete: true,
-        rememberLastLogin: options.rememberLastLogin ?? true,
-        closable: options.closeable ?? true,
-        theme: {
-            primaryColor: '#e1421f',
-            logo: 'https://httptoolkit.com/icon-600.png'
-        },
-        languageDictionary: Object.assign(auth0Dictionary, {
-            title: 'Log in / Sign up',
-            signUpTerms: dedent`
-                No spam, this will only be used as your account login. By signing up, you accept
-                the ToS & privacy policy.
-            `
-        })
-    });
-
-    // Forward auth0 events to the emitter
-    [
-        'authenticated',
-        'unrecoverable_error',
-        'authorization_error',
-        'hide'
-    ].forEach((event) => auth0Lock!.on(event, (data) => loginEvents.emit(event, data)));
-
-    loginEvents.on('user_data_loaded', () => auth0Lock!.hide());
-
-    // Synchronously load & parse the latest token value we have, if any
-    try {
-        // ! because actually parse(null) -> null, so it's ok
-        tokens = JSON.parse(localStorage.getItem('tokens')!);
-    } catch (e) {
-        console.log('Invalid token', localStorage.getItem('tokens'), e);
-        loginEvents.emit('app_error', 'Failed to parse saved auth token');
-    }
-};
-
-export const showLoginDialog = () => {
-    if (!auth0Lock) throw new Error("showLoginDialog called before auth UI initialization");
-
-    auth0Lock.show();
-
-    // Login is always followed by either:
-    // hide - user cancels login
-    // user_data_loaded - everything successful
-    // authorization_error - something (login/data loading/token request) goes wrong.
-    return new Promise<boolean>((resolve, reject) => {
-        loginEvents.once('user_data_loaded', () => resolve(true));
-        loginEvents.once('hide', () => resolve(false));
-
-        loginEvents.once('unrecoverable_error', reject);
-        loginEvents.on('authorization_error', (err) => {
-            if (err.code === 'invalid_user_password') return; // Invalid login token, no worries
-            else {
-                console.log("Unexpected auth error", err);
-                reject(err);
-            }
-        });
-    });
-};
-
-export const hideLoginDialog = () => auth0Lock?.hide();
-
-export const logOut = () => {
-    loginEvents.emit('logout');
-};
-
+const tokenMutex = new Mutex();
 let tokens:
     | { refreshToken?: string; accessToken: string; accessTokenExpiry: number; /* time in ms */ }
     | null // Initialized but not logged in
     | undefined; // Not initialized
 
-const tokenMutex = new Mutex();
+// Synchronously load & parse the latest token value we have, if any
+try {
+    // ! because actually parse(null) -> null, so it's ok
+    tokens = JSON.parse(localStorage.getItem('tokens')!);
+} catch (e) {
+    tokens = null;
+    console.log('Invalid token', localStorage.getItem('tokens'), e);
+}
 
 function setTokens(newTokens: typeof tokens) {
     return tokenMutex.runExclusive(() => {
         tokens = newTokens;
         localStorage.setItem('tokens', JSON.stringify(newTokens));
     });
-}
-
-function updateTokensAfterAuth({ accessToken, refreshToken, expiresIn }: AuthResult) {
-    setTokens({
-        refreshToken,
-        accessToken,
-        accessTokenExpiry: Date.now() + (expiresIn * 1000)
-    });
-}
-
-loginEvents.on('authenticated', updateTokensAfterAuth);
-loginEvents.on('logout', () => setTokens(null));
-
-// Must be run inside a tokenMutex
-async function refreshToken() {
-    if (!tokens) throw new Error("Can't refresh tokens if we're not logged in");
-
-    if (tokens.refreshToken) {
-        // If we have a permanent refresh token, we send it to Auth0 to get a
-        // new fresh access token:
-        return new Promise<string>((resolve, reject) => {
-            auth0Client!.oauthToken({
-                refreshToken: tokens!.refreshToken,
-                grantType: 'refresh_token'
-            }, (error: any, result: { accessToken: string, expiresIn: number }) => {
-                if (error) {
-                    if (
-                        [500, 403].includes(error.statusCode) &&
-                        error.description && (
-                            error.description.includes('Grant not found') ||
-                            error.description.includes('invalid refresh token')
-                        )
-                    ) {
-                        // Auth0 is explicitly rejecting our refresh token.
-                        reject(new RefreshRejectedError(error));
-                    } else {
-                        // Some other unknown error, might be transient/network issues
-                        reject(error);
-                    }
-                }
-                else {
-                    tokens!.accessToken = result.accessToken;
-                    tokens!.accessTokenExpiry = Date.now() + (result.expiresIn * 1000);
-                    localStorage.setItem('tokens', JSON.stringify(tokens));
-                    resolve(result.accessToken);
-                }
-            })
-        });
-    } else {
-        // If not, we can still try to refresh the session, although with some
-        // time limitations, so this might not always work.
-        return new Promise<string>((resolve, reject) => {
-            auth0Lock!.checkSession({}, (error, authResult) => {
-                if (error) reject(error);
-                else {
-                    resolve(authResult!.accessToken);
-                    updateTokensAfterAuth(authResult!);
-                }
-            })
-        });
-    }
 }
 
 function getToken() {
@@ -261,8 +61,9 @@ function getToken() {
         const timeUntilExpiry = tokens.accessTokenExpiry.valueOf() - Date.now();
 
         // If the token is expired or close (10 mins), refresh it
-        let refreshPromise = timeUntilExpiry < 1000 * 60 * 10 ?
-            refreshToken() : null;
+        let refreshPromise = timeUntilExpiry < 1000 * 60 * 10
+            ? refreshToken()
+            : null;
 
         if (timeUntilExpiry > 1000 * 5) {
             // If the token is good for now, use it, even if we've
@@ -274,6 +75,108 @@ function getToken() {
         }
     });
 };
+
+export class AuthRejectedError extends CustomError {
+    constructor() {
+        super('Authentication failed');
+    }
+}
+
+export async function sendAuthCode(email: string, source: string) {
+    try {
+        const response = await fetch(`${ACCOUNTS_API_BASE}/auth/send-code`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, source }),
+        });
+
+        if (!response.ok) {
+            const body = await response.text().catch((e) =>
+                `[Response body unavailable: ${asErrorLike(e).message || e}]`
+            );
+            throw new Error(`Unexpected ${response.status} response: ${body}`);
+        }
+    } catch (e) {
+        throw new Error(`Failed to send auth code: ${asErrorLike(e).message || e}`);
+    }
+}
+
+export async function loginWithCode(email: string, code: string) {
+    try {
+        const response = await fetch(`${ACCOUNTS_API_BASE}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, code })
+        });
+
+        if (!response.ok) {
+            if (response.status === 403) {
+                throw new AuthRejectedError();
+            } else {
+                const body = await response.text().catch((e) =>
+                    `[Response body unavailable: ${asErrorLike(e).message || e}]`
+                );
+                throw new Error(`Unexpected ${response.status} response: ${body}`);
+            }
+        }
+
+        const result = await response.json() as {
+            accessToken: string,
+            refreshToken: string,
+            expiresAt: number
+        };
+
+        await setTokens({
+            accessToken: result.accessToken,
+            refreshToken: result.refreshToken,
+            accessTokenExpiry: result.expiresAt
+        });
+    } catch (e) {
+        if (e instanceof AuthRejectedError) throw e;
+        else throw new Error(`Failed to refresh token: ${asErrorLike(e).message || e}`);
+    }
+}
+
+export function logOut() {
+    setTokens(null);
+}
+
+// Must be run inside a tokenMutex. Not exported since you don't need to use it directly.
+// It's used automatically when retrieving the latest user data.
+async function refreshToken() {
+    if (!tokens) throw new Error("Can't refresh tokens if we're not logged in");
+
+    try {
+        const response = await fetch(`${ACCOUNTS_API_BASE}/auth/refresh-token`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+                refreshToken: tokens.refreshToken
+            })
+        });
+
+        if (!response.ok) {
+            if (response.status === 403) {
+                throw new AuthRejectedError();
+            } else {
+                throw new Error(`Unexpected ${response.status} response when refreshing token`);
+            }
+        }
+
+        const result = await response.json() as {
+            accessToken: string,
+            expiresAt: number
+        };
+
+        tokens!.accessToken = result.accessToken;
+        tokens!.accessTokenExpiry = result.expiresAt;
+        localStorage.setItem('tokens', JSON.stringify(tokens));
+        return result.accessToken;
+    } catch (e) {
+        if (e instanceof AuthRejectedError) throw e;
+        else throw new Error(`Failed to refresh token: ${asErrorLike(e).message || e}`);
+    }
+}
 
 export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'deleted';
 
@@ -355,7 +258,7 @@ export interface BillingAccount extends BaseAccountData {
 
 const anonBillingAccount = (): BillingAccount => ({ transactions: [], banned: false });
 
-/*
+/**
  * Synchronously gets the last received user data, _without_
  * refreshing it in any way. After 7 days without a refresh
  * though, the result will change when the JWT expires.
@@ -384,7 +287,7 @@ export function getLastUserData(): User {
     }
 }
 
-/*
+/**
  * Get the latest valid user data we can. If possible, it loads the
  * latest data from the server. If that fails to load, or if it loads
  * but fails to parse, we return the latest user data.
@@ -396,21 +299,18 @@ export async function getLatestUserData(): Promise<User> {
     try {
         const userRawJwt = await requestUserData('app');
         const jwtData = await getVerifiedJwtPayload(userRawJwt, 'app');
-        const userData = await parseUserData(jwtData);
+        const userData = parseUserData(jwtData);
         localStorage.setItem('last_jwt', userRawJwt);
         return userData;
     } catch (e) {
-        loginEvents.emit('authorization_error', e);
-        loginEvents.emit('app_error', e);
-
         try {
             // Unlike getLastUserData, this does synchronously fully validate the data
             const lastUserData = localStorage.getItem('last_jwt');
             const jwtData = await getVerifiedJwtPayload(lastUserData, 'app');
-            const userData = await parseUserData(jwtData);
+            const userData = parseUserData(jwtData);
             return userData;
         } catch (e) {
-            console.log('Failed to validate last user JWT when updating', e);
+            console.warn('Failed to validate last user JWT when updating', e);
             return anonUser();
         }
     }
@@ -432,7 +332,7 @@ async function getVerifiedJwtPayload(jwt: string | null, type: 'billing'): Promi
 async function getVerifiedJwtPayload(jwt: string | null, type: 'app' | 'billing') {
     if (!jwt) return null;
 
-    const decodedJwt = await jwtVerify(jwt, await auth0PublicKey, {
+    const decodedJwt = await jwtVerify(jwt, await userDataPublicKey, {
         algorithms: ['RS256'],
         audience: `https://httptoolkit.tech/${type}_data`,
         issuer: 'https://httptoolkit.tech/'
@@ -506,7 +406,8 @@ function parseSubscriptionData(rawData: SubscriptionData) {
     if (_.some(subscription) && !subscription.plan) {
         // No plan means no recognized plan, i.e. an unknown id. This should never happen,
         // but error reports suggest it's happened at least once.
-        loginEvents.emit('app_error', 'Invalid subscription data', rawData);
+        console.warn('Invalid raw subscription data', rawData)
+        throw new CustomError('Invalid subscription data');
     }
 
     const optionalFields = [
@@ -547,7 +448,7 @@ async function requestUserData(
 
         if (appDataResponse.status === 401) {
             // We allow a single refresh+retry. If it's passed, we fail.
-            if (options.isRetry) throw new TokenRejectedError();
+            if (options.isRetry) throw new AuthRejectedError();
 
             // If this is a first failure, let's assume it's a blip with our access token,
             // so a refresh is worth a shot (worst case, it'll at least confirm we're unauthed).

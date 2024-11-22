@@ -16,12 +16,10 @@ export {
 } from './checkout';
 
 export {
-    RefreshRejectedError,
-    loginEvents,
-    initializeAuthUi,
-    showLoginDialog,
-    hideLoginDialog,
+    loginWithCode,
+    sendAuthCode,
     logOut,
+    AuthRejectedError,
 
     User,
     getLatestUserData,
