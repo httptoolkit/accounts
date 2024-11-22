@@ -38,13 +38,15 @@ let tokens:
     | null // Initialized but not logged in
     | undefined; // Not initialized
 
-// Synchronously load & parse the latest token value we have, if any
-try {
-    // ! because actually parse(null) -> null, so it's ok
-    tokens = JSON.parse(localStorage.getItem('tokens')!);
-} catch (e) {
-    tokens = null;
-    console.log('Invalid token', localStorage.getItem('tokens'), e);
+if (typeof localStorage !== 'undefined') { // Skip this in SSR or other non-persistent envs
+    // Synchronously load & parse the latest token value we have, if any
+    try {
+        // ! because actually parse(null) -> null, so it's ok
+        tokens = JSON.parse(localStorage.getItem('tokens')!);
+    } catch (e) {
+        tokens = null;
+        console.log('Invalid token', localStorage.getItem('tokens'), e);
+    }
 }
 
 function setTokens(newTokens: typeof tokens) {
