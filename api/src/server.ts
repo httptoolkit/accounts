@@ -127,7 +127,7 @@ apiRouter.post('/log-abuse-report', (req, res) => {
 });
 
 export function startApiServer() {
-    const server = app.listen(process.env.PORT ?? 3000, () => {
+    const server = app.listen(process.env.PORT ?? 4000, () => {
         log.info(`Server (version ${process.env.VERSION}) listening on port ${(server.address() as any).port}`);
     });
 
