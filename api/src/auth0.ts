@@ -91,10 +91,16 @@ export const loginWithPasswordlessCode = withRetries('loginPWL', async (email: s
         shouldThrow: (e) => {
             console.log(`PWL login failed with status ${e.statusCode}: ${e.message}`);
 
-            // Don't retry request errors (e.g. auth failure) - return them directly
-            if (e?.statusCode >= 400 && e?.statusCode < 500) {
-                return new StatusError(401, "Login failed")
-            } else return undefined;
+            if (e?.statusCode === 403) {
+                // Don't retry hard authentication failures - return them explicitly
+                return new StatusError(403, "Login failed")
+            } else if (e?.statusCode >= 400 && e?.statusCode < 500) {
+                // Don't retry other request errors
+                return new StatusError(500, "Error during login")
+            } else {
+                // We do retry all kinds of connection or server errors (500+)
+                return undefined;
+            }
         }
     }
 );
@@ -108,10 +114,16 @@ export const refreshToken = withRetries('refreshToken', async (refreshToken: str
         shouldThrow: (e) => {
             console.log(`Refresh token failed with status ${e.statusCode}: ${e.message}`);
 
-            // Don't retry request errors (e.g. auth failure) - return them directly
-            if (e?.statusCode >= 400 && e?.statusCode < 500) {
-                return new StatusError(401, "Token refresh failed")
-            } else return undefined;
+            if (e?.statusCode === 403) {
+                // Don't retry hard authentication failures - return them explicitly
+                return new StatusError(403, "Token refresh failed")
+            } else if (e?.statusCode >= 400 && e?.statusCode < 500) {
+                // Don't retry other request errors
+                return new StatusError(500, "Error during token refresh")
+            } else {
+                // We do retry all kinds of connection or server errors (500+)
+                return undefined;
+            }
         }
     }
 )
