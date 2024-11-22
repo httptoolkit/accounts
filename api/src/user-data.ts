@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 import NodeCache from 'node-cache';
 import * as log from 'loglevel';
 
-import { formatErrorMessage, reportError, StatusError } from './errors';
+import { reportError } from './errors';
 
 import type {
     TransactionData,
@@ -23,7 +23,6 @@ import {
     TeamOwnerMetadata,
     TeamMemberMetadata,
     PayingUserMetadata,
-    User,
     getUserInfoFromToken,
     getUserById,
     searchUsers
@@ -81,8 +80,8 @@ export async function getUserId(accessToken: string): Promise<string> {
         if (!user) {
             throw new Error("User could not be found in getUserId");
         } else if (typeof user.sub !== 'string') {
-            log.warn(JSON.stringify(user));
-            throw new Error(`Unexpected getProfile result: ${user}`);
+            const userDataString = JSON.stringify(user);
+            throw new Error(`Unexpected getProfile result: ${userDataString}`);
         }
 
         userId = tokenIdCache[accessToken] = user.sub;
