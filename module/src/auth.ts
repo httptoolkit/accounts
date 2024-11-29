@@ -135,7 +135,7 @@ export async function loginWithCode(email: string, code: string) {
         });
     } catch (e) {
         if (e instanceof AuthRejectedError) throw e;
-        else throw new Error(`Failed to refresh token: ${asErrorLike(e).message || e}`);
+        else throw new Error(`Failed to login with code: ${asErrorLike(e).message || e}`);
     }
 }
 
