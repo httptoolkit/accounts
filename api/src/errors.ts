@@ -6,6 +6,7 @@ import { FetchError, ResponseError } from 'auth0';
 import { CustomError } from '@httptoolkit/util';
 
 import log from 'loglevel';
+import { getCorsResponseHeaders } from './cors';
 
 log.setLevel(process.env.LOGLEVEL as any ?? 'info');
 
@@ -178,7 +179,10 @@ export function catchErrors(handler: ApiHandler): ApiHandler {
             if (specificFailureStatus) {
                 return {
                     statusCode: specificFailureStatus,
-                    headers: { 'Cache-Control': 'no-store' },
+                    headers: {
+                        'Cache-Control': 'no-store',
+                        ...getCorsResponseHeaders(event)
+                    },
                     body: e.message
                 }
             } else {
