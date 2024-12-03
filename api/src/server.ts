@@ -90,7 +90,14 @@ apiRouter.use((req, _res, next) => {
 const RATE_LIMIT_PARAMS = {
     max: 10,
     windowMs: 60 * 60 * 1000, // 1h window
-    message: { error: 'Too many login attempts, please try again after 1 hour' },
+    handler: (req: express.Request, res: express.Response) => {
+        res.status(429)
+            .set(getCorsResponseHeaders(
+                convertReqToLambdaEvent(req),
+                { allowAnyOrigin: true }
+            ))
+            .send('Too many login attempts, please try again after 1 hour');
+    },
     standardHeaders: true,
     legacyHeaders: false
 };
