@@ -299,7 +299,7 @@ describe('Paddle webhooks', () => {
                 subscription_id: 456,
                 subscription_sku: 'pro-annual',
                 subscription_plan_id: 550382,
-                subscription_expiry: nextRenewal.subtract(30, 'days').valueOf()
+                subscription_expiry: nextRenewal.clone().subtract(30, 'days').valueOf()
             });
 
             const userUpdate = await auth0Server

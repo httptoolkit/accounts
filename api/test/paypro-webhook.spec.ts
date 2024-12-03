@@ -231,7 +231,7 @@ describe('PayPro webhooks', () => {
             givenUser(userId, userEmail, {
                 subscription_status: 'active',
                 subscription_sku: 'pro-annual',
-                subscription_expiry: nextRenewal.subtract(30, 'days').valueOf()
+                subscription_expiry: nextRenewal.clone().subtract(30, 'days').valueOf()
             });
 
             const userUpdate = await auth0Server
@@ -272,7 +272,7 @@ describe('PayPro webhooks', () => {
             givenUser(userId, userEmail, {
                 subscription_status: 'active',
                 subscription_sku: 'pro-annual',
-                subscription_expiry: nextRenewal.subtract(30, 'days').valueOf()
+                subscription_expiry: nextRenewal.clone().subtract(30, 'days').valueOf()
             });
 
             const userUpdate = await auth0Server
@@ -313,7 +313,7 @@ describe('PayPro webhooks', () => {
             givenUser(userId, userEmail, {
                 subscription_status: 'active',
                 subscription_sku: 'pro-annual',
-                subscription_expiry: nextRenewal.subtract(30, 'days').valueOf()
+                subscription_expiry: nextRenewal.clone().subtract(30, 'days').valueOf()
             });
 
             const userUpdate = await auth0Server
@@ -354,7 +354,7 @@ describe('PayPro webhooks', () => {
             givenUser(userId, userEmail, {
                 subscription_status: 'active',
                 subscription_sku: 'pro-annual',
-                subscription_expiry: nextRenewal.subtract(30, 'days').valueOf()
+                subscription_expiry: nextRenewal.clone().subtract(30, 'days').valueOf()
             });
 
             const userUpdate = await auth0Server
