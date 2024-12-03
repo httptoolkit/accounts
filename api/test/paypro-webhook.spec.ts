@@ -106,7 +106,7 @@ describe('PayPro webhooks', () => {
             CUSTOMER_ID: '123',
             SUBSCRIPTION_ID: '456',
             SUBSCRIPTION_RENEWAL_TYPE: 'Auto',
-            SUBSCRIPTION_NEXT_CHARGE_DATE: formatRenewalDate(moment('2025-01-01')),
+            SUBSCRIPTION_NEXT_CHARGE_DATE: formatRenewalDate(moment('2030-01-01')),
             INVOICE_LINK: "https://store.payproglobal.com/Invoice?Id=MY_UUID",
             PRODUCT_QUANTITY: '1',
             TEST_MODE: '0',
@@ -141,7 +141,7 @@ describe('PayPro webhooks', () => {
                 .forPatch('/api/v2/users/' + userId)
                 .thenJson(200, {});
 
-            const nextRenewal = moment('2025-01-01');
+            const nextRenewal = moment('2030-01-01');
 
             await triggerWebhook(apiServer, {
                 IPN_TYPE_NAME: 'OrderCharged',
@@ -191,7 +191,7 @@ describe('PayPro webhooks', () => {
                 .forPatch('/api/v2/users/' + userId)
                 .thenJson(200, {});
 
-            const nextRenewal = moment('2025-01-01');
+            const nextRenewal = moment('2030-01-01');
 
             await triggerWebhook(apiServer, {
                 IPN_TYPE_NAME: 'OrderCharged',
@@ -226,7 +226,7 @@ describe('PayPro webhooks', () => {
         it('should successfully renew subscriptions', async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
-            const nextRenewal = moment('2025-01-01');
+            const nextRenewal = moment('2030-01-01');
 
             givenUser(userId, userEmail, {
                 subscription_status: 'active',
@@ -267,7 +267,7 @@ describe('PayPro webhooks', () => {
         it('should cancel terminated subscriptions', async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
-            const nextRenewal = moment('2025-01-01');
+            const nextRenewal = moment('2030-01-01');
 
             givenUser(userId, userEmail, {
                 subscription_status: 'active',
@@ -308,7 +308,7 @@ describe('PayPro webhooks', () => {
         it('should cancel suspended subscriptions', async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
-            const nextRenewal = moment('2025-01-01');
+            const nextRenewal = moment('2030-01-01');
 
             givenUser(userId, userEmail, {
                 subscription_status: 'active',
@@ -349,7 +349,7 @@ describe('PayPro webhooks', () => {
         it('should handle users whose renewal payments fail', async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
-            const nextRenewal = moment('2025-01-01');
+            const nextRenewal = moment('2030-01-01');
 
             givenUser(userId, userEmail, {
                 subscription_status: 'active',
@@ -411,7 +411,7 @@ describe('PayPro webhooks', () => {
                 .thenReply(200);
 
             const subscriptionCreation = moment.utc('2020-01-01');
-            const nextRenewal = moment.utc('2025-01-01');
+            const nextRenewal = moment.utc('2030-01-01');
 
             await triggerWebhook(apiServer, {
                 IPN_TYPE_NAME: 'OrderCharged',

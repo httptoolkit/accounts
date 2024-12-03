@@ -83,7 +83,7 @@ describe('Paddle webhooks', () => {
                 .forPatch('/api/v2/users/' + userId)
                 .thenJson(200, {});
 
-            const nextRenewal = moment('2025-01-01');
+            const nextRenewal = moment('2030-01-01');
 
             await triggerWebhook(apiServer, {
                 alert_name: 'subscription_created',
@@ -128,7 +128,7 @@ describe('Paddle webhooks', () => {
                 .forPatch('/api/v2/users/' + userId)
                 .thenJson(200, {});
 
-            const nextRenewal = moment('2025-01-01');
+            const nextRenewal = moment('2030-01-01');
 
             await triggerWebhook(apiServer, {
                 alert_name: 'subscription_created',
@@ -196,7 +196,7 @@ describe('Paddle webhooks', () => {
                 .forPatch('/api/v2/users/' + memberId)
                 .thenJson(200, {});
 
-            const nextRenewal = moment('2025-01-01');
+            const nextRenewal = moment('2030-01-01');
 
             await triggerWebhook(apiServer, {
                 alert_name: 'subscription_created',
@@ -265,7 +265,7 @@ describe('Paddle webhooks', () => {
                 .forPatch('/api/v2/users/' + memberId)
                 .thenJson(200, {});
 
-            const nextRenewal = moment('2025-01-01');
+            const nextRenewal = moment('2030-01-01');
 
             await triggerWebhook(apiServer, {
                 alert_name: 'subscription_created',
@@ -290,7 +290,7 @@ describe('Paddle webhooks', () => {
         it('should successfully renew subscriptions', async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
-            const nextRenewal = moment('2025-01-01');
+            const nextRenewal = moment('2030-01-01');
 
             givenUser(userId, userEmail, {
                 subscription_status: 'active',
@@ -336,7 +336,7 @@ describe('Paddle webhooks', () => {
         it('successfully cancel subscriptions on request', async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
-            const cancellationDate = moment('2025-01-01');
+            const cancellationDate = moment('2030-01-01');
 
             givenUser(userId, userEmail, {
                 subscription_status: 'active',
@@ -502,7 +502,7 @@ describe('Paddle webhooks', () => {
                 .forPatch('/api/v2/users/' + userId)
                 .thenJson(200, {});
 
-            const nextRenewal = moment('2025-01-01');
+            const nextRenewal = moment('2030-01-01');
 
             await triggerWebhook(apiServer, {
                 alert_name: 'subscription_created',
@@ -549,7 +549,7 @@ describe('Paddle webhooks', () => {
                 .forPatch('/api/v2/users/' + userId)
                 .thenJson(200, {});
 
-            const nextRenewal = moment('2025-01-01');
+            const nextRenewal = moment('2030-01-01');
 
             await triggerWebhook(apiServer, {
                 alert_name: 'subscription_created',
@@ -600,7 +600,7 @@ describe('Paddle webhooks', () => {
                 .forPatch('/api/v2/users/' + userId)
                 .thenJson(200, {});
 
-            const nextRenewal = moment('2025-01-01');
+            const nextRenewal = moment('2030-01-01');
 
             await triggerWebhook(apiServer, {
                 alert_name: 'subscription_payment_succeeded',
@@ -646,7 +646,7 @@ describe('Paddle webhooks', () => {
                 .forPatch('/api/v2/users/' + userId)
                 .thenJson(200, {});
 
-            const nextRenewal = moment('2025-01-01');
+            const nextRenewal = moment('2030-01-01');
 
             await triggerWebhook(apiServer, {
                 alert_name: 'subscription_payment_succeeded',
