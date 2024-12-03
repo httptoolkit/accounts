@@ -15,17 +15,15 @@ import { flushMetrics, generateSessionId, trackEvent } from '../metrics';
 
 const PAYPRO_COUNTRIES = [
     'BRA',
-    'IDN',
-    'IND',
     'CHN',
     'VNM',
     'MYS',
     'KOR',
     'PHL',
     'THA',
-    'NLD',
     'ARE',
-    'COD'
+    'COD',
+    'EGY'
 ];
 
 export const handler = catchErrors(async (event) => {
