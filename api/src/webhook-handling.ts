@@ -1,4 +1,6 @@
 import _ from 'lodash';
+import moment from 'moment';
+
 import * as log from 'loglevel';
 
 import {
@@ -65,6 +67,16 @@ export async function updateProUserData(email: string, subscription: Partial<Pay
         const updatedTeamMembers = ownerData.team_member_ids.filter(id => id !== user.user_id);
         await updateUserMetadata(appData.subscription_owner_id!, { team_member_ids: updatedTeamMembers });
         (subscription as Partial<TeamMemberMetadata>).subscription_owner_id = null as any; // Setting to null deletes the property
+    }
+
+    // If the user still has a subscription with time left on it, this is probably a mistake
+    // (some users do accidentally complete the checkout twice) which needs manual intervention.
+    if (
+        appData &&
+        'subscription_expiry' in appData &&
+        moment(appData.subscription_expiry).subtract(48, 'hour').valueOf() > Date.now()
+    ) {
+        reportError(`Signup for existing Pro user ${email} with active subscription`);
     }
 
     if (!_.isEmpty(subscription)) {
