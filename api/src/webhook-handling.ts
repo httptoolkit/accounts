@@ -69,12 +69,16 @@ export async function updateProUserData(email: string, subscription: Partial<Pay
         (subscription as Partial<TeamMemberMetadata>).subscription_owner_id = null as any; // Setting to null deletes the property
     }
 
-    // If the user still has a subscription with time left on it, this is probably a mistake
+    // If the user has another subscription with time left on it, this is probably a mistake
     // (some users do accidentally complete the checkout twice) which needs manual intervention.
     if (
+        // Existing subscription that hasn't expired yet (48+ hours left)
         appData &&
         'subscription_expiry' in appData &&
-        moment(appData.subscription_expiry).subtract(48, 'hour').valueOf() > Date.now()
+        moment(appData.subscription_expiry).subtract(48, 'hour').valueOf() > Date.now() &&
+        // Not just another event for the same sub (payment vs creation etc)
+        (appData as PayingUserMetadata).subscription_id !== subscription.subscription_id
+
     ) {
         reportError(`Signup for existing Pro user ${email} with active subscription`);
     }
