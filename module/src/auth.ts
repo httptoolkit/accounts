@@ -63,17 +63,21 @@ function getToken() {
         const timeUntilExpiry = tokens.accessTokenExpiry.valueOf() - Date.now();
 
         // If the token is expired or close (10 mins), refresh it
-        let refreshPromise = timeUntilExpiry < 1000 * 60 * 10
-            ? refreshToken()
+        let refreshPromise = timeUntilExpiry < 1000 * 60 * 10 && tokens.refreshToken
+            ? refreshToken(tokens.refreshToken)
             : null;
 
         if (timeUntilExpiry > 1000 * 5) {
             // If the token is good for now, use it, even if we've
             // also triggered a refresh in the background
             return tokens.accessToken;
-        } else {
+        } else if (refreshPromise) {
             // If the token isn't usable, wait for the refresh
             return refreshPromise!;
+        } else {
+            // Access token invalid, no refresh token - log out, and return undefined
+            // as if we were never logged in at all.
+            logOut();
         }
     });
 };
@@ -145,15 +149,13 @@ export function logOut() {
 
 // Must be run inside a tokenMutex. Not exported since you don't need to use it directly.
 // It's used automatically when retrieving the latest user data.
-async function refreshToken() {
-    if (!tokens) throw new Error("Can't refresh tokens if we're not logged in");
-
+async function refreshToken(refreshToken: string) {
     try {
         const response = await fetch(`${ACCOUNTS_API_BASE}/auth/refresh-token`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({
-                refreshToken: tokens.refreshToken
+                refreshToken
             })
         });
 
@@ -449,14 +451,14 @@ async function requestUserData(
         }`);
 
         if (appDataResponse.status === 401) {
-            // We allow a single refresh+retry. If it's passed, we fail.
-            if (options.isRetry) throw new AuthRejectedError();
+            return tokenMutex.runExclusive(() => {
+                // We allow a single refresh+retry. If it's passed, we fail.
+                if (options.isRetry || !tokens?.refreshToken) throw new AuthRejectedError();
 
-            // If this is a first failure, let's assume it's a blip with our access token,
-            // so a refresh is worth a shot (worst case, it'll at least confirm we're unauthed).
-            return tokenMutex.runExclusive(() =>
-                refreshToken()
-            ).then(() =>
+                // If this is a first failure, let's assume it's a blip with our access token,
+                // so a refresh is worth a shot (worst case, it'll at least confirm we're unauthed).
+                return refreshToken(tokens.refreshToken)
+            }).then(() =>
                 requestUserData(type, { isRetry: true })
             );
         }
