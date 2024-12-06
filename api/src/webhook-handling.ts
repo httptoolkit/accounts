@@ -46,11 +46,41 @@ export async function banUser(email: string) {
     await updateUserMetadata(user.user_id!, { banned: true });
 }
 
-export async function updateProUserData(email: string, subscription: Partial<PayingUserMetadata>) {
-    dropUndefinedValues(subscription);
+export async function updateProUserData(email: string, subscriptionUpdate: Partial<PayingUserMetadata>) {
+    dropUndefinedValues(subscriptionUpdate);
 
     const user = await getOrCreateUserData(email);
     const appData = user.app_metadata as AppMetadata;
+
+    // Does the user already have unrelated subscription data?
+    if (
+        appData &&
+        'subscription_id' in appData &&
+        subscriptionUpdate.subscription_id &&
+        appData.subscription_id !== subscriptionUpdate.subscription_id
+    ) {
+        // If the user has an existing subscription and we get an event for a new one, there's a few
+        // possibilities. One (especially with PayPro) is that they're manually renewing an expiring
+        // one, or they have briefly overlapping subscriptions and the old one has now lapsed.
+
+        // The possibilities here are quite complicated (e.g. new subs can start as 'cancelled' due to
+        // manual renewal configuration in PayPro) but "latest expiry" tends to be the right answer.
+
+        if (subscriptionUpdate.subscription_expiry! < appData.subscription_expiry) {
+            log.warn(`User ${email} received a outdated subscription event for an inactive subscription - ignoring`);
+            return; // Ignore the update entirely in this case
+        }
+
+        // If there's an update for a different sub, and the user's existing subscription is active and has
+        // plenty of time left on it, this is probably a mistake (some users do accidentally complete the
+        // checkout twice) which needs manual intervention.
+        if (
+            appData.subscription_status !== 'past_due' &&
+            moment(appData.subscription_expiry).subtract(5, 'days').valueOf() > Date.now()
+        ) {
+            reportError(`Mismatched subscription event for Pro user ${email} with existing subscription`);
+        }
+    }
 
     // Is the user already a member of a team?
     if (appData && 'subscription_owner_id' in appData) {
@@ -66,25 +96,11 @@ export async function updateProUserData(email: string, subscription: Partial<Pay
         // update the membership state on both sides:
         const updatedTeamMembers = ownerData.team_member_ids.filter(id => id !== user.user_id);
         await updateUserMetadata(appData.subscription_owner_id!, { team_member_ids: updatedTeamMembers });
-        (subscription as Partial<TeamMemberMetadata>).subscription_owner_id = null as any; // Setting to null deletes the property
+        (subscriptionUpdate as Partial<TeamMemberMetadata>).subscription_owner_id = null as any; // Setting to null deletes the property
     }
 
-    // If the user has another subscription with time left on it, this is probably a mistake
-    // (some users do accidentally complete the checkout twice) which needs manual intervention.
-    if (
-        // Existing subscription that hasn't expired yet (48+ hours left)
-        appData &&
-        'subscription_expiry' in appData &&
-        moment(appData.subscription_expiry).subtract(48, 'hour').valueOf() > Date.now() &&
-        // Not just another event for the same sub (payment vs creation etc)
-        (appData as PayingUserMetadata).subscription_id !== subscription.subscription_id
-
-    ) {
-        reportError(`Signup for existing Pro user ${email} with active subscription`);
-    }
-
-    if (!_.isEmpty(subscription)) {
-        await updateUserMetadata(user.user_id!, subscription);
+    if (!_.isEmpty(subscriptionUpdate)) {
+        await updateUserMetadata(user.user_id!, subscriptionUpdate);
     }
 }
 
