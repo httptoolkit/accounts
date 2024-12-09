@@ -78,6 +78,9 @@ export async function updateProUserData(email: string, subscriptionUpdate: Parti
             appData.subscription_status !== 'past_due' &&
             moment(appData.subscription_expiry).subtract(5, 'days').valueOf() > Date.now()
         ) {
+            console.log('Existing data', JSON.stringify(appData));
+            console.log('Mismatched updated', JSON.stringify(subscriptionUpdate));
+
             reportError(`Mismatched subscription event for Pro user ${email} with existing subscription`);
         }
     }
