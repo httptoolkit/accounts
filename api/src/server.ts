@@ -65,6 +65,7 @@ apiRouter.options('*', (req, res) => {
         '/auth/send-code',
         '/auth/login',
         '/auth/refresh-token',
+        '/contact-form',
         '/update-team',
         '/update-team-size',
         '/cancel-subscription',
@@ -118,6 +119,8 @@ apiRouter.post('/auth/login',
     lambdaWrapper('auth/login')
 );
 apiRouter.post('/auth/refresh-token', rateLimit(RATE_LIMIT_PARAMS), lambdaWrapper('auth/refresh-token'));
+
+apiRouter.post('/contact-form', lambdaWrapper('contact-form'));
 
 apiRouter.post('/update-team', lambdaWrapper('update-team'));
 apiRouter.post('/update-team-size', lambdaWrapper('update-team-size'));
