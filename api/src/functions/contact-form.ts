@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 import nodemailer from 'nodemailer';
 import * as log from 'loglevel';
 import { delay } from '@httptoolkit/util';
@@ -90,7 +91,14 @@ export const handler = catchErrors(async (event) => {
         html: `<html><style>p { margin-bottom: 10px; }</style><body>
         ${
             fields.map(([field, value]) => {
-                return `<p><strong>${field}</strong>:<br/>${value}</p>`;
+                return `<p><strong>${field}</strong>:<br/>${
+                    // Escape any HTML in inputs and preserve newlines:
+                    field === 'Message'
+                    ? _.escape(value)
+                        .replace(/\n/g, '<br>')
+                        .replace(/  /g, '&nbsp;&nbsp;')
+                    : _.escape(value)
+                }</p>`;
             }).join('')
         }</body></html>`
     });
