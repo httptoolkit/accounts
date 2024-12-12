@@ -71,7 +71,7 @@ export const handler = catchErrors(async (event) => {
         ['Message', message]
     ]
 
-    fields.forEach(([field, value]) => {
+    for (let [field, value] of fields) {
         if (!value) {
             return {
                 statusCode: 400,
@@ -79,7 +79,7 @@ export const handler = catchErrors(async (event) => {
                 body: `${field} is required`
             };
         }
-    });
+    }
 
     await mailer.sendMail({
         from: 'Contact form <contact-form@httptoolkit.com>',
