@@ -1,7 +1,8 @@
 import nodemailer from 'nodemailer';
+import * as log from 'loglevel';
+import { delay } from '@httptoolkit/util';
 
 import { catchErrors, reportError } from '../errors';
-import { delay } from '@httptoolkit/util';
 import { getCorsResponseHeaders } from '../cors';
 
 const {
@@ -93,6 +94,8 @@ export const handler = catchErrors(async (event) => {
             }).join('')
         }</body></html>`
     });
+
+    log.info('Sent contract form email from ' + email);
 
     return {
         statusCode: 302,
