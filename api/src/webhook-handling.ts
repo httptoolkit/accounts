@@ -66,7 +66,10 @@ export async function updateProUserData(email: string, subscriptionUpdate: Parti
         // The possibilities here are quite complicated (e.g. new subs can start as 'cancelled' due to
         // manual renewal configuration in PayPro) but "latest expiry" tends to be the right answer.
 
-        if (subscriptionUpdate.subscription_expiry! < appData.subscription_expiry) {
+        if (
+            !subscriptionUpdate.subscription_expiry || // Cancel event (applied to wrong sub)
+            subscriptionUpdate.subscription_expiry! < appData.subscription_expiry
+        ) {
             log.warn(`User ${email} received a outdated subscription event for an inactive subscription - ignoring`);
             return; // Ignore the update entirely in this case
         }
@@ -78,10 +81,12 @@ export async function updateProUserData(email: string, subscriptionUpdate: Parti
             appData.subscription_status !== 'past_due' &&
             moment(appData.subscription_expiry).subtract(5, 'days').valueOf() > Date.now()
         ) {
-            console.log('Existing data', JSON.stringify(appData));
-            console.log('Mismatched updated', JSON.stringify(subscriptionUpdate));
-
-            reportError(`Mismatched subscription event for Pro user ${email} with existing subscription`);
+            reportError(`Mismatched subscription event for Pro user ${email} with existing subscription`, {
+                extraMetadata: {
+                    existing: appData,
+                    updated: subscriptionUpdate
+                }
+            });
         }
     }
 
