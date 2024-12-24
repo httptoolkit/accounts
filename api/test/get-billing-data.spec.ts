@@ -677,7 +677,7 @@ describe('/get-billing-data', () => {
                     locked_licenses: [new Date(2050, 0, 0).getTime()], // Locked for ~30 years
                     subscription_quantity: 3, // <-- 3 allowed, would be OK except for the locked license
                     subscription_expiry: subExpiry,
-                    subscription_id: 2,
+                    subscription_id: '2',
                     subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_status: "active",
@@ -724,7 +724,7 @@ describe('/get-billing-data', () => {
                 app_metadata: {
                     team_member_ids: [], // <-- doesn't include this user
                     subscription_expiry: subExpiry,
-                    subscription_id: 2,
+                    subscription_id: '2',
                     subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_status: "active",

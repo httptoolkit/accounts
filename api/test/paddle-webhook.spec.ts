@@ -296,7 +296,7 @@ describe('Paddle webhooks', () => {
                 subscription_status: 'active',
                 payment_provider: 'paddle',
                 paddle_user_id: '123',
-                subscription_id: 456,
+                subscription_id: '456',
                 subscription_sku: 'pro-annual',
                 subscription_plan_id: 550382,
                 subscription_expiry: nextRenewal.clone().subtract(30, 'days').valueOf()
@@ -341,7 +341,7 @@ describe('Paddle webhooks', () => {
             givenUser(userId, userEmail, {
                 subscription_status: 'active',
                 paddle_user_id: 123,
-                subscription_id: 456,
+                subscription_id: '456',
                 subscription_sku: 'pro-annual',
                 subscription_plan_id: 550382,
                 subscription_expiry: cancellationDate.add(30, 'days').valueOf()
@@ -384,8 +384,8 @@ describe('Paddle webhooks', () => {
 
             givenUser(userId, userEmail, {
                 subscription_status: 'active',
-                paddle_user_id: 123,
-                subscription_id: 456,
+                paddle_user_id: '123',
+                subscription_id: '456',
                 subscription_sku: 'pro-annual',
                 subscription_plan_id: 550382,
                 subscription_expiry: currentDate.valueOf()

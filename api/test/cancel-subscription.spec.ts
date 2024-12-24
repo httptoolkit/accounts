@@ -63,7 +63,7 @@ describe('Subscription cancellation API', () => {
         await givenAuthToken(authToken, userId);
         await givenUser(userId, userEmail, {
             payment_provider: 'paddle',
-            subscription_id: 2,
+            subscription_id: '2',
             subscription_status: "active"
         });
 
@@ -87,7 +87,7 @@ describe('Subscription cancellation API', () => {
         await givenAuthToken(authToken, userId);
         await givenUser(userId, userEmail, {
             payment_provider: 'paypro',
-            subscription_id: 2,
+            subscription_id: '2',
             subscription_status: "active"
         });
 
@@ -132,7 +132,7 @@ describe('Subscription cancellation API', () => {
         await givenUser(billingUserId, billingUserEmail, {
             payment_provider: 'paddle',
             team_member_ids: ['123', '456', teamUserId],
-            subscription_id: 2,
+            subscription_id: '2',
             subscription_status: "active"
         });
 
@@ -162,7 +162,7 @@ describe('Subscription cancellation API', () => {
         await givenUser(billingUserId, billingUserEmail, {
             payment_provider: 'paddle',
             team_member_ids: ['123', '456', teamUserId],
-            subscription_id: 2,
+            subscription_id: '2',
             subscription_status: "active"
         });
 
@@ -184,7 +184,7 @@ describe('Subscription cancellation API', () => {
         await givenAuthToken(authToken, userId);
         await givenUser(userId, userEmail, {
             payment_provider: 'paddle',
-            subscription_id: 2,
+            subscription_id: '2',
             subscription_status: "deleted"
         });
 

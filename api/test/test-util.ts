@@ -255,7 +255,7 @@ export async function givenTeam(
         team_member_ids: teamMembers.map(m => m.id),
         locked_licenses: [],
         subscription_expiry: subExpiry,
-        subscription_id: 2,
+        subscription_id: '2',
         subscription_quantity: teamMembersAndSpaces.length,
         subscription_plan_id: 550789,
         subscription_status: "active",

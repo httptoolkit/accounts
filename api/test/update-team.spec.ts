@@ -107,7 +107,7 @@ describe('/update-team', () => {
                     email: userEmail,
                     app_metadata: {
                         subscription_expiry: subExpiry,
-                        subscription_id: 2,
+                        subscription_id: '2',
                         subscription_plan_id: 550380,
                         subscription_status: "active"
                     }
