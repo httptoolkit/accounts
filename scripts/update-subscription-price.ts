@@ -1,6 +1,6 @@
 import prompts from 'prompts';
 
-import { mgmtClient } from '../api/src/auth0';
+import { getUsersByEmail } from '../api/src/auth0';
 
 const {
     PADDLE_ID,
@@ -20,7 +20,7 @@ const currency = process.argv[4];
         throw new Error('Currency must be a 3-letter code, e.g. EUR');
     }
 
-    const users = await mgmtClient.getUsersByEmail(email);
+    const users = await getUsersByEmail(email);
 
     if (users.length !== 1) {
         throw new Error(`Can't update, found ${users.length} users for email ${email}`);
@@ -72,9 +72,9 @@ const currency = process.argv[4];
 
     if (!response.ok) {
         console.error(`Unexpected ${response.status} response`);
-        response.body.pipe(process.stderr);
-        response.body.on('end', () => process.exit(1));
+        console.log(await response.text());
+        process.exit(1);
     } else {
-        response.body.pipe(process.stdout);
+        console.log(await response.text());
     }
 })();
