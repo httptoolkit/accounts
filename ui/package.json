@@ -20,7 +20,7 @@
   "devDependencies": {
     "@types/auth0": "^2.9.10",
     "@types/node": "^14.14.22",
-    "auth0": "^2.44.1",
+    "auth0": "^4.20.0",
     "css-loader": "^7.1.2",
     "html-webpack-plugin": "^5.5.3",
     "static-server": "^2.2.1",
