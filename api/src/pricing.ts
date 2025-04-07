@@ -174,10 +174,10 @@ export const PRICING: { [key: string]: Prices } = {
 
     'country:TUR': {
         currency: 'TRY',
-        'pro-monthly': 110,
-        'pro-annual': 960,
-        'team-monthly': 160,
-        'team-annual': 1440
+        'pro-monthly': 150,
+        'pro-annual': 1224,
+        'team-monthly': 210,
+        'team-annual': 1728
     },
 
     'country:TWN': {
