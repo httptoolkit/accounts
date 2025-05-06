@@ -81,7 +81,7 @@ export const handler = catchErrors(async (event) => {
         if (quantity % 1 !== 0) throw new StatusError(400, `Quantity must be an integer (was ${quantity})`);
     }
 
-    const ipData = await getIpData(sourceIp);
+    const ipData = await getIpData(sourceIp, event.headers);
     const productPrices = getAllPrices(ipData);
 
     // We pass through data to Paddle, so that we can easily check where the pricing that was

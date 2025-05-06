@@ -41,7 +41,7 @@ const ipCache = new NodeCache({
     stdTTL: 60 * 60 // Cached for 6h
 });
 
-export async function getIpData(ip: string | undefined, retries = 2) {
+export async function getIpData(ip: string | undefined, headers: Record<string, string>, retries = 2) {
     if (!ip) {
         reportError('No client IP data available');
         return undefined;
@@ -65,7 +65,12 @@ export async function getIpData(ip: string | undefined, retries = 2) {
         )).json();
 
         if (ipData.status !== 'success') {
-            throw new Error(`Failure from IP API: ${ipData.message}`);
+            const xFHeaders = Object.entries(headers)
+                .filter(([key]) => key.toLowerCase().startsWith('x-forwarded'))
+                .map(([key, value]) => `"${key}: ${value}"`)
+                .join(' | ');
+            console.log('Could not get IP given headers', xFHeaders);
+            throw new Error(`Failure from IP API ${ipData.message} given headers ${xFHeaders}`);
         }
 
         ipCache.set(ip, ipData);
@@ -73,7 +78,7 @@ export async function getIpData(ip: string | undefined, retries = 2) {
     } catch (e: any) {
         if (retries > 0) {
             log.warn(e);
-            return getIpData(ip, retries - 1);
+            return getIpData(ip, headers, retries - 1);
         }
 
         reportError(e);

@@ -25,7 +25,7 @@ export const handler = catchErrors(async (event) => {
     const productIds = product_ids?.split(',');
 
     try {
-        const ipData = await getIpData(sourceIp);
+        const ipData = await getIpData(sourceIp, event.headers);
         const productPrices = getAllPrices(ipData);
 
         const pricingResult: Array<SubscriptionPricing> = PricedSKUs
