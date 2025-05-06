@@ -70,7 +70,7 @@ export async function getIpData(ip: string | undefined, headers: Record<string, 
                 .map(([key, value]) => `"${key}: ${value}"`)
                 .join(' | ');
             console.log('Could not get IP given headers', xFHeaders);
-            throw new Error(`Failure from IP API ${ipData.message} given headers ${xFHeaders}`);
+            throw new Error(`Failure from IP API ${ipData.message} for ${ip} (given headers ${xFHeaders})`);
         }
 
         ipCache.set(ip, ipData);
