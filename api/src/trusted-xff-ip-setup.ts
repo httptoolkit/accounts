@@ -14,6 +14,7 @@ import { formatErrorMessage, reportError } from './errors';
 
 const TRUSTED_IP_SOURCES = [
     'loopback',
+    'linklocal',
     'uniquelocal',
     '100.64.0.0/10', // Private network shared address space, used by Scaleway
 ];
