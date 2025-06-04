@@ -66,8 +66,10 @@ export async function getIpData(ip: string | undefined, headers: Record<string, 
 
         if (ipData.status !== 'success') {
             const xFHeaders = Object.entries(headers)
-                .filter(([key]) => key.toLowerCase().startsWith('x-forwarded'))
-                .map(([key, value]) => `"${key}: ${value}"`)
+                .filter(([key]) =>
+                    key.toLowerCase().startsWith('x-forwarded') ||
+                    key.toLowerCase().includes('real-ip')
+                ).map(([key, value]) => `"${key}: ${value}"`)
                 .join(' | ');
             console.log('Could not get IP given headers', xFHeaders);
             throw new Error(`Failure from IP API ${ipData.message} for ${ip} (given headers ${xFHeaders})`);
