@@ -9,7 +9,7 @@ import type {
     UserAppData,
     UserBillingData
 } from '@httptoolkit/accounts';
-import { delay } from '@httptoolkit/util';
+import { delay, UnreachableCheck } from '@httptoolkit/util';
 
 import {
     getPaddleIdForSku,
@@ -291,7 +291,10 @@ async function buildUserBillingData(
     ]);
 
     let can_manage_subscription = false;
-    if (rawMetadata.subscription_status === 'active' || rawMetadata.subscription_status === 'past_due') {
+    if (
+        (rawMetadata.subscription_status === 'active' || rawMetadata.subscription_status === 'past_due') &&
+        rawMetadata.payment_provider !== 'manual'
+    ) {
         can_manage_subscription = owner
             // If your sub has an owner, you can only manage the subscription if that's you:
             ? owner.id === userId
@@ -349,10 +352,11 @@ async function getTransactions(rawMetadata: RawMetadata) {
     } else if (billingMetadata.payment_provider === 'paypro') {
         transactionsCacheKey = `paypro-${rawMetadata.email}`;
         transactionsRequest = lookupPayProOrders(rawMetadata.email);
+    } else if (billingMetadata.payment_provider === 'manual') {
+        transactionsRequest = Promise.resolve([]); // No transactions for manual subscriptions
+        transactionsCacheKey = `manual-${rawMetadata.email}`;
     } else {
-        throw new Error(`Could not get transactions for unknown payment provider: ${
-            billingMetadata.payment_provider
-        }`);
+        throw new UnreachableCheck(billingMetadata.payment_provider);
     }
 
     // When the lookup completes, cache the result:

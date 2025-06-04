@@ -254,6 +254,7 @@ export async function givenTeam(
         feature_flags: ['a flag'],
         team_member_ids: teamMembers.map(m => m.id),
         locked_licenses: [],
+        payment_provider: 'paddle',
         subscription_expiry: subExpiry,
         subscription_id: '2',
         subscription_quantity: teamMembersAndSpaces.length,

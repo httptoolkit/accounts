@@ -1,3 +1,5 @@
+import { UnreachableCheck } from '@httptoolkit/util';
+
 import { initSentry, catchErrors, StatusError } from '../errors';
 initSentry();
 
@@ -50,8 +52,10 @@ export const handler = catchErrors(async (event) => {
         await Paddle.cancelSubscription(userData.subscription_id);
     } else if (userData.payment_provider === 'paypro') {
         await PayPro.cancelSubscription(userData.subscription_id);
+    } else if (userData.payment_provider === 'manual') {
+        throw new StatusError(400, "To cancel this manually managed subscription please contact billing@httptoolkit.com");
     } else {
-        throw new Error(`Can't cancel account from unrecognized provider: ${userData.payment_provider}`);
+        throw new UnreachableCheck(userData.payment_provider);
     }
 
     return {
