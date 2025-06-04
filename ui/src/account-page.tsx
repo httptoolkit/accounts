@@ -261,16 +261,18 @@ export const AccountPage = observer((props: {
             />
         </AccountSection> }
 
-        <AccountSection>
-            <SectionHeading>Invoices</SectionHeading>
-            { user.transactions === null
-                ? <Explanation>
-                    Historical transactions are temporarily unavailable due to a payment provider timeout.
-                    Please refresh in a few minutes to try again.
-                </Explanation>
-                : <Transactions transactions={user.transactions} />
-            }
-        </AccountSection>
+        { user.transactions?.length !== 0 &&
+            <AccountSection>
+                <SectionHeading>Invoices</SectionHeading>
+                { user.transactions === null
+                    ? <Explanation>
+                        Historical transactions are temporarily unavailable due to a payment provider timeout.
+                        Please refresh in a few minutes to try again.
+                    </Explanation>
+                    : <Transactions transactions={user.transactions} />
+                }
+            </AccountSection>
+        }
     </PageContainer>;
 });
 
