@@ -389,7 +389,7 @@ describe('PayPro webhooks', () => {
 
         it('should log subscriptions in Profitwell', async () => {
             const userId = "abc";
-            const userEmail = 'user@example.com';
+            const userEmail = 'profitwell-test-user@example.com';
             givenUser(userId, userEmail);
 
             await auth0Server
@@ -404,6 +404,7 @@ describe('PayPro webhooks', () => {
 
             const profitwellSubscriptionTraits = await profitwellApiServer
                 .forPut('/v2/customer_traits/trait/')
+                .withJsonBodyIncluding({ email: userEmail })
                 .thenReply(200);
 
             const profitwellSubscriptionDeletion = await profitwellApiServer
@@ -431,7 +432,7 @@ describe('PayPro webhooks', () => {
                 ORDER_CUSTOM_FIELDS: 'x-passthrough={"country":"ABC"}'
             });
 
-            givenUser(userId, userEmail, {
+            await givenUser(userId, userEmail, {
                 subscription_expiry: nextRenewal.valueOf()
             });
 
