@@ -18,6 +18,7 @@ import {
 import { getCorsResponseHeaders } from '../cors';
 import { getMaxTeamSize, getTeamMemberData, getUserId } from '../user-data';
 import { getSku, isTeamSubscription } from '../products';
+import { mailer } from '../email';
 
 const BearerRegex = /^Bearer (\S+)$/;
 
@@ -57,6 +58,7 @@ export const handler = catchErrors(async (event) => {
             getTeamMemberData(ownerId)
         ]);
 
+        const ownerEmail = userData.email;
         const ownerData = userData.app_metadata as TeamOwnerMetadata;
 
         const sku = getSku(ownerData);
@@ -142,6 +144,11 @@ export const handler = catchErrors(async (event) => {
             team_member_ids: updatedTeamIds,
             locked_licenses: updatedLicenseLocks
         } as TeamOwnerMetadata);
+
+        // Send invite emails to all newly added team members:
+        await Promise.all(
+            emailsToAdd.map((email) => sendTeamInviteEmail(email, ownerEmail))
+        );
 
         return { statusCode: 200, headers, body: 'success' };
     } catch (e: any) {
@@ -301,3 +308,32 @@ function checkUserCanJoinTeams(ownerId: string, user: User): true {
 // We leave a little margin on expiry checks, so that tiny delays in webhook
 // delivery don't leave users in weird limbo.
 const SUB_EXPIRY_MARGIN_MS = 1000 * 60;
+
+export async function sendTeamInviteEmail(email: string, ownerEmail: string) {
+    const subject = "You've been added to an HTTP Toolkit Team";
+    const html = `
+        <html>
+        <body style="font-family: sans-serif; background: #e4e8ed; color: #1e2028; text-align: center; padding: 40px 10px;">
+            <div style="max-width: 480px; margin: 0 auto; background: #fafafa; border-radius: 8px; box-shadow: 0 2px 8px #9a9da8; padding: 32px 24px;">
+                <p><img src="https://httptoolkit.com/logo-text-1000.png" alt="HTTP Toolkit Logo" width="250" /></p>
+                <h2 style="color: #e1421f;">Welcome to your HTTP Toolkit Team!</h2>
+                <p style="font-size: 1.1em;">You've been added to a team subscription by ${_.escape(ownerEmail)}. You now have access to all HTTP Toolkit Pro features.</p>
+                <p style="font-size: 1.1em;">To get started:</p>
+                <ol style="text-align: left; margin: 0 auto; display: inline-block; font-size: 1.1em;">
+                    <li>Open HTTP Toolkit and click <b>Get Pro</b>.</li>
+                    <li>Click <b>Log into existing account</b>.</li>
+                    <li>Enter your email address (<b>${_.escape(email)}</b>).</li>
+                </ol>
+                <p style="margin-top: 2em; color: #888; font-size: 0.95em;">If you have any trouble, get in touch at <a href="mailto:help@httptoolkit.com">help@httptoolkit.com</a> or
+                reach out to your team administrator at <b>${_.escape(ownerEmail)}</b>.</p>
+            </div>
+        </body>
+        </html>
+    `;
+    await mailer.sendMail({
+        from: 'HTTP Toolkit <notifications@httptoolkit.com>',
+        to: email,
+        subject,
+        html
+    });
+}
