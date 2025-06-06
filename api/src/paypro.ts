@@ -314,7 +314,7 @@ export async function cancelSubscription(subscriptionId: string | number) {
             response.headers,
             await response.text().catch(() => '')
         );
-        throw new Error(`Unexpected ${response.status} during PayPro cancellation`);
+        throw new Error(`Unexpected ${response.status} during PayPro cancellation for sub id ${subscriptionId}`);
     }
 
     const responseBody = await response.json();
