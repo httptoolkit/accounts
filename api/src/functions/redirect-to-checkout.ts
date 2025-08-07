@@ -43,7 +43,9 @@ export const handler = catchErrors(async (event) => {
         // Metadata to pass through:
         passthrough: passthroughParameter,
         // Optionally request a specific payment provider:
-        paymentProvider: requestedPaymentProvider
+        paymentProvider: requestedPaymentProvider,
+        // Optionally override the country (but not pricing) shown in the the checkout:
+        checkoutCountry: checkoutCountryOverride
     } = event.queryStringParameters as {
         email?: string,
         sku?: PricedSKU,
@@ -52,7 +54,8 @@ export const handler = catchErrors(async (event) => {
         returnUrl?: string,
         discountCode?: string,
         passthrough?: string,
-        paymentProvider?: 'paddle' | 'paypro'
+        paymentProvider?: 'paddle' | 'paypro',
+        checkoutCountry?: string
     };
 
     log.debug('Checkout query params:', event.queryStringParameters);
@@ -145,7 +148,7 @@ export const handler = catchErrors(async (event) => {
         sku,
         quantity,
         discountCode,
-        countryCode: ipData?.countryCode,
+        countryCode: checkoutCountryOverride || ipData?.countryCode,
         currency: productPrices.currency,
         price: productPrices[sku],
         source: source || 'unknown',
