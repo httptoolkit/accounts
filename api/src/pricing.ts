@@ -54,10 +54,10 @@ export const PRICING: { [key: string]: Prices } = {
 
     'country:CHE': {
         currency: 'CHF',
-        'pro-monthly': 14,
-        'pro-annual': 120,
-        'team-monthly': 22,
-        'team-annual': 192
+        'pro-monthly': 8,
+        'pro-annual': 72,
+        'team-monthly': 12,
+        'team-annual': 108
     },
 
     'country:CHN': {
