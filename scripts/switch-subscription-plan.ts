@@ -11,6 +11,7 @@ const email = process.argv[2];
 const newPlan = process.argv[3]
 const price = +process.argv[4];
 const currency = process.argv[5];
+const quantity = process.argv[6] ? +process.argv[6] : undefined;
 
 (async () => {
     if (isNaN(price)) {
@@ -40,16 +41,18 @@ const currency = process.argv[5];
     const subscriptionId = user.app_metadata.subscription_id;
     const existingQuantity = user.app_metadata.subscription_quantity;
 
+    const newQuantity = quantity ?? existingQuantity ?? 1;
+
     const { result } = await prompts({
         name: 'result',
         type: 'confirm',
         message: `Update subscription https://vendors.paddle.com/subscriptions/customers/manage/${subscriptionId} to ${
             newPlan
-        } at ${
+        } (x${newQuantity}) at ${
             price
         } ${
             currency
-        }?`
+        } each?`
     });
 
     if (!result) {
@@ -66,7 +69,7 @@ const currency = process.argv[5];
             vendor_id: PADDLE_ID!,
             vendor_auth_code: PADDLE_KEY!,
             subscription_id: subscriptionId,
-            quantity: existingQuantity ?? 1,
+            quantity: newQuantity,
             plan_id: newPlan,
             currency: currency,
             recurring_price: price.toString(),
