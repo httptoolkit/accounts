@@ -110,10 +110,10 @@ export const PRICING: { [key: string]: Prices } = {
 
     'country:IND': {
         currency: 'INR',
-        'pro-monthly': 200,
-        'pro-annual': 1440,
-        'team-monthly': 284,
-        'team-annual': 2400
+        'pro-monthly': 250,
+        'pro-annual': 1800,
+        'team-monthly': 355,
+        'team-annual': 3000
     },
 
     'country:ISR': {
