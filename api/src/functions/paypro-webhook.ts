@@ -6,10 +6,10 @@ import moment from 'moment';
 import * as log from 'loglevel';
 import { SubscriptionStatus } from '@httptoolkit/accounts';
 
-import { SKUs } from '../products';
+import { isProSubscription, isTeamSubscription, SKUs } from '../products';
 import { recordCancellation, recordSubscription } from '../accounting';
 import { PayingUserMetadata, getUsersByEmail } from '../auth0';
-import { parseCheckoutPassthrough, reportSuccessfulCheckout, updateProUserData } from '../webhook-handling';
+import { parseCheckoutPassthrough, reportSuccessfulCheckout, updateProUserData, updateTeamData } from '../webhook-handling';
 import {
     parsePayProCustomFields,
     PayProOrderDateFormat,
@@ -68,7 +68,7 @@ export const handler = catchErrors(async (event) => {
         const subscriptionId = eventData.SUBSCRIPTION_ID;
         if (!subscriptionId) throw new Error(`Received webhook with no subscription id`);
 
-        await updateProUserData(email, {
+        const userData = {
             subscription_status: subState,
             subscription_sku: sku,
             subscription_quantity: quantity,
@@ -77,7 +77,19 @@ export const handler = catchErrors(async (event) => {
 
             payment_provider: 'paypro',
             subscription_id: subscriptionId // Useful for API requests later
-        });
+        } as const;
+
+        if (isTeamSubscription(sku)) {
+            log.info(`Updating Team user ${email} to ${JSON.stringify(userData)}`);
+            await updateTeamData(email, userData);
+        } else if (isProSubscription(sku)) {
+            log.info(`Updating Pro user ${email} to ${JSON.stringify(userData)}`);
+            await updateProUserData(email, userData);
+        } else {
+            throw new Error(`Webhook received for unknown subscription type: ${
+                userData.subscription_sku
+            }`);
+        }
 
         try {
             if (eventType === 'OrderCharged') {
