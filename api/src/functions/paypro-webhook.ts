@@ -66,7 +66,18 @@ export const handler = catchErrors(async (event) => {
         if (isNaN(quantity) || quantity < 1) throw new Error(`Received webhook for invalid quantity: ${quantity}`);
 
         const subscriptionId = eventData.SUBSCRIPTION_ID;
-        if (!subscriptionId) throw new Error(`Received webhook with no subscription id`);
+        if (!subscriptionId) {
+            if (eventType === 'OrderCharged') {
+                // This currently triggers for manual custom charges. In future, we could
+                // attach custom data to define how the webhooks should process these, but
+                // for now we just log and fix manually (as the charge is manual anyway)
+                await reportError(`Received PayPro OrderCharged event (order ${
+                    eventData.ORDER_ID
+                }) with no subscription id, manual resolution required`);
+                return { statusCode: 200, body: '' };
+            }
+            throw new Error(`Received webhook with no subscription id`);
+        }
 
         const userData = {
             subscription_status: subState,

@@ -296,6 +296,88 @@ export function parsePayProCustomFields(
     return result;
 }
 
+/**
+ * Updates the subscription quantity, but doesn't actually charge anything - just
+ * changes the total to use at next renewal.
+ */
+export async function updateSubscriptionQuantity(
+    subscriptionId: string | number,
+    quantity: number
+) {
+    const response = await fetch(`${PAYPRO_API_BASE_URL}/api/Subscriptions/ChangeQuantity`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+            vendorAccountId: PAYPRO_ACCOUNT_ID,
+            apiSecretKey: PAYPRO_API_KEY,
+            subscriptionId: subscriptionId,
+            quantity,
+            sendCustomerNotification: false
+        })
+    });
+
+    if (!response.ok) {
+        log.error(`${response.status} ${response.statusText}`,
+            response.headers,
+            await response.text().catch(() => '')
+        );
+        throw new Error(`Unexpected ${response.status} during PayPro quantity update for sub id ${subscriptionId}`);
+    }
+
+    const responseBody = await response.json();
+    if (!responseBody.isSuccess) {
+        log.error('PayPro errors:', responseBody.errors);
+        throw new Error(`PayPro quantity update request failed`);
+    }
+}
+
+/**
+ * Directly charges an arbitrary amount on top of an existing order. Works as expected, but
+ * doesn't yet play nicely with webhooks to update Auth0 or ProfitWell, so an error will be
+ * reported and manual account updates required.
+ */
+export async function chargeAccount(
+    orderId: number,
+    sku: SKU,
+    productName: string,
+    quantity: number,
+    currency: string,
+    price: number,
+) {
+    const response = await fetch(`${PAYPRO_API_BASE_URL}/api/Orders/DoReferenceCharge`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+            vendorAccountId: PAYPRO_ACCOUNT_ID,
+            apiSecretKey: PAYPRO_API_KEY,
+            referencedOrderId: orderId,
+            productId: SKU_TO_PAYPRO_ID[sku],
+            referenceChargeName: productName,
+            priceCurrencyCode: currency,
+            priceValue: price * quantity, // Ignored due to order item details below, but required
+            orderItemDetails: [{
+                orderItemName: productName,
+                quantity,
+                unitPriceValue: price // Dollars equiv (not cents)
+            }]
+        })
+    });
+
+    if (!response.ok) {
+        log.error(`${response.status} ${response.statusText}`,
+            response.headers,
+            await response.text().catch(() => '')
+        );
+        throw new Error(`Unexpected ${response.status} adding PayPro custom charge to order ${orderId}`);
+    }
+
+    const responseBody = await response.json();
+    if (!responseBody.isSuccess) {
+        log.error('PayPro errors:', responseBody.errors);
+        throw new Error(`PayPro custom charge request failed`);
+    }
+}
+
 export async function cancelSubscription(subscriptionId: string | number) {
     const response = await fetch(`${PAYPRO_API_BASE_URL}/api/Subscriptions/Terminate`, {
         method: 'POST',
