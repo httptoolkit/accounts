@@ -221,9 +221,14 @@ export interface User extends BaseAccountData {
      * an active subscription for the main tool.
      */
     teamSubscription?: Subscription;
+
+    isStatusUnexpired(): boolean;
+    isPaidUser(): boolean;
+    isPastDueUser(): boolean;
+    userHasSubscription(): boolean;
 }
 
-const anonUser = (): User => ({ featureFlags: [], banned: false });
+const anonUser = (): User => addSubscriptionHelpers({ featureFlags: [], banned: false });
 
 export interface Transaction {
     orderId: string;
@@ -326,14 +331,19 @@ export async function getBillingData(): Promise<BillingAccount> {
     return parseBillingData(jwtData);
 }
 
+export async function getUserFromAppJwt(jwt: string): Promise<User> {
+    const jwtData = await getVerifiedJwtPayload(jwt, 'app');
+    return parseUserData(jwtData);
+}
+
 function getUnverifiedJwtPayload<T>(jwt: string | null): (T & JWTPayload) | null {
     if (!jwt) return null;
     return decodeJwt(jwt);
 }
 
-export async function getVerifiedJwtPayload(jwt: string | null, type: 'app'): Promise<UserAppData>;
-export async function getVerifiedJwtPayload(jwt: string | null, type: 'billing'): Promise<UserBillingData>;
-export async function getVerifiedJwtPayload(jwt: string | null, type: 'app' | 'billing') {
+async function getVerifiedJwtPayload(jwt: string | null, type: 'app'): Promise<UserAppData>;
+async function getVerifiedJwtPayload(jwt: string | null, type: 'billing'): Promise<UserBillingData>;
+async function getVerifiedJwtPayload(jwt: string | null, type: 'app' | 'billing') {
     if (!jwt) return null;
 
     const decodedJwt = await jwtVerify(jwt, await userDataPublicKey, {
@@ -348,7 +358,7 @@ export async function getVerifiedJwtPayload(jwt: string | null, type: 'app' | 'b
 function parseUserData(appData: UserAppData | null): User {
     if (!appData) return anonUser();
 
-    return {
+    return addSubscriptionHelpers({
         userId: appData.user_id,
         email: appData.email,
         subscription: parseSubscriptionData(appData),
@@ -356,8 +366,63 @@ function parseUserData(appData: UserAppData | null): User {
             ? parseSubscriptionData(appData.team_subscription)
             : undefined,
         featureFlags: appData.feature_flags || [],
-        banned: !!appData.banned
+        banned: !!appData.banned,
+    });
+}
+
+// Helpers to ensure we consistently interpret subscription state everywhere:
+function addSubscriptionHelpers(userData: Omit<User,
+    | 'isStatusUnexpired'
+    | 'isPaidUser'
+    | 'isPastDueUser'
+    | 'userHasSubscription'
+>): User {
+    const user = {
+        ...userData,
+        isStatusUnexpired() {
+            const subscriptionExpiry = user.subscription?.expiry;
+            const subscriptionStatus = user.subscription?.status;
+
+            const expiryMargin = subscriptionStatus === 'active'
+                // If we're offline during subscription renewal, and the sub was active last
+                // we checked, then we might just have outdated data, so leave extra slack.
+                // This gives a week of offline usage. Should be enough, given that most HTTP
+                // development needs network connectivity anyway.
+                ? 1000 * 60 * 60 * 24 * 7
+                : 0;
+
+            return !!subscriptionExpiry &&
+                subscriptionExpiry.valueOf() + expiryMargin > Date.now();
+        },
+        isPaidUser() {
+            // ------------------------------------------------------------------
+            // You could set this to true to become a paid user for free.
+            // I'd rather you didn't. HTTP Toolkit takes time & love to build,
+            // and I can't do that if it doesn't pay my bills!
+            //
+            // Fund open source - if you want Pro, help pay for its development.
+            // Can't afford it? Get in touch: tim@httptoolkit.com.
+            // ------------------------------------------------------------------
+
+            // If you're before the last expiry date, your subscription is valid,
+            // unless it's past_due, in which case you're in a strange ambiguous
+            // zone, and the expiry date is the next retry. In that case, your
+            // status is unexpired, but _not_ considered as valid for Pro features.
+            // Note that explicitly cancelled ('deleted') subscriptions are still
+            // valid until the end of the last paid period though!
+            return user.subscription?.status !== 'past_due' &&
+                user.isStatusUnexpired();
+        },
+        isPastDueUser() {
+            return user.subscription?.status === 'past_due' &&
+                user.isStatusUnexpired();
+        },
+        userHasSubscription() {
+            return this.isPaidUser() || this.isPastDueUser();
+        }
     };
+
+    return user;
 }
 
 async function parseBillingData(billingData: UserBillingData | null): Promise<BillingAccount> {
