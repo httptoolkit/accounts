@@ -25,6 +25,7 @@ export {
     getLatestUserData,
     getLastUserData,
     cancelSubscription,
+    getVerifiedJwtPayload,
 
     BillingAccount,
     Transaction,

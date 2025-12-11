@@ -331,9 +331,9 @@ function getUnverifiedJwtPayload<T>(jwt: string | null): (T & JWTPayload) | null
     return decodeJwt(jwt);
 }
 
-async function getVerifiedJwtPayload(jwt: string | null, type: 'app'): Promise<UserAppData>;
-async function getVerifiedJwtPayload(jwt: string | null, type: 'billing'): Promise<UserBillingData>;
-async function getVerifiedJwtPayload(jwt: string | null, type: 'app' | 'billing') {
+export async function getVerifiedJwtPayload(jwt: string | null, type: 'app'): Promise<UserAppData>;
+export async function getVerifiedJwtPayload(jwt: string | null, type: 'billing'): Promise<UserBillingData>;
+export async function getVerifiedJwtPayload(jwt: string | null, type: 'app' | 'billing') {
     if (!jwt) return null;
 
     const decodedJwt = await jwtVerify(jwt, await userDataPublicKey, {
