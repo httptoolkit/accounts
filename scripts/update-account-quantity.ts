@@ -1,3 +1,5 @@
+#!./node_modules/.bin/ts-node
+
 import prompts from 'prompts';
 
 import { getUsersByEmail } from '../api/src/auth0';

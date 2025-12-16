@@ -1,3 +1,5 @@
+#!./node_modules/.bin/ts-node
+
 import { getUsersByEmail, updateUserMetadata } from '../api/src/auth0';
 
 // Cancel an account - closing the subscription and setting the expiry date to

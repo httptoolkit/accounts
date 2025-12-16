@@ -1,3 +1,5 @@
+#!./node_modules/.bin/ts-node
+
 import * as moment from 'moment';
 import { getUsersByEmail, createUser, updateUserMetadata } from '../api/src/auth0';
 
