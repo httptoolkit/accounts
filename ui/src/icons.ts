@@ -15,6 +15,7 @@ import { faExclamationTriangle } from '@fortawesome/free-solid-svg-icons/faExcla
 import { faPlus } from '@fortawesome/free-solid-svg-icons/faPlus';
 import { faUndo } from '@fortawesome/free-solid-svg-icons/faUndo';
 import { faSave } from '@fortawesome/free-solid-svg-icons/faSave';
+import { faCaretLeft } from '@fortawesome/free-solid-svg-icons/faCaretLeft';
 
 const customSpinnerArc: IconDefinition = {
     // Based on https://codepen.io/aurer/pen/jEGbA
@@ -36,7 +37,8 @@ library.add(
     faExclamationTriangle,
     faPlus,
     faUndo,
-    faSave
+    faSave,
+    faCaretLeft
 );
 
 import { FontAwesomeIcon, Props as FAIProps } from '@fortawesome/react-fontawesome';

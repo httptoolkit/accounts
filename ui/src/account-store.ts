@@ -1,5 +1,5 @@
 import * as _ from 'lodash';
-import { makeObservable, observable, computed, flow } from 'mobx';
+import { makeObservable, observable, computed, flow, when } from 'mobx';
 import { delay } from "@httptoolkit/util";
 
 import { reportError } from './errors';
@@ -8,10 +8,6 @@ import {
     getBillingData,
     updateTeamMembers,
     cancelSubscription,
-    loginEvents,
-    initializeAuthUi,
-    showLoginDialog,
-    hideLoginDialog,
     logOut,
     BillingAccount
 } from '@httptoolkit/accounts';
@@ -28,20 +24,8 @@ export class AccountStore {
             updateUser: flow.bound
         });
 
-        // Update account data automatically on login, logout & every 10 mins
-        loginEvents.on('authenticated', flow(function * (this: AccountStore) {
-            this.isMaybeLoggedIn = true;
-            yield this.updateUser();
-        }.bind(this)));
-        loginEvents.on('logout', this.updateUser);
-
-        initializeAuthUi({
-            closeable: false,
-            rememberLastLogin: false
-        });
-
+        // Update account data now & automatically every 10 mins
         setInterval(this.updateUser, 1000 * 60 * 10);
-
         this.updateUser();
     }
 
@@ -80,7 +64,6 @@ export class AccountStore {
     *updateUser() {
         try {
             this.user = yield getBillingData();
-            loginEvents.emit('user_data_loaded');
         } catch (e: any) {
             console.log("Failed to load user data");
             reportError(e);
@@ -90,15 +73,6 @@ export class AccountStore {
         // Once we've got the user data (successfully or not) we now
         // know for sure whether we're logged in.
         this.isMaybeLoggedIn = this.isLoggedIn
-    }
-
-    // Re-export functions from the stateless auth module:
-    showLoginDialog() {
-        showLoginDialog();
-    }
-
-    hideLoginDialog() {
-        hideLoginDialog();
     }
 
     updateTeamMembers = flow(function * (
@@ -125,11 +99,25 @@ export class AccountStore {
             alert(e);
             throw e;
         }
-    }).bind(this)
+    }).bind(this);
 
-    logOut() {
-        logOut();
-    }
+    // Bindings to link the account store to the React login modal:
+    login = flow(function* (this: AccountStore) {
+        if (!this.isLoggedIn) {
+            yield when(() => this.isLoggedIn);
+        }
+    }).bind(this);
+
+    finalizeLogin = flow(function* (this: AccountStore) {
+        yield this.updateUser();
+    }).bind(this);
+
+    logOut = flow(function* (this: AccountStore) {
+        if (this.isLoggedIn) {
+            yield logOut();
+            yield this.updateUser();
+        }
+    }).bind(this);
 
     // Set when we know a cancel is processing elsewhere:
     isAccountUpdateInProcess = false;

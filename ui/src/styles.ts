@@ -6,7 +6,12 @@ import reset from 'styled-reset';
 import "@fontsource/dm-sans";
 import "@fontsource/dm-mono";
 
+// This attempts to closely follow the styles in the UI itself, since they're built on very
+// similar foundations. That means that some properties are included but aren't used here -
+// that's totally fine, don't worry about it.
+
 const fontSizes = {
+    smallPrintSize: '12px',
     textInputFontSize: '13px',
     textSize: '14.5px',
     subHeadingSize: '17px',
@@ -16,54 +21,142 @@ const fontSizes = {
 };
 
 export const warningColor = '#f1971f';
+const warningBackground = '#f1971f40';
+const successColor = "#097123";
+const successBackground = "#cee7da";
+export const popColor = '#e1421f';
 
-export const theme = {
+const black = "#000000";
+const inkBlack = "#16181e";
+const inkGrey = "#1e2028";
+const darkerGrey = "#25262e";
+const darkGrey = "#32343B";
+const darkishGrey =  "#53565e";
+const mediumGrey = "#818490";
+const lightGrey = "#9a9da8";
+const ghostGrey = "#e4e8ed";
+const greyWhite = "#f2f2f2";
+const almostWhite = "#fafafa";
+const white = "#ffffff";
+
+const darkerBlue = "#2d4cbd";
+const lighterBlue = "#6284fa";
+
+
+export const lightTheme = {
     fontFamily: '"DM Sans", Arial, sans-serif',
     monoFontFamily: '"DM Mono", monospace',
 
-    mainBackground: '#fafafa',
-    mainLowlightBackground: '#f2f2f2',
-    mainColor: '#1e2028',
+    mainBackground: almostWhite,
+    mainLowlightBackground: greyWhite,
+    mainLowlightColor: darkishGrey,
+    mainColor: inkGrey,
+
+    highlightBackground: white,
+    highlightColor: inkGrey,
 
     lowlightTextOpacity: 0.65,
-    pillContrast: 0.8,
+    boxShadowAlpha: 0.3,
 
-    primaryInputBackground: '#1076b9',
-    primaryInputColor: '#ffffff',
+    pillContrast: 0.9,
+    pillDefaultColor: lightGrey,
 
-    secondaryInputBorder: '#6284fa',
-    secondaryInputColor: '#2d4cbd',
+    primaryInputBackground: darkerBlue,
+    primaryInputColor: white,
 
-    textInputBackground: '#ffffff',
-    textInputColor: '#1e2028',
+    secondaryInputBorder: lighterBlue,
+    secondaryInputColor: darkerBlue,
 
-    highlightBackground: '#ffffff',
-    highlightColor: '#222',
+    inputBackground: white,
+    inputHoverBackground: greyWhite,
+    inputBorder: darkishGrey,
+    inputColor: inkGrey,
+    inputPlaceholderColor: darkishGrey,
+    inputWarningPlaceholder: '#8c5c1d', // Mix of warning + inkGrey
 
-    popColor: '#e1421f',
+    popColor,
+    popOverlayColor: white,
 
-    warningColor: '#f1971f',
-    warningBackground: '#f1971f40',
+    warningColor,
+    warningBackground,
+    successColor,
+    successBackground,
 
-    successColor: '#097123',
-    successBackground: '#4caf7d40',
-
-    containerBackground: '#e4e8ed',
-    containerWatermark: '#818490',
-    containerBorder: '#9a9da8',
+    containerBackground: ghostGrey,
+    containerWatermark: mediumGrey,
+    containerBorder: lightGrey,
 
     // These are the same as the standard defaults
     linkColor: '#0000EE',
     visitedLinkColor: '#551A8B',
 
-    monacoTheme: 'vs-custom',
-
     modalGradient: 'radial-gradient(#40404b, #111118)',
 
-    ...fontSizes
+    ...fontSizes,
+} as const;
+
+export const darkTheme = {
+    fontFamily: '"DM Sans", Arial, sans-serif',
+    monoFontFamily: '"DM Mono", monospace',
+
+    mainBackground: darkGrey,
+    mainLowlightBackground: darkerGrey,
+    mainLowlightColor: mediumGrey,
+    mainColor: white,
+
+    highlightBackground: darkishGrey,
+    highlightColor: white,
+
+    lowlightTextOpacity: 0.65,
+    boxShadowAlpha: 0.4,
+
+    pillContrast: 0.85,
+    pillDefaultColor: lightGrey,
+
+    primaryInputBackground: darkerBlue,
+    primaryInputColor: white,
+
+    secondaryInputBorder: darkerBlue,
+    secondaryInputColor: lighterBlue,
+
+    inputBackground: inkBlack,
+    inputHoverBackground: inkGrey,
+    inputBorder: darkishGrey,
+    inputColor: white,
+    inputPlaceholderColor: mediumGrey,
+    inputWarningPlaceholder: '#e8b978', // Mix of warning + white
+
+    popColor,
+    popOverlayColor: white,
+
+    warningColor,
+    warningBackground,
+    successColor,
+    successBackground,
+
+    containerBackground: inkGrey,
+    containerWatermark: lightGrey,
+    containerBorder: black,
+
+    linkColor: '#8699ff',
+    visitedLinkColor: '#ac7ada',
+
+    modalGradient: `radial-gradient(${white}, ${lightGrey})`,
+
+    ...fontSizes,
+} as const;
+
+export const Themes = {
+    'light': lightTheme,
+    'dark': darkTheme
 };
 
-export type Theme = typeof theme;
+export type ThemeName = keyof typeof Themes;
+export type Theme = typeof Themes[ThemeName];
+
+export const theme = window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? darkTheme
+    : lightTheme;
 
 const {
     default: styled,
@@ -84,6 +177,10 @@ export {
 
 export const GlobalStyles = createGlobalStyle`
     ${reset};
+
+    * {
+        box-sizing: border-box;
+    }
 
     body {
         min-height: 100%;
@@ -112,26 +209,6 @@ export const GlobalStyles = createGlobalStyle`
 
     :active {
         outline: none;
-    }
-
-    /* Override Auth0's style choices to match the rest of the UI */
-    .auth0-lock {
-        font-family: ${p => p.theme.fontFamily} !important;
-
-        .auth0-lock-widget {
-            box-shadow: 0 2px 10px 0 rgba(0,0,0,0.2) !important;
-            overflow: visible !important;
-        }
-
-        .auth0-lock-form {
-            .auth0-lock-name {
-                font-size: ${fontSizes.headingSize} !important;
-            }
-
-            p, .auth0-lock-social-button-text {
-                font-size: ${fontSizes.textSize} !important;
-            }
-        }
     }
 `;
 

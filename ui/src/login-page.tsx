@@ -1,19 +1,11 @@
 import * as React from 'react';
 
 import { AccountStore } from './account-store';
+import { LoginModal } from './login-modal';
 
 export const LoginPage = (props: {
     accountStore: AccountStore
 }) => {
     const { accountStore } = props;
-
-    React.useEffect(() => {
-        if (!accountStore.isLoggedIn) {
-            accountStore.showLoginDialog();
-            return () => accountStore.hideLoginDialog();
-        }
-    }, [accountStore]);
-
-    // Don't actually render - the login dialog handles everything
-    return null;
+    return <LoginModal accountStore={accountStore} />;
 };
