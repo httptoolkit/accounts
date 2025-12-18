@@ -61,8 +61,7 @@ export const handler = catchErrors(async (event) => {
 
     log.debug('Checkout query params:', event.queryStringParameters);
 
-    const sourceIp = event.headers['x-nf-client-connection-ip'] // Netlify
-        ?? event.requestContext?.identity.sourceIp; // Direct source - also populated by Express wrapper
+    const { sourceIp } = event.requestContext?.identity;
 
     if (!email || !sku || !PricedSKUs.includes(sku)) throw new StatusError(400,
         `Checkout requires specifying ${
@@ -167,7 +166,7 @@ export const handler = catchErrors(async (event) => {
 
             // Explicitly depend on the IP (though it doesn't matter much, given short
             // caching, since the user email in the URL should avoid any confusion):
-            'vary': 'x-nf-client-connection-ip, x-forwarded-for',
+            'vary': 'x-forwarded-for',
 
             location: checkoutUrl.includes('?')
                 ? checkoutUrl
