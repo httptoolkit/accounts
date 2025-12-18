@@ -23,7 +23,7 @@ export const handler = catchErrors(async (event) => {
     if (!email) throw new StatusError(400, 'Email is required');
     if (!code) throw new StatusError(400, 'Code is required');
 
-    const result = await auth0.loginWithPasswordlessCode(email, code);
+    const result = await auth0.loginWithPasswordlessCode(email, code, event.requestContext.identity.sourceIp);
 
     return {
         statusCode: 200,

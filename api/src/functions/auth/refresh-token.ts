@@ -22,7 +22,7 @@ export const handler = catchErrors(async (event) => {
 
     if (!refreshToken) throw new StatusError(400, 'Refresh token is required');
 
-    const result = await auth0.refreshToken(refreshToken);
+    const result = await auth0.refreshToken(refreshToken, event.requestContext.identity.sourceIp);
 
     return {
         statusCode: 200,

@@ -23,7 +23,7 @@ export const handler = catchErrors(async (event) => {
     if (!email) throw new StatusError(400, 'Email is required');
     if (!source) throw new StatusError(400, 'Source is required');
 
-    await auth0.sendPasswordlessEmail(email);
+    await auth0.sendPasswordlessEmail(email, event.requestContext.identity.sourceIp);
 
     // N.b. we don't actually use the source yet, but we require it here so we
     // log that later & reset tokens more precisely later, if necessary.

@@ -74,18 +74,28 @@ const authClient = new auth0.AuthenticationClient({
     clientSecret: AUTH0_APP_CLIENT_SECRET!
 });
 
-export const sendPasswordlessEmail = withRetries('sendPWLEmail', async (email: string) =>
+const withUserIpHeader = (userIp: string) =>
+    async ({ init }: { init: RequestInit }) => ({
+        headers: {
+            ...init.headers,
+            'auth0-forwarded-for': userIp
+        }
+    });
+
+export const sendPasswordlessEmail = withRetries('sendPWLEmail', async (email: string, userIp: string) =>
     await authClient.passwordless.sendEmail({
         email,
         send: 'code'
-    })
+    }, withUserIpHeader(userIp))
 );
 
-export const loginWithPasswordlessCode = withRetries('loginPWL', async (email: string, code: string) =>
+export const loginWithPasswordlessCode = withRetries('loginPWL', async (email: string, code: string, userIp: string) =>
     (await authClient.passwordless.loginWithEmail({
         email: email,
         code: code,
         scope: 'email openid offline_access app_metadata'
+    }, {
+        initOverrides: withUserIpHeader(userIp)
     })).data,
     {
         shouldThrow: (e) => {
@@ -105,10 +115,12 @@ export const loginWithPasswordlessCode = withRetries('loginPWL', async (email: s
     }
 );
 
-export const refreshToken = withRetries('refreshToken', async (refreshToken: string) =>
+export const refreshToken = withRetries('refreshToken', async (refreshToken: string, userIp: string) =>
     (await authClient.oauth.refreshTokenGrant({
         grant_type: 'refresh_token',
         refresh_token: refreshToken
+    }, {
+        initOverrides: withUserIpHeader(userIp)
     })).data,
     {
         shouldThrow: (e) => {
@@ -126,7 +138,7 @@ export const refreshToken = withRetries('refreshToken', async (refreshToken: str
             }
         }
     }
-)
+);
 
 export type User = auth0.GetUsers200ResponseOneOfInner & {
     app_metadata: AppMetadata
