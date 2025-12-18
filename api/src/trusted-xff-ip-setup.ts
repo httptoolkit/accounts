@@ -16,7 +16,8 @@ const TRUSTED_IP_SOURCES = [
     'loopback',
     'linklocal',
     'uniquelocal',
-    '100.64.0.0/10', // Private network shared address space, used by Scaleway
+    '100.64.0.0/10', // Private network shared address space, used by Scaleway serverless containers
+    '172.16.4.0/22'  // The subnet used by our k8s VPC
 ];
 
 let bunnyCachedIPs: string[] = [];
