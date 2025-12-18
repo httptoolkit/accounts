@@ -131,6 +131,8 @@ jobs:
               -f api/deploy/service.yaml \
               -f api/deploy/routes.yaml
 
+          kubectl rollout status deployment/accounts-api -n accounts-api
+
       # These can be removed (along with their secrets) once we're happy with the k8s setup:
       - name: Redeploy SCW container
         uses: httptoolkit/scaleway-serverless-container-deploy-action@v1
