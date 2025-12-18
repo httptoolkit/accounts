@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: accounts-api
+  namespace: accounts-api
+spec:
+  selector:
+    app: accounts-api
+  ports:
+    - name: http-port
+      protocol: TCP
+      port: 4000
+      targetPort: 4000

@@ -1,0 +1,149 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: accounts-api
+  namespace: accounts-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: accounts-api
+  template:
+    metadata:
+      labels:
+        app: accounts-api
+    spec:
+      containers:
+        - name: server
+          image: ghcr.io/httptoolkit/accounts-api:latest # GHA replaces :latest on build
+          ports:
+            - containerPort: 4000
+          env:
+            - name: PORT
+              value: "4000"
+            - name: LOGLEVEL
+              value: "info"
+            - name: ORIGIN_REGEX
+              value: ".*"
+
+            - name: SIGNING_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: SIGNING_PRIVATE_KEY
+
+            # Email setup:
+            - name: CONTACT_FORM_DESTINATION
+              value: "tim@httptoolkit.com"
+            - name: SMTP_HOST
+              value: smtp.tem.scw.cloud
+            - name: SMTP_PORT
+              value: "465"
+            - name: SMTP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: SMTP_USERNAME
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: SMTP_PASSWORD
+
+            # Auth0:
+            - name: AUTH0_DOMAIN
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: AUTH0_DOMAIN
+            - name: AUTH0_APP_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: AUTH0_APP_CLIENT_ID
+            - name: AUTH0_APP_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: AUTH0_APP_CLIENT_SECRET
+            - name: AUTH0_MGMT_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: AUTH0_MGMT_CLIENT_ID
+            - name: AUTH0_MGMT_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: AUTH0_MGMT_CLIENT_SECRET
+
+            # Paddle
+            - name: PADDLE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: PADDLE_ID
+            - name: PADDLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: PADDLE_KEY
+            - name: PADDLE_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: PADDLE_PUBLIC_KEY
+
+            # PayPro
+            - name: PAYPRO_ACCOUNT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: PAYPRO_ACCOUNT_ID
+            - name: PAYPRO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: PAYPRO_API_KEY
+            - name: PAYPRO_IPN_VALIDATION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: PAYPRO_IPN_VALIDATION_KEY
+            - name: PAYPRO_PARAM_IV
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: PAYPRO_PARAM_IV
+            - name: PAYPRO_PARAM_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: PAYPRO_PARAM_KEY
+
+            # Assorted external API keys:
+            - name: EXCHANGE_RATE_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: EXCHANGE_RATE_API_TOKEN
+            - name: IP_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: IP_API_KEY
+            - name: POSTHOG_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: POSTHOG_KEY
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: SENTRY_DSN
+            - name: PROFITWELL_PRIVATE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: PROFITWELL_PRIVATE_TOKEN
