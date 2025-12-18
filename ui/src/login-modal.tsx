@@ -151,11 +151,19 @@ const Input = styled.input`
     border-width: 1px 0 1px 0;
     z-index: 1;
 
-    font-size: ${({ theme }) => theme.textInputFontSize};
+    font-size: ${({ theme }) => theme.textSize};
 
     &:focus {
         border-color: ${p => p.theme.inputColor};
     }
+`;
+
+const CodeInput = styled(Input)`
+    :not(:placeholder-shown) {
+        letter-spacing: 4px;
+    }
+
+    text-align: center;
 `;
 
 const SmallPrint = styled.p`
@@ -324,7 +332,7 @@ const LoginFields = ({ accountStore }: { accountStore: AccountStore }) => {
                     {email}
                 </Email>
             </Subtitle>
-            <Input
+            <CodeInput
                 name="otp"
                 type="text"
                 inputMode="numeric"
