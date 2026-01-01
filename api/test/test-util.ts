@@ -4,6 +4,7 @@ import * as crypto from 'crypto';
 import { getLocal } from 'mockttp';
 
 import { makeDestroyable } from 'destroyable-server';
+import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 
 import { AppMetadata } from '../src/auth0';
 import { PayProOrderDetails, PayProOrderListing } from '../src/paypro';
@@ -15,6 +16,31 @@ let idCounter = 1000;
 export function id() {
     return idCounter++;
 }
+
+const DB_NAME = 'test_db';
+let postgres: StartedPostgreSqlContainer;
+process.env.DATABASE_URL = '...pending...';
+before(async function () {
+    this.timeout(30000);
+
+    postgres = await new PostgreSqlContainer('postgres:16-alpine')
+        .withDatabase(DB_NAME)
+        .withUsername('user')
+        .withPassword('password')
+        .start();
+
+    console.log('DB started');
+
+    process.env.DATABASE_URL = `postgresql://${
+        postgres.getUsername()
+    }:${
+        postgres.getPassword()
+    }@${postgres.getHost()}:${postgres.getPort()}/${DB_NAME}`;
+});
+
+after(async () => {
+    await postgres.stop();
+});
 
 function generateKeyPair() {
     return crypto.generateKeyPairSync('rsa', {
