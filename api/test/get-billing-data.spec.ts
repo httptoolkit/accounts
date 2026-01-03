@@ -7,22 +7,26 @@ import moment from 'moment';
 import { expect } from 'chai';
 
 import {
-    startServer,
+    startAPI,
     publicKey,
-    auth0Server,
-    AUTH0_PORT,
     freshAuthToken,
+} from './test-setup/setup';
+import { id } from './test-setup/utils';
+import { auth0Server  } from './test-setup/auth0';
+import {
     paddleServer,
     PADDLE_PORT,
-    givenSubscription,
+    givenPaddleSubscription,
     givenPaddleTransactions,
-    id,
+} from './test-setup/paddle';
+import {
     givenPayProOrders,
     payproApiServer,
     PAYPRO_API_PORT
-} from './test-util';
+} from './test-setup/paypro';
+
 import { TransactionData } from '@httptoolkit/accounts';
-import { LICENSE_LOCK_DURATION_MS, TeamOwnerMetadata } from '../src/auth0';
+import { LICENSE_LOCK_DURATION_MS, TeamOwnerMetadata } from '../src/user-data-facade';
 
 const asPaddleDate = (date: Date) => {
     return moment.utc(date).format('YYYY-MM-DD HH:mm:ss');
@@ -58,10 +62,7 @@ describe('/get-billing-data', () => {
     let apiServer: DestroyableServer;
 
     beforeEach(async () => {
-        apiServer = await startServer();
-
-        await auth0Server.start(AUTH0_PORT);
-        await auth0Server.forPost('/oauth/token').thenJson(200, {});
+        apiServer = await startAPI();
 
         await paddleServer.start(PADDLE_PORT);
         await payproApiServer.start(PAYPRO_API_PORT);
@@ -69,7 +70,6 @@ describe('/get-billing-data', () => {
 
     afterEach(async () => {
         await apiServer.destroy();
-        await auth0Server.stop();
         await paddleServer.stop();
         await payproApiServer.stop();
     });
@@ -133,7 +133,7 @@ describe('/get-billing-data', () => {
                     }
                 });
 
-            const { paddleUserId } = await givenSubscription(subId);
+            const { paddleUserId } = await givenPaddleSubscription(subId);
             const transactionDate = new Date();
             transactionDate.setMilliseconds(0);
             await givenPaddleTransactions(paddleUserId, [{
@@ -179,7 +179,7 @@ describe('/get-billing-data', () => {
             const subId = id();
             const subExpiry = Date.now();
 
-            const { paddleUserId } = await givenSubscription(subId);
+            const { paddleUserId } = await givenPaddleSubscription(subId);
 
             await auth0Server.forGet('/userinfo')
                 .withHeaders({ 'Authorization': 'Bearer ' + authToken })
@@ -331,7 +331,7 @@ describe('/get-billing-data', () => {
                     }
                 });
 
-            const { paddleUserId } = await givenSubscription(subId);
+            const { paddleUserId } = await givenPaddleSubscription(subId);
             await givenPaddleTransactions(paddleUserId, []);
 
             const response1 = await getBillingData(apiServer, authToken);
@@ -463,7 +463,7 @@ describe('/get-billing-data', () => {
                     }
                 ]);
 
-            const { paddleUserId } = await givenSubscription(subId);
+            const { paddleUserId } = await givenPaddleSubscription(subId);
             const transactionDate = new Date();
             transactionDate.setMilliseconds(0);
             await givenPaddleTransactions(paddleUserId, [{
@@ -557,7 +557,7 @@ describe('/get-billing-data', () => {
                     },
                 ]);
 
-            const { paddleUserId } = await givenSubscription(subId);
+            const { paddleUserId } = await givenPaddleSubscription(subId);
             const transactionDate = new Date();
             transactionDate.setMilliseconds(0);
 

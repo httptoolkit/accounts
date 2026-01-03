@@ -8,7 +8,7 @@ import { SubscriptionStatus } from '@httptoolkit/accounts';
 
 import { isProSubscription, isTeamSubscription, SKUs } from '../products';
 import { recordCancellation, recordSubscription } from '../accounting';
-import { PayingUserMetadata, getUsersByEmail } from '../auth0';
+import { PayingUserMetadata, getUsersByEmail } from '../user-data-facade';
 import { parseCheckoutPassthrough, reportSuccessfulCheckout, updateProUserData, updateTeamData } from '../webhook-handling';
 import {
     parsePayProCustomFields,

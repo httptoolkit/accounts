@@ -3,7 +3,7 @@ initSentry();
 
 import * as jwt from 'jsonwebtoken';
 
-import { AUTH0_DATA_SIGNING_PRIVATE_KEY } from '../auth0';
+import { DATA_SIGNING_PRIVATE_KEY } from '../user-data-facade';
 import { getCorsResponseHeaders } from '../cors';
 import { getUserBillingData } from '../user-data';
 
@@ -40,7 +40,7 @@ export const handler = catchErrors(async (event) => {
     try {
         const userData = await getUserBillingData(accessToken);
 
-        const signedAppData = jwt.sign(userData, AUTH0_DATA_SIGNING_PRIVATE_KEY, {
+        const signedAppData = jwt.sign(userData, DATA_SIGNING_PRIVATE_KEY, {
             algorithm: 'RS256',
             expiresIn: '7d',
             audience: 'https://httptoolkit.tech/billing_data',

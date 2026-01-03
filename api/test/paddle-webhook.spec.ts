@@ -7,13 +7,13 @@ import { DestroyableServer } from 'destroyable-server';
 import { expect } from 'chai';
 
 import {
-    startServer,
+    startAPI,
     privateKey,
-    auth0Server,
-    AUTH0_PORT,
     givenUser,
-    givenNoUsers
-} from './test-util';
+    givenNoUsers,
+    delay
+} from './test-setup/setup';
+import { auth0Server } from './test-setup/auth0';
 import { serializeWebhookData, PaddleWebhookData, UnsignedWebhookData } from '../src/paddle';
 
 const signBody = (body: UnsignedWebhookData) => {
@@ -61,15 +61,11 @@ describe('Paddle webhooks', () => {
     let apiServer: DestroyableServer;
 
     beforeEach(async () => {
-        apiServer = await startServer();
-
-        await auth0Server.start(AUTH0_PORT);
-        await auth0Server.forPost('/oauth/token').thenJson(200, {});
+        apiServer = await startAPI();
     });
 
     afterEach(async () => {
         await apiServer.destroy();
-        await auth0Server.stop();
     });
 
     describe("for Pro subscriptions", () => {

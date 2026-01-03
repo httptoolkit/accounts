@@ -10,10 +10,12 @@ import {
     givenExchangeRate,
     ipApiServer,
     IP_API_PORT,
+    startAPI
+} from './test-setup/setup';
+import {
     paddleServer,
     PADDLE_PORT,
-    startServer
-} from './test-util';
+} from './test-setup/paddle';
 import type { SKU } from '@httptoolkit/accounts';
 
 const getCheckoutUrl = (
@@ -45,7 +47,7 @@ describe('/redirect-to-checkout', () => {
     let apiServer: DestroyableServer;
 
     beforeEach(async () => {
-        apiServer = await startServer();
+        apiServer = await startAPI();
 
         // Return checkout URLs containing the raw params explicitly to assert on:
         await paddleServer.start(PADDLE_PORT);

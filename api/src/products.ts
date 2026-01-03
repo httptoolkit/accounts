@@ -1,6 +1,6 @@
 import { SKU, PricedSKU, Interval } from "@httptoolkit/accounts";
 
-import { AppMetadata, TrialUserMetadata } from "./auth0";
+import { AppMetadata, TrialUserMetadata } from "./user-data-facade";
 import { getSkuForPaddleId } from "./paddle";
 
 export const ProductDetails = {

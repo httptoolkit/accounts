@@ -8,16 +8,19 @@ import { DestroyableServer } from 'destroyable-server';
 import { expect } from 'chai';
 
 import {
-    startServer,
-    auth0Server,
-    AUTH0_PORT,
-    profitwellApiServer,
-    PROFITWELL_API_PORT,
+    startAPI,
     givenUser,
     givenNoUsers,
     PAYPRO_IPN_VALIDATION_KEY
-} from './test-util';
-import { PayProOrderDateFormat, PayProRenewalDateFormat, PayProWebhookData } from '../src/paypro';
+} from './test-setup/setup';
+import { profitwellApiServer } from './test-setup/profitwell';
+import { auth0Server } from './test-setup/auth0';
+
+import {
+    PayProOrderDateFormat,
+    PayProRenewalDateFormat,
+    PayProWebhookData
+} from '../src/paypro';
 
 // Validated by testing with the real key and signatures from real IPN
 // requests - this generates the correct matching signature.
@@ -83,14 +86,11 @@ describe('PayPro webhooks', () => {
     let apiServer: DestroyableServer;
 
     beforeEach(async () => {
-        apiServer = await startServer();
-        await auth0Server.start(AUTH0_PORT);
-        await auth0Server.forPost('/oauth/token').thenJson(200, {});
+        apiServer = await startAPI();
     });
 
     afterEach(async () => {
         await apiServer.destroy();
-        await auth0Server.stop();
     });
 
     it('should reject invalid webhooks', async () => {

@@ -6,15 +6,14 @@ import { DestroyableServer } from 'destroyable-server';
 import { expect } from 'chai';
 
 import {
-    startServer,
+    startAPI,
     publicKey,
-    auth0Server,
-    AUTH0_PORT,
     freshAuthToken,
     givenUser,
     givenAuthToken
-} from './test-util';
-import { TeamOwnerMetadata } from '../src/auth0';
+} from './test-setup/setup';
+import { auth0Server } from './test-setup/auth0';
+import { TeamOwnerMetadata } from '../src/user-data-facade';
 
 const getAppData = (server: net.Server, authToken?: string) => fetch(
     `http://localhost:${(server.address() as net.AddressInfo).port}/api/get-app-data`,
@@ -46,14 +45,11 @@ describe('/get-app-data', () => {
     let apiServer: DestroyableServer;
 
     beforeEach(async () => {
-        apiServer = await startServer();
-        await auth0Server.start(AUTH0_PORT);
-        await auth0Server.forPost('/oauth/token').thenJson(200, {});
+        apiServer = await startAPI();
     });
 
     afterEach(async () => {
         await apiServer.destroy();
-        await auth0Server.stop();
     });
 
     describe("for unauthed users", () => {

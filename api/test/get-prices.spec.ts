@@ -5,7 +5,7 @@ import { RulePriority } from 'mockttp';
 
 import { expect } from 'chai';
 
-import { ipApiServer, IP_API_PORT, startServer } from './test-util';
+import { ipApiServer, IP_API_PORT, startAPI } from './test-setup/setup';
 import { PRICING } from '../src/pricing';
 
 const REAL_IDS = [
@@ -47,7 +47,7 @@ describe('/get-prices', () => {
     let apiServer: DestroyableServer;
 
     beforeEach(async () => {
-        apiServer = await startServer();
+        apiServer = await startAPI();
         await ipApiServer.start(IP_API_PORT);
 
         await ipApiServer.forGet().asPriority(RulePriority.FALLBACK).thenJson(200, {

@@ -14,7 +14,7 @@ import {
     getUsersByEmail,
     updateUserMetadata,
     createUser
-} from '../auth0';
+} from '../user-data-facade';
 import { getCorsResponseHeaders } from '../cors';
 import { getMaxTeamSize, getTeamMemberData, getUserId } from '../user-data';
 import { getSku, isTeamSubscription } from '../products';
@@ -235,12 +235,7 @@ async function linkNewTeamMembers(ownerId: string, membersToAdd: Array<User | st
 
             const updatePromise = _.isObject(user)
                 ? updateUserMetadata(user.user_id!, appMetadata)
-                : createUser({
-                    email: user,
-                    email_verified: true,
-                    connection: 'email',
-                    app_metadata: appMetadata
-                });
+                : createUser(user, appMetadata);
 
             return updatePromise
                 .then(({ user_id }) => user_id!)

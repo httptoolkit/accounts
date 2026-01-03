@@ -6,17 +6,14 @@ import { DestroyableServer } from 'destroyable-server';
 import { expect } from 'chai';
 
 import {
-    startServer,
-    auth0Server,
-    AUTH0_PORT,
+    startAPI,
     givenUser,
-    paddleServer,
-    PADDLE_PORT,
-    payproApiServer,
-    PAYPRO_API_PORT,
     freshAuthToken,
     givenAuthToken
-} from './test-util';
+} from './test-setup/setup';
+import { AUTH0_PORT, auth0Server } from './test-setup/auth0';
+import { PADDLE_PORT, paddleServer } from './test-setup/paddle';
+import { PAYPRO_API_PORT, payproApiServer } from './test-setup/paypro';
 
 const cancelSubscription = (server: net.Server, authToken?: string) => fetch(
     `http://localhost:${(server.address() as net.AddressInfo).port}/api/cancel-subscription`,
@@ -33,19 +30,13 @@ describe('Subscription cancellation API', () => {
     let apiServer: DestroyableServer;
 
     beforeEach(async () => {
-        apiServer = await startServer();
-        await auth0Server.start(AUTH0_PORT);
-        await auth0Server.forPost('/oauth/token').thenJson(200, {});
-        auth0Server.enableDebug();
-
+        apiServer = await startAPI();
         await paddleServer.start(PADDLE_PORT);
         await payproApiServer.start(PAYPRO_API_PORT);
     });
 
     afterEach(async () => {
         await apiServer.destroy();
-        await auth0Server.stop();
-
         await paddleServer.stop();
         await payproApiServer.stop();
     });

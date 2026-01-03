@@ -10,6 +10,9 @@ import { configureAppProxyTrust } from './trusted-xff-ip-setup';
 import './connectivity-check';
 import { reportError } from './errors';
 
+import { db, testConnection } from './db/database';
+import { runMigrations } from './db/migrator';
+
 const app = express();
 
 app.use(express.text({ type: '*/*' }));
@@ -136,7 +139,10 @@ apiRouter.post('/log-abuse-report', (req, res) => {
     return res.status(204).send();
 });
 
-export function startApiServer() {
+export async function startApiServer() {
+    await testConnection(db);
+    await runMigrations(db);
+
     const server = app.listen(process.env.PORT ?? 4000, () => {
         log.info(`Server (version ${process.env.VERSION}) listening on port ${(server.address() as any).port}`);
     });

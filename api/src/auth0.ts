@@ -12,12 +12,6 @@ const {
     AUTH0_APP_CLIENT_SECRET
 } = process.env;
 
-export const AUTH0_DATA_SIGNING_PRIVATE_KEY = `
------BEGIN RSA PRIVATE KEY-----
-${process.env.SIGNING_PRIVATE_KEY}
------END RSA PRIVATE KEY-----
-`;
-
 const userInfoClient = new auth0.UserInfoClient({
     domain: AUTH0_DOMAIN!
 });

@@ -7,7 +7,7 @@ initSentry();
 import {
     TeamOwnerMetadata,
     getUserById
-} from '../auth0';
+} from '../user-data-facade';
 import { getCorsResponseHeaders } from '../cors';
 import { getUserId } from '../user-data';
 import { getSku, isTeamSubscription } from '../products';

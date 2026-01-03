@@ -8,7 +8,7 @@ import * as log from 'loglevel';
 
 import {
     PayingUserMetadata
-} from '../auth0';
+} from '../user-data-facade';
 import {
     validatePaddleWebhook,
     PaddleWebhookData,
