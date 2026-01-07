@@ -36,7 +36,7 @@ spec:
             - name: CONTACT_FORM_DESTINATION
               value: "tim@httptoolkit.com"
             - name: SMTP_HOST
-              value: smtp.tem.scw.cloud
+              value: smtp.tem.scaleway.com
             - name: SMTP_PORT
               value: "2465"
             - name: SMTP_USERNAME
