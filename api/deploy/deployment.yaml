@@ -38,7 +38,7 @@ spec:
             - name: SMTP_HOST
               value: smtp.tem.scw.cloud
             - name: SMTP_PORT
-              value: "465"
+              value: "2465"
             - name: SMTP_USERNAME
               valueFrom:
                 secretKeyRef:
