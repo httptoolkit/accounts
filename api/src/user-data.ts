@@ -1,8 +1,8 @@
-import * as _ from 'lodash';
+import _ from 'lodash';
 import NodeCache from 'node-cache';
-import * as log from 'loglevel';
+import log from 'loglevel';
 
-import { reportError } from './errors';
+import { reportError } from './errors.ts';
 
 import type {
     TransactionData,
@@ -16,7 +16,7 @@ import {
     getPaddleUserIdFromSubscription,
     lookupPaddleUserTransactions,
     getSkuForPaddleId
-} from './paddle';
+} from './paddle.ts';
 import {
     LICENSE_LOCK_DURATION_MS,
     AppMetadata,
@@ -26,12 +26,12 @@ import {
     getUserInfoFromToken,
     getUserById,
     searchUsers
-} from './auth0';
+} from './user-data-facade.ts';
 import {
     getSku,
     isTeamSubscription
-} from './products';
-import { lookupPayProOrders } from './paypro';
+} from './products.ts';
+import { lookupPayProOrders } from './paypro.ts';
 
 type RawMetadata = Partial<AppMetadata> & {
     user_id: string;

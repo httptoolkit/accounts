@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import moment from 'moment';
 
-import * as log from 'loglevel';
+import log from 'loglevel';
 
 import {
     AppMetadata,
@@ -14,9 +14,9 @@ import {
     createUser,
     updateUserMetadata,
     getUserById
-} from './user-data-facade';
-import { formatErrorMessage, reportError, StatusError } from './errors';
-import { flushMetrics, trackEvent } from './metrics';
+} from './user-data-facade.ts';
+import { formatErrorMessage, reportError, StatusError } from './errors.ts';
+import { flushMetrics, trackEvent } from './metrics.ts';
 
 async function getOrCreateUserData(email: string): Promise<User> {
     const users = await getUsersByEmail(email);

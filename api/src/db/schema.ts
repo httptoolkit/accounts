@@ -1,5 +1,5 @@
-import { Generated } from "kysely";
-import { AppMetadata } from "../user-data-facade";
+import { Generated } from 'kysely';
+import { AppMetadata } from '../user-data-facade.ts';
 
 export interface Database {
     users: {

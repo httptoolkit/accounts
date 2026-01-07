@@ -1,6 +1,5 @@
 import * as net from 'net';
-import fetch from 'node-fetch';
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { DestroyableServer } from 'destroyable-server';
 import moment from 'moment';
 
@@ -10,23 +9,23 @@ import {
     startAPI,
     publicKey,
     freshAuthToken,
-} from './test-setup/setup';
-import { id } from './test-setup/utils';
-import { auth0Server  } from './test-setup/auth0';
+} from './test-setup/setup.ts';
+import { id } from './test-setup/utils.ts';
+import { auth0Server  } from './test-setup/auth0.ts';
 import {
     paddleServer,
     PADDLE_PORT,
     givenPaddleSubscription,
     givenPaddleTransactions,
-} from './test-setup/paddle';
+} from './test-setup/paddle.ts';
 import {
     givenPayProOrders,
     payproApiServer,
     PAYPRO_API_PORT
-} from './test-setup/paypro';
+} from './test-setup/paypro.ts';
 
 import { TransactionData } from '@httptoolkit/accounts';
-import { LICENSE_LOCK_DURATION_MS, TeamOwnerMetadata } from '../src/user-data-facade';
+import { LICENSE_LOCK_DURATION_MS, TeamOwnerMetadata } from '../src/user-data-facade.ts';
 
 const asPaddleDate = (date: Date) => {
     return moment.utc(date).format('YYYY-MM-DD HH:mm:ss');

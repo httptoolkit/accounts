@@ -1,10 +1,10 @@
-import * as _ from 'lodash';
-import * as log from 'loglevel';
+import _ from 'lodash';
+import log from 'loglevel';
 import { delay } from '@httptoolkit/util';
 
-import { catchErrors, reportError } from '../errors';
-import { getCorsResponseHeaders } from '../cors';
-import { mailer } from '../email';
+import { catchErrors, reportError } from '../errors.ts';
+import { getCorsResponseHeaders } from '../cors.ts';
+import { mailer } from '../email.ts';
 
 const { CONTACT_FORM_DESTINATION } = process.env;
 if (!CONTACT_FORM_DESTINATION) throw new Error('No contact form destination configured');

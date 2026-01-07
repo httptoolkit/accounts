@@ -1,12 +1,11 @@
 import * as net from 'net';
-import fetch from 'node-fetch';
 import { DestroyableServer } from 'destroyable-server';
 import { RulePriority } from 'mockttp';
 
 import { expect } from 'chai';
 
-import { ipApiServer, IP_API_PORT, startAPI } from './test-setup/setup';
-import { PRICING } from '../src/pricing';
+import { ipApiServer, IP_API_PORT, startAPI } from './test-setup/setup.ts';
+import { PRICING } from '../src/pricing.ts';
 
 const REAL_IDS = [
     550380,

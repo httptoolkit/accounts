@@ -1,5 +1,5 @@
-import * as log from 'loglevel';
-import { formatErrorMessage } from './errors';
+import log from 'loglevel';
+import { formatErrorMessage } from './errors.ts';
 import { delay } from '@httptoolkit/util';
 
 interface RetryOptions {

@@ -1,5 +1,5 @@
 declare module 'php-serialize' {
-    class Serializable {
+    export default class Serializable {
         static serialize(
             item: any,
             phpToJsScope?: Object,
@@ -17,6 +17,4 @@ declare module 'php-serialize' {
             strict: false
         ): boolean
     }
-
-    export = Serializable;
 }

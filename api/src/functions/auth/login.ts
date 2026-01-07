@@ -1,8 +1,8 @@
-import { initSentry, catchErrors, StatusError } from '../../errors';
+import { initSentry, catchErrors, StatusError } from '../../errors.ts';
 initSentry();
 
-import { getCorsResponseHeaders } from '../../cors';
-import { loginWithPasswordlessCode } from '../../user-data-facade';
+import { getCorsResponseHeaders } from '../../cors.ts';
+import { loginWithPasswordlessCode } from '../../user-data-facade.ts';
 
 export const handler = catchErrors(async (event) => {
     let headers = getCorsResponseHeaders(event);

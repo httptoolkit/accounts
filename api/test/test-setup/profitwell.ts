@@ -6,8 +6,8 @@ process.env.PROFITWELL_API_BASE_URL = `http://localhost:${PROFITWELL_API_PORT}`;
 
 export const profitwellApiServer = getLocal({
     https: {
-        keyPath: path.join(__dirname, '..', 'fixtures', 'test-ca.key'),
-        certPath: path.join(__dirname, '..', 'fixtures', 'test-ca.pem'),
+        keyPath: path.join(import.meta.dirname, '..', 'fixtures', 'test-ca.key'),
+        certPath: path.join(import.meta.dirname, '..', 'fixtures', 'test-ca.pem'),
         keyLength: 2048
     }
 });

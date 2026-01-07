@@ -2,13 +2,13 @@ import _ from 'lodash';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { getLocal } from 'mockttp';
-import * as loglevel from 'loglevel';
+import loglevel from 'loglevel';
 
 import { makeDestroyable } from 'destroyable-server';
-export { delay } from "@httptoolkit/util";
+export { delay } from '@httptoolkit/util';
 
-import * as auth0 from './auth0';
-import { generateKeyPair, keyWithoutHeaders } from './utils';
+import * as auth0 from './auth0.ts';
+import { generateKeyPair, keyWithoutHeaders } from './utils.ts';
 
 // We don't need log/debug info in the tests most of the time:
 loglevel.setLevel('warn');
@@ -37,8 +37,8 @@ process.env.IP_API_BASE_URL = `http://localhost:${IP_API_PORT}`;
 
 export const ipApiServer = getLocal({
     https: {
-        keyPath: path.join(__dirname, '..', 'fixtures', 'test-ca.key'),
-        certPath: path.join(__dirname, '..', 'fixtures', 'test-ca.pem'),
+        keyPath: path.join(import.meta.dirname, '..', 'fixtures', 'test-ca.key'),
+        certPath: path.join(import.meta.dirname, '..', 'fixtures', 'test-ca.pem'),
         keyLength: 2048
     }
 });
@@ -49,8 +49,8 @@ process.env.EXCHANGE_RATE_BASE_URL = `http://localhost:${EXCHANGE_RATE_API_PORT}
 
 export const exchangeRateServer = getLocal({
     https: {
-        keyPath: path.join(__dirname, '..', 'fixtures', 'test-ca.key'),
-        certPath: path.join(__dirname, '..', 'fixtures', 'test-ca.pem'),
+        keyPath: path.join(import.meta.dirname, '..', 'fixtures', 'test-ca.key'),
+        certPath: path.join(import.meta.dirname, '..', 'fixtures', 'test-ca.pem'),
         keyLength: 2048
     }
 });

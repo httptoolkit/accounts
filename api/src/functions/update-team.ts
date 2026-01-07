@@ -1,7 +1,7 @@
-import * as _ from 'lodash';
-import * as log from 'loglevel';
+import _ from 'lodash';
+import log from 'loglevel';
 
-import { initSentry, catchErrors, reportError, StatusError } from '../errors';
+import { initSentry, catchErrors, reportError, StatusError } from '../errors.ts';
 initSentry();
 
 import {
@@ -14,10 +14,10 @@ import {
     getUsersByEmail,
     updateUserMetadata,
     createUser
-} from '../user-data-facade';
-import { getCorsResponseHeaders } from '../cors';
-import { getMaxTeamSize, getTeamMemberData, getUserId } from '../user-data';
-import { getSku, isTeamSubscription } from '../products';
+} from '../user-data-facade.ts';
+import { getCorsResponseHeaders } from '../cors.ts';
+import { getMaxTeamSize, getTeamMemberData, getUserId } from '../user-data.ts';
+import { getSku, isTeamSubscription } from '../products.ts';
 
 const BearerRegex = /^Bearer (\S+)$/;
 

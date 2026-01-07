@@ -1,6 +1,6 @@
-import * as log from 'loglevel';
+import log from 'loglevel';
 
-import { formatErrorMessage } from './errors';
+import { formatErrorMessage } from './errors.ts';
 
 if (process.env.ENABLE_CONNECTIVITY_CHECKS) {
     setInterval(() => {

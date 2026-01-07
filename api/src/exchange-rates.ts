@@ -1,8 +1,7 @@
-import * as _ from 'lodash';
-import fetch from 'node-fetch';
-import * as log from 'loglevel';
+import _ from 'lodash';
+import log from 'loglevel';
 
-import { reportError } from './errors';
+import { reportError } from './errors.ts';
 
 const EXCHANGE_RATE_API_TOKEN = process.env.EXCHANGE_RATE_API_TOKEN;
 

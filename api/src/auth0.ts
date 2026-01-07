@@ -1,8 +1,8 @@
 import * as auth0 from 'auth0';
 import { SubscriptionStatus, SKU } from '@httptoolkit/accounts';
 
-import { withRetries } from './retries';
-import { StatusError } from './errors';
+import { withRetries } from './retries.ts';
+import { StatusError } from './errors.ts';
 
 const {
     AUTH0_DOMAIN,

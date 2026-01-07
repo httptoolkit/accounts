@@ -1,7 +1,7 @@
-import { SKU, PricedSKU, Interval } from "@httptoolkit/accounts";
+import { SKU, PricedSKU, Interval } from '@httptoolkit/accounts';
 
-import { AppMetadata, TrialUserMetadata } from "./user-data-facade";
-import { getSkuForPaddleId } from "./paddle";
+import { AppMetadata, TrialUserMetadata } from './user-data-facade.ts';
+import { getSkuForPaddleId } from './paddle.ts';
 
 export const ProductDetails = {
     'pro-monthly': {

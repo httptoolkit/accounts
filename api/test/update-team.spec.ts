@@ -1,6 +1,5 @@
-import * as _ from 'lodash';
+import _ from 'lodash';
 import * as net from 'net';
-import fetch from 'node-fetch';
 import { DestroyableServer } from 'destroyable-server';
 
 import { expect } from 'chai';
@@ -13,23 +12,23 @@ import {
     givenUser,
     givenNoUser,
     givenTeam
-} from './test-setup/setup';
+} from './test-setup/setup.ts';
 import {
     paddleServer,
     PADDLE_PORT,
-} from './test-setup/paddle';
+} from './test-setup/paddle.ts';
 import {
     auth0Server,
     watchAuth0UserCreation,
     watchAuth0UserUpdates,
     applyAuth0MetadataUpdate,
     withAuth0UserUpdateNetworkFailures
-} from './test-setup/auth0';
+} from './test-setup/auth0.ts';
 import {
     LICENSE_LOCK_DURATION_MS,
     PayingUserMetadata,
     TeamMemberMetadata
-} from '../src/user-data-facade';
+} from '../src/user-data-facade.ts';
 
 const updateTeam = (server: net.Server, authToken: string | undefined, team: {
     idsToRemove?: string[],

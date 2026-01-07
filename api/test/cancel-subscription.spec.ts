@@ -1,6 +1,5 @@
-import * as _ from 'lodash';
+import _ from 'lodash';
 import * as net from 'net';
-import fetch from 'node-fetch';
 import { DestroyableServer } from 'destroyable-server';
 
 import { expect } from 'chai';
@@ -10,10 +9,9 @@ import {
     givenUser,
     freshAuthToken,
     givenAuthToken
-} from './test-setup/setup';
-import { AUTH0_PORT, auth0Server } from './test-setup/auth0';
-import { PADDLE_PORT, paddleServer } from './test-setup/paddle';
-import { PAYPRO_API_PORT, payproApiServer } from './test-setup/paypro';
+} from './test-setup/setup.ts';
+import { PADDLE_PORT, paddleServer } from './test-setup/paddle.ts';
+import { PAYPRO_API_PORT, payproApiServer } from './test-setup/paypro.ts';
 
 const cancelSubscription = (server: net.Server, authToken?: string) => fetch(
     `http://localhost:${(server.address() as net.AddressInfo).port}/api/cancel-subscription`,

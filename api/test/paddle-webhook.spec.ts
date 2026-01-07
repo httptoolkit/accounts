@@ -1,6 +1,5 @@
 import * as crypto from 'crypto';
 import * as net from 'net';
-import fetch from 'node-fetch';
 import moment from 'moment';
 import { DestroyableServer } from 'destroyable-server';
 
@@ -12,9 +11,9 @@ import {
     givenUser,
     givenNoUsers,
     delay
-} from './test-setup/setup';
-import { auth0Server } from './test-setup/auth0';
-import { serializeWebhookData, PaddleWebhookData, UnsignedWebhookData } from '../src/paddle';
+} from './test-setup/setup.ts';
+import { auth0Server } from './test-setup/auth0.ts';
+import { serializeWebhookData, PaddleWebhookData, UnsignedWebhookData } from '../src/paddle.ts';
 
 const signBody = (body: UnsignedWebhookData) => {
     const serializedData = serializeWebhookData(body);

@@ -1,6 +1,6 @@
 #!./node_modules/.bin/ts-node
 
-import * as moment from 'moment';
+import moment from 'moment';
 import { getUsersByEmail, createUser, updateUserMetadata } from '../api/src/user-data-facade';
 
 // Add a trial subscription in Auth0 for the target user. Occasionally useful

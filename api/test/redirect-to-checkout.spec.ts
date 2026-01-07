@@ -1,5 +1,4 @@
 import * as net from 'net';
-import fetch from 'node-fetch';
 import { DestroyableServer } from 'destroyable-server';
 
 import { expect } from 'chai';
@@ -11,11 +10,11 @@ import {
     ipApiServer,
     IP_API_PORT,
     startAPI
-} from './test-setup/setup';
+} from './test-setup/setup.ts';
 import {
     paddleServer,
     PADDLE_PORT,
-} from './test-setup/paddle';
+} from './test-setup/paddle.ts';
 import type { SKU } from '@httptoolkit/accounts';
 
 const getCheckoutUrl = (
@@ -74,7 +73,7 @@ describe('/redirect-to-checkout', () => {
                     json: {
                         success: true,
                         response: {
-                            url: `https://paddle.example?prices=${prices.join(',')}${
+                            url: `https://paddle.example/?prices=${prices.join(',')}${
                                 emailParam
                             }${
                                 quantityParam

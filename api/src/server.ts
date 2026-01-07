@@ -1,17 +1,17 @@
 import * as http from 'http';
-import express = require('express');
+import express from 'express';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import * as log from 'loglevel';
+import log from 'loglevel';
 import rateLimit from 'express-rate-limit';
 
-import { getCorsResponseHeaders } from './cors';
-import { configureAppProxyTrust } from './trusted-xff-ip-setup';
+import { getCorsResponseHeaders } from './cors.ts';
+import { configureAppProxyTrust } from './trusted-xff-ip-setup.ts';
 
 import './connectivity-check';
-import { reportError } from './errors';
+import { reportError } from './errors.ts';
 
-import { db, testConnection } from './db/database';
-import { runMigrations } from './db/migrator';
+import { db, testConnection } from './db/database.ts';
+import { runMigrations } from './db/migrator.ts';
 
 const app = express();
 
@@ -152,9 +152,10 @@ export async function startApiServer() {
     );
 }
 
+
 // Start the server if run directly (this is how things work normally). When run
 // in tests, this is imported and the server is started & stopped manually instead.
-if (require.main === module) {
+if ((import.meta as any).main) {
     const serverStartDelay = parseInt(process.env.SERVER_START_DELAY || '', 10);
     if (serverStartDelay) {
         // We add a delay in some environments, where it's useful to ensure the

@@ -1,5 +1,5 @@
-import { APIGatewayProxyEvent } from "aws-lambda";
-import * as log from 'loglevel';
+import { APIGatewayProxyEvent } from 'aws-lambda';
+import log from 'loglevel';
 
 const ONE_DAY_IN_SECONDS = 60 * 60 * 24;
 

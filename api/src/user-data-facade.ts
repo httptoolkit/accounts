@@ -1,4 +1,4 @@
-import * as auth0 from "./auth0";
+import * as auth0 from './auth0.ts';
 
 // This file wraps the Auth0 APIs, to begin migrating towards DB synchrononization,
 // and eventually towards dropping Auth0 entirely. We intentionally closely match the

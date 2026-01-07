@@ -1,6 +1,5 @@
 import * as net from 'net';
-import fetch from 'node-fetch';
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { DestroyableServer } from 'destroyable-server';
 
 import { expect } from 'chai';
@@ -11,9 +10,9 @@ import {
     freshAuthToken,
     givenUser,
     givenAuthToken
-} from './test-setup/setup';
-import { auth0Server } from './test-setup/auth0';
-import { TeamOwnerMetadata } from '../src/user-data-facade';
+} from './test-setup/setup.ts';
+import { auth0Server } from './test-setup/auth0.ts';
+import { TeamOwnerMetadata } from '../src/user-data-facade.ts';
 
 const getAppData = (server: net.Server, authToken?: string) => fetch(
     `http://localhost:${(server.address() as net.AddressInfo).port}/api/get-app-data`,

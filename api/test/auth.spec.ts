@@ -1,9 +1,9 @@
 import * as net from 'net';
 import { expect } from 'chai';
 
-import { DestroyableServer } from "destroyable-server";
-import { startAPI } from "./test-setup/setup";
-import { auth0Server } from './test-setup/auth0';
+import { DestroyableServer } from 'destroyable-server';
+import { startAPI } from './test-setup/setup.ts';
+import { auth0Server } from './test-setup/auth0.ts';
 
 const TOKEN_RESPONSE = {
     "access_token": "at",

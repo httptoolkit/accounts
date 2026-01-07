@@ -1,15 +1,15 @@
 import * as path from 'path';
 import { getLocal } from 'mockttp';
 
-import { PayProOrderDetails, PayProOrderListing } from '../../src/paypro';
+import { PayProOrderDetails, PayProOrderListing } from '../../src/paypro.ts';
 
 export const PAYPRO_API_PORT = 9095;
 process.env.PAYPRO_API_BASE_URL = `http://localhost:${PAYPRO_API_PORT}`;
 
 export const payproApiServer = getLocal({
     https: {
-        keyPath: path.join(__dirname, '..', 'fixtures', 'test-ca.key'),
-        certPath: path.join(__dirname, '..', 'fixtures', 'test-ca.pem'),
+        keyPath: path.join(import.meta.dirname, '..', 'fixtures', 'test-ca.key'),
+        certPath: path.join(import.meta.dirname, '..', 'fixtures', 'test-ca.pem'),
         keyLength: 2048
     }
 });

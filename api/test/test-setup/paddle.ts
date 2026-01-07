@@ -1,17 +1,17 @@
 import * as path from 'path';
 import { getLocal } from 'mockttp';
 
-import { id } from './utils';
+import { id } from './utils.ts';
 
-import { PaddleTransaction } from '../../src/paddle';
+import { PaddleTransaction } from '../../src/paddle.ts';
 
 export const PADDLE_PORT = 9092;
 process.env.PADDLE_BASE_URL = `http://localhost:${PADDLE_PORT}`;
 
 export const paddleServer = getLocal({
     https: {
-        keyPath: path.join(__dirname, '..', 'fixtures', 'test-ca.key'),
-        certPath: path.join(__dirname, '..', 'fixtures', 'test-ca.pem'),
+        keyPath: path.join(import.meta.dirname, '..', 'fixtures', 'test-ca.key'),
+        certPath: path.join(import.meta.dirname, '..', 'fixtures', 'test-ca.pem'),
         keyLength: 2048
     }
 });

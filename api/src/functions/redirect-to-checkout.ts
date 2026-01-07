@@ -1,17 +1,17 @@
-import { initSentry, catchErrors, StatusError } from '../errors';
+import { initSentry, catchErrors, StatusError } from '../errors.ts';
 initSentry();
 
-import * as log from 'loglevel';
+import log from 'loglevel';
 
 import type { PricedSKU } from '@httptoolkit/accounts';
 
-import * as Paddle from '../paddle';
-import * as PayPro from '../paypro';
+import * as Paddle from '../paddle.ts';
+import * as PayPro from '../paypro.ts';
 
-import { isProSubscription, isTeamSubscription, PricedSKUs } from '../products';
-import { getAllPrices } from '../pricing';
-import { getIpData } from '../ip-geolocate';
-import { flushMetrics, generateSessionId, trackEvent } from '../metrics';
+import { isProSubscription, isTeamSubscription, PricedSKUs } from '../products.ts';
+import { getAllPrices } from '../pricing.ts';
+import { getIpData } from '../ip-geolocate.ts';
+import { flushMetrics, generateSessionId, trackEvent } from '../metrics.ts';
 
 const PAYPRO_COUNTRIES = [
     'BRA',

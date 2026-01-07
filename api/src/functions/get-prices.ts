@@ -1,13 +1,13 @@
-import { initSentry, catchErrors, reportError } from '../errors';
+import { initSentry, catchErrors, reportError } from '../errors.ts';
 initSentry();
 
 import { SubscriptionPricing } from '@httptoolkit/accounts';
 
-import { getCorsResponseHeaders } from '../cors';
-import { getAllPrices } from '../pricing';
-import { getPaddleIdForSku } from '../paddle';
-import { PricedSKUs, ProductDetails } from '../products';
-import { getIpData } from '../ip-geolocate';
+import { getCorsResponseHeaders } from '../cors.ts';
+import { getAllPrices } from '../pricing.ts';
+import { getPaddleIdForSku } from '../paddle.ts';
+import { PricedSKUs, ProductDetails } from '../products.ts';
+import { getIpData } from '../ip-geolocate.ts';
 
 export const handler = catchErrors(async (event) => {
     let headers = getCorsResponseHeaders(event, { allowAnyOrigin: true }); // Pricing data is CORS-accessible anywhere

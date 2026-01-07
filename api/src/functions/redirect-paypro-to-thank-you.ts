@@ -1,4 +1,4 @@
-import { initSentry, catchErrors, reportError } from '../errors';
+import { initSentry, catchErrors, reportError } from '../errors.ts';
 initSentry();
 
 import * as querystring from 'querystring';

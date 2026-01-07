@@ -1,11 +1,11 @@
-import * as _ from 'lodash';
+import _ from 'lodash';
 import * as path from 'path';
 import { getLocal, RulePriority } from 'mockttp';
 
-import { AppMetadata } from '../../src/user-data-facade';
+import { AppMetadata } from '../../src/user-data-facade.ts';
 
-import { id } from './utils';
-import{ freshAuthToken } from './setup';
+import { id } from './utils.ts';
+import{ freshAuthToken } from './setup.ts';
 
 export const AUTH0_PORT = 9091;
 process.env.AUTH0_DOMAIN = `localhost:${AUTH0_PORT}`;
@@ -16,8 +16,8 @@ process.env.AUTH0_MGMT_CLIENT_SECRET = 'auth0-mgmt-secret';
 
 export const auth0Server = getLocal({
     https: {
-        keyPath: path.join(__dirname, '..', 'fixtures', 'test-ca.key'),
-        certPath: path.join(__dirname, '..', 'fixtures', 'test-ca.pem'),
+        keyPath: path.join(import.meta.dirname, '..', 'fixtures', 'test-ca.key'),
+        certPath: path.join(import.meta.dirname, '..', 'fixtures', 'test-ca.pem'),
         keyLength: 2048
     }
 });

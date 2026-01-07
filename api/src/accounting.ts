@@ -1,12 +1,11 @@
-import fetch from "node-fetch";
-import * as log from 'loglevel';
+import log from 'loglevel';
 
-import { SKU } from "@httptoolkit/accounts";
-import { CustomError, delay } from "@httptoolkit/util";
+import { SKU } from '@httptoolkit/accounts';
+import { CustomError, delay } from '@httptoolkit/util';
 
-import { getPaddleIdForSku } from "./paddle";
-import { getSkuInterval } from "./products";
-import { reportError } from "./errors";
+import { getPaddleIdForSku } from './paddle.ts';
+import { getSkuInterval } from './products.ts';
+import { reportError } from './errors.ts';
 
 const PROFITWELL_PRIVATE_TOKEN = process.env.PROFITWELL_PRIVATE_TOKEN;
 const PROFITWELL_API_BASE_URL = process.env.PROFITWELL_API_BASE_URL

@@ -1,7 +1,6 @@
-import * as _ from 'lodash';
+import _ from 'lodash';
 import * as crypto from 'crypto';
 import * as net from 'net';
-import fetch from 'node-fetch';
 import moment, { Moment } from 'moment';
 import { DestroyableServer } from 'destroyable-server';
 
@@ -12,15 +11,15 @@ import {
     givenUser,
     givenNoUsers,
     PAYPRO_IPN_VALIDATION_KEY
-} from './test-setup/setup';
-import { profitwellApiServer } from './test-setup/profitwell';
-import { auth0Server } from './test-setup/auth0';
+} from './test-setup/setup.ts';
+import { profitwellApiServer } from './test-setup/profitwell.ts';
+import { auth0Server } from './test-setup/auth0.ts';
 
 import {
     PayProOrderDateFormat,
     PayProRenewalDateFormat,
     PayProWebhookData
-} from '../src/paypro';
+} from '../src/paypro.ts';
 
 // Validated by testing with the real key and signatures from real IPN
 // requests - this generates the correct matching signature.

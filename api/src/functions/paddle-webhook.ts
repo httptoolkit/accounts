@@ -1,32 +1,32 @@
-import { initSentry, catchErrors, reportError } from '../errors';
+import { initSentry, catchErrors, reportError } from '../errors.ts';
 initSentry();
 
 import _ from 'lodash';
 import moment from 'moment';
 import * as querystring from 'querystring';
-import * as log from 'loglevel';
+import log from 'loglevel';
 
 import {
     PayingUserMetadata
-} from '../user-data-facade';
+} from '../user-data-facade.ts';
 import {
     validatePaddleWebhook,
     PaddleWebhookData,
     getSkuForPaddleId
-} from '../paddle';
+} from '../paddle.ts';
 import {
     getSku,
     isProSubscription,
     isTeamSubscription
-} from '../products';
+} from '../products.ts';
 import {
     banUser,
     reportSuccessfulCheckout,
     updateProUserData,
     updateTeamData,
     parseCheckoutPassthrough
-} from '../webhook-handling';
-import { setRevenueTraits } from '../accounting';
+} from '../webhook-handling.ts';
+import { setRevenueTraits } from '../accounting.ts';
 
 function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<PayingUserMetadata> {
     if (

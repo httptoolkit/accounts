@@ -1,11 +1,11 @@
-import { initSentry, catchErrors } from '../errors';
+import { initSentry, catchErrors } from '../errors.ts';
 initSentry();
 
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 
-import { DATA_SIGNING_PRIVATE_KEY } from '../user-data-facade';
-import { getCorsResponseHeaders } from '../cors';
-import { getUserAppData } from '../user-data';
+import { DATA_SIGNING_PRIVATE_KEY } from '../user-data-facade.ts';
+import { getCorsResponseHeaders } from '../cors.ts';
+import { getUserAppData } from '../user-data.ts';
 
 const BearerRegex = /^Bearer (\S+)$/;
 

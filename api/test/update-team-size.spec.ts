@@ -1,6 +1,5 @@
-import * as _ from 'lodash';
+import _ from 'lodash';
 import * as net from 'net';
-import fetch from 'node-fetch';
 import { DestroyableServer } from 'destroyable-server';
 
 import { expect } from 'chai';
@@ -10,12 +9,12 @@ import {
     freshAuthToken,
     givenTeam,
     delay
-} from './test-setup/setup';
+} from './test-setup/setup.ts';
 import {
     paddleServer,
     PADDLE_PORT,
-} from './test-setup/paddle';
-import { auth0Server } from './test-setup/auth0';
+} from './test-setup/paddle.ts';
+import { auth0Server } from './test-setup/auth0.ts';
 
 const updateTeamSize = (server: net.Server, authToken: string | undefined, newTeamSize: number) => fetch(
     `http://localhost:${(server.address() as net.AddressInfo).port}/api/update-team-size`,
