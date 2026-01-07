@@ -22,7 +22,7 @@ spec:
             - name: PORT
               value: "4000"
             - name: LOGLEVEL
-              value: "debug"
+              value: "info"
             - name: ORIGIN_REGEX
               value: ".*"
 
