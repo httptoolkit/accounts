@@ -1,17 +1,17 @@
-import * as log from 'loglevel';
+import log from 'loglevel';
 
 import { delay } from '@httptoolkit/util';
-import { initSentry, catchErrors, reportError, StatusError } from '../errors';
+import { initSentry, catchErrors, reportError, StatusError } from '../errors.ts';
 initSentry();
 
 import {
     TeamOwnerMetadata,
     getUserById
-} from '../auth0';
-import { getCorsResponseHeaders } from '../cors';
-import { getUserId } from '../user-data';
-import { getSku, isTeamSubscription } from '../products';
-import { updateSubscriptionQuantity } from '../paddle';
+} from '../user-data-facade.ts';
+import { getCorsResponseHeaders } from '../cors.ts';
+import { getUserId } from '../user-data.ts';
+import { getSku, isTeamSubscription } from '../products.ts';
+import { updateSubscriptionQuantity } from '../paddle.ts';
 
 const BearerRegex = /^Bearer (\S+)$/;
 

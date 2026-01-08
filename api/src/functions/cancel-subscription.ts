@@ -1,13 +1,13 @@
 import { UnreachableCheck } from '@httptoolkit/util';
 
-import { initSentry, catchErrors, StatusError } from '../errors';
+import { initSentry, catchErrors, StatusError } from '../errors.ts';
 initSentry();
 
-import { getCorsResponseHeaders } from '../cors';
-import { getUserBaseData } from '../user-data';
+import { getCorsResponseHeaders } from '../cors.ts';
+import { getUserBaseData } from '../user-data.ts';
 
-import * as Paddle from '../paddle';
-import * as PayPro from '../paypro';
+import * as Paddle from '../paddle.ts';
+import * as PayPro from '../paypro.ts';
 
 const BearerRegex = /^Bearer (\S+)$/;
 

@@ -2,7 +2,7 @@
 
 import prompts from 'prompts';
 
-import { getUsersByEmail } from '../api/src/auth0';
+import { getUsersByEmail } from '../api/src/user-data-facade';
 
 const {
     PADDLE_ID,

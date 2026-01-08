@@ -6,7 +6,7 @@ import { FetchError, ResponseError } from 'auth0';
 import { CustomError } from '@httptoolkit/util';
 
 import log from 'loglevel';
-import { getCorsResponseHeaders } from './cors';
+import { getCorsResponseHeaders } from './cors.ts';
 
 log.setLevel(process.env.LOGLEVEL as any ?? 'info');
 

@@ -1,8 +1,8 @@
-import { initSentry, catchErrors, StatusError } from '../../errors';
+import { initSentry, catchErrors, StatusError } from '../../errors.ts';
 initSentry();
 
-import { getCorsResponseHeaders } from '../../cors';
-import * as auth0 from '../../auth0';
+import { getCorsResponseHeaders } from '../../cors.ts';
+import { loginWithPasswordlessCode } from '../../user-data-facade.ts';
 
 export const handler = catchErrors(async (event) => {
     let headers = getCorsResponseHeaders(event);
@@ -23,7 +23,7 @@ export const handler = catchErrors(async (event) => {
     if (!email) throw new StatusError(400, 'Email is required');
     if (!code) throw new StatusError(400, 'Code is required');
 
-    const result = await auth0.loginWithPasswordlessCode(email, code, event.requestContext.identity.sourceIp);
+    const result = await loginWithPasswordlessCode(email, code, event.requestContext.identity.sourceIp);
 
     return {
         statusCode: 200,

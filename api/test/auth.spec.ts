@@ -1,8 +1,9 @@
 import * as net from 'net';
 import { expect } from 'chai';
 
-import { DestroyableServer } from "destroyable-server";
-import { AUTH0_PORT, auth0Server, startServer } from "./test-util";
+import { DestroyableServer } from 'destroyable-server';
+import { startAPI } from './test-setup/setup.ts';
+import { auth0Server } from './test-setup/auth0.ts';
 
 const TOKEN_RESPONSE = {
     "access_token": "at",
@@ -18,15 +19,12 @@ describe("API auth endpoints", () => {
     let apiAddress: string;
 
     beforeEach(async () => {
-        apiServer = await startServer();
+        apiServer = await startAPI();
         apiAddress = `http://localhost:${(apiServer.address() as net.AddressInfo).port}`;
-
-        await auth0Server.start(AUTH0_PORT);
     });
 
     afterEach(async () => {
         await apiServer.destroy();
-        await auth0Server.stop();
     });
 
     describe("/auth/send-code", () => {

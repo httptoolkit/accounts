@@ -1,13 +1,12 @@
-import * as _ from 'lodash';
+import _ from 'lodash';
 import * as crypto from 'crypto';
 import * as forge from 'node-forge';
-import fetch from 'node-fetch';
-import * as moment from 'moment';
-import * as log from 'loglevel';
+import moment from 'moment';
+import log from 'loglevel';
 
-import { reportError, StatusError } from './errors';
-import { SKU, TransactionData } from "@httptoolkit/accounts";
-import { getLatestRates } from './exchange-rates';
+import { reportError, StatusError } from './errors.ts';
+import { SKU, TransactionData } from '@httptoolkit/accounts';
+import { getLatestRates } from './exchange-rates.ts';
 
 const PAYPRO_API_BASE_URL = process.env.PAYPRO_API_BASE_URL
     ?? 'https://store.payproglobal.com';

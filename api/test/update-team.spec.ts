@@ -1,28 +1,35 @@
-import * as _ from 'lodash';
+import _ from 'lodash';
 import * as net from 'net';
-import fetch from 'node-fetch';
 import { DestroyableServer } from 'destroyable-server';
 
 import { expect } from 'chai';
 
 import {
     delay,
-    startServer,
-    auth0Server,
-    AUTH0_PORT,
+    startAPI,
     freshAuthToken,
-    paddleServer,
-    PADDLE_PORT,
     givenNoUsers,
     givenUser,
     givenNoUser,
-    givenTeam,
-    watchUserCreation,
-    watchUserUpdates,
-    applyMetadataUpdate,
-    withUserUpdateNetworkFailures
-} from './test-util';
-import { LICENSE_LOCK_DURATION_MS, PayingUserMetadata, TeamMemberMetadata } from '../src/auth0';
+    givenTeam
+} from './test-setup/setup.ts';
+import {
+    paddleServer,
+    PADDLE_PORT,
+} from './test-setup/paddle.ts';
+import {
+    auth0Server,
+    watchAuth0UserCreation,
+    watchAuth0UserUpdates,
+    applyAuth0MetadataUpdate,
+    withAuth0UserUpdateNetworkFailures
+} from './test-setup/auth0.ts';
+import {
+    LICENSE_LOCK_DURATION_MS,
+    PayingUserMetadata,
+    TeamMemberMetadata
+} from '../src/user-data-facade.ts';
+import { testDB } from './test-setup/database.ts';
 
 const updateTeam = (server: net.Server, authToken: string | undefined, team: {
     idsToRemove?: string[],
@@ -47,17 +54,12 @@ describe('/update-team', () => {
     let apiServer: DestroyableServer;
 
     beforeEach(async () => {
-        apiServer = await startServer();
-
-        await auth0Server.start(AUTH0_PORT);
-        await auth0Server.forPost('/oauth/token').thenJson(200, {});
-
+        apiServer = await startAPI();
         await paddleServer.start(PADDLE_PORT);
     });
 
     afterEach(async () => {
         await apiServer.destroy();
-        await auth0Server.stop();
         await paddleServer.stop();
     });
 
@@ -130,7 +132,7 @@ describe('/update-team', () => {
 
             const { ownerId, ownerAuthToken } = await givenTeam(team);
 
-            const getUserUpdates = await watchUserUpdates();
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 idsToRemove: [team[0].id, team[3].id]
@@ -138,6 +140,7 @@ describe('/update-team', () => {
 
             expect(response.status).to.equal(200);
 
+            // Confirm the writes to Auth0:
             const updates = await getUserUpdates();
             expect(updates).to.deep.equal([
                 {
@@ -171,6 +174,20 @@ describe('/update-team', () => {
                     }
                 }
             ]);
+
+            // Confirm the writes to the DB:
+            const dbUsers = await testDB.query(`SELECT * FROM users ORDER BY auth0_user_id`);
+            expect(dbUsers.rows).to.have.length(5);
+            const [user1, user2, user3, user4, owner] = dbUsers.rows;
+
+            expect(owner.app_metadata.team_member_ids).to.deep.equal([
+                user2.auth0_user_id,
+                user3.auth0_user_id
+            ]);
+            expect(user1.app_metadata.subscription_owner_id).to.equal(null);
+            expect(user2.app_metadata.subscription_owner_id).to.equal(owner.auth0_user_id);
+            expect(user3.app_metadata.subscription_owner_id).to.equal(owner.auth0_user_id);
+            expect(user4.app_metadata.subscription_owner_id).to.equal(null);
         });
 
         it("allows adding a new user by email", async () => {
@@ -182,8 +199,8 @@ describe('/update-team', () => {
             const { ownerId, ownerAuthToken } = await givenTeam(team);
 
             await givenNoUsers();
-            const getNewUsers = await watchUserCreation();
-            const getUserUpdates = await watchUserUpdates();
+            const getNewUsers = await watchAuth0UserCreation();
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: ['test@example.com']
@@ -233,8 +250,8 @@ describe('/update-team', () => {
             const existingUserEmail = 'existing@example.com';
 
             await givenUser(existingUserId, existingUserEmail);
-            const getNewUsers = await watchUserCreation();
-            const getUserUpdates = await watchUserUpdates();
+            const getNewUsers = await watchAuth0UserCreation();
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [existingUserEmail]
@@ -285,8 +302,8 @@ describe('/update-team', () => {
 
             await givenNoUser(newUserEmail);
             await givenUser(existingUserId, existingUserEmail);
-            const getNewUsers = await watchUserCreation();
-            const getUserUpdates = await watchUserUpdates();
+            const getNewUsers = await watchAuth0UserCreation();
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 idsToRemove: team.map(m => m.id),
@@ -312,7 +329,7 @@ describe('/update-team', () => {
             const updates = await getUserUpdates();
             expect(updates.length).to.equal(4);
 
-            // Removes the 2 existing team members:
+            // Removed the 2 existing team members:
             expect(updates.slice(0, 2)).to.deep.equal([
                 {
                     url: `/api/v2/users/${team[0].id}`,
@@ -355,6 +372,21 @@ describe('/update-team', () => {
                     }
                 }
             });
+
+            // Check final DB state:
+            const dbUsers = await testDB.query(`SELECT * FROM users ORDER BY auth0_user_id`);
+            const [billingUser, existingUser, member1, member2, newUser] = dbUsers.rows;
+
+            expect(billingUser.app_metadata.team_member_ids).to.deep.equal([
+                newUser.auth0_user_id,
+                existingUser.auth0_user_id
+            ]);
+            expect(existingUser.app_metadata.subscription_owner_id).to.equal(ownerId);
+            expect(existingUser.app_metadata.joined_team_at).to.be.greaterThan(0);
+            expect(newUser.app_metadata.subscription_owner_id).to.equal(ownerId);
+            expect(newUser.app_metadata.joined_team_at).to.be.greaterThan(0);
+            expect(member1.app_metadata.subscription_owner_id).to.equal(null);
+            expect(member2.app_metadata.subscription_owner_id).to.equal(null);
         });
 
         it("reports failures for internal API issues, after retries", async function () {
@@ -371,7 +403,7 @@ describe('/update-team', () => {
 
             await givenUser(newUserId, newUserEmail);
 
-            const userUpdateEndpoint = await withUserUpdateNetworkFailures();
+            const userUpdateEndpoint = await withAuth0UserUpdateNetworkFailures();
 
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [newUserEmail]
@@ -392,7 +424,7 @@ describe('/update-team', () => {
             const { ownerAuthToken } = await givenTeam(team);
 
             await givenNoUsers();
-            const getUserUpdates = await watchUserUpdates();
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: ['test@example.com']
@@ -411,7 +443,7 @@ describe('/update-team', () => {
             const { ownerAuthToken } = await givenTeam(team);
 
             await givenNoUsers();
-            const getUserUpdates = await watchUserUpdates();
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: ['member1@example.com']
@@ -430,7 +462,7 @@ describe('/update-team', () => {
             const { ownerAuthToken } = await givenTeam(team);
 
             await givenNoUsers();
-            const getUserUpdates = await watchUserUpdates();
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: ['member1@example.com', 'member1@example.com']
@@ -461,7 +493,7 @@ describe('/update-team', () => {
                 subscription_status: 'active',
                 subscription_expiry: Date.now() + 1000
             } as PayingUserMetadata);
-            const getUserUpdates = await watchUserUpdates();
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [existingUserEmail]
@@ -497,7 +529,7 @@ describe('/update-team', () => {
                 subscription_status: 'active',
                 subscription_expiry: Date.now() + 1000
             } as PayingUserMetadata);
-            const getUserUpdates = await watchUserUpdates();
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [newUserEmail, existingUserEmail]
@@ -515,7 +547,7 @@ describe('/update-team', () => {
             ] as const;
 
             const { ownerId, ownerEmail, ownerAuthToken } = await givenTeam(team);
-            const getUserUpdates = await watchUserUpdates();
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [ownerEmail]
@@ -563,7 +595,7 @@ describe('/update-team', () => {
                 subscription_status: 'deleted', // <-- Recently unsubscribed
                 subscription_expiry: Date.now() + 1000
             } as PayingUserMetadata);
-            const getUserUpdates = await watchUserUpdates();
+            const getUserUpdates = await watchAuth0UserUpdates();
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [existingUserEmail]
             });
@@ -586,7 +618,7 @@ describe('/update-team', () => {
             await givenUser(existingUserId, existingUserEmail, {
                 subscription_owner_id: 'another-owner-321'
             } as TeamMemberMetadata);
-            const getUserUpdates = await watchUserUpdates();
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [existingUserEmail]
@@ -605,7 +637,7 @@ describe('/update-team', () => {
             const { ownerAuthToken } = await givenTeam(team);
 
             await givenNoUsers();
-            const getUserUpdates = await watchUserUpdates();
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 idsToRemove: [team[0].id, team[0].id]
@@ -622,7 +654,7 @@ describe('/update-team', () => {
 
             const { ownerAuthToken } = await givenTeam(team);
 
-            const getUserUpdates = await watchUserUpdates();
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 idsToRemove: ['unrelated-id']
@@ -638,7 +670,7 @@ describe('/update-team', () => {
             ] as const;
 
             const { ownerAuthToken, updateOwnerData } = await givenTeam(team);
-            const getUserUpdates = await watchUserUpdates();
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             updateOwnerData({ team_member_ids: [] }); // Lose the id from team_member_ids
 
@@ -659,7 +691,7 @@ describe('/update-team', () => {
             ] as const;
 
             const { ownerId, ownerAuthToken } = await givenTeam(team);
-            const getUserUpdates = await watchUserUpdates();
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 idsToRemove: [team[0].id]
@@ -711,7 +743,7 @@ describe('/update-team', () => {
                     status: 200,
                     json: [{ email: memberEmail, user_id: memberId, app_metadata: memberData }]
                 }));
-            const getUserUpdates = await watchUserUpdates();
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             // Add the user once:
             const response1 = await updateTeam(apiServer, ownerAuthToken, {
@@ -721,7 +753,7 @@ describe('/update-team', () => {
 
             // Update mocks with the updates this triggers:
             let updates = await getUserUpdates();
-            memberData = applyMetadataUpdate(memberData, updates[0].body.app_metadata);
+            memberData = applyAuth0MetadataUpdate(memberData, updates[0].body.app_metadata);
             updateTeamMembers([{
                 id: memberId,
                 email: memberEmail,
@@ -737,7 +769,7 @@ describe('/update-team', () => {
 
             // Update mocks again
             updates = (await getUserUpdates()).slice(2);
-            memberData = applyMetadataUpdate(memberData, updates[0].body.app_metadata);
+            memberData = applyAuth0MetadataUpdate(memberData, updates[0].body.app_metadata);
             updateTeamMembers([]);
             updateOwnerData(updates[1].body.app_metadata);
 
@@ -770,7 +802,7 @@ describe('/update-team', () => {
                     status: 200,
                     json: [{ email: memberEmail, user_id: memberId, app_metadata: memberData }]
                 }));
-            const getUserUpdates = await watchUserUpdates();
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             // Add the user once:
             const response1 = await updateTeam(apiServer, ownerAuthToken, {
@@ -780,7 +812,7 @@ describe('/update-team', () => {
 
             // Update mocks with the updates this triggers:
             const updates = await getUserUpdates();
-            memberData = applyMetadataUpdate(memberData, updates[0].body.app_metadata);
+            memberData = applyAuth0MetadataUpdate(memberData, updates[0].body.app_metadata);
             updateTeamMembers([{
                 id: memberId,
                 email: memberEmail,
@@ -823,7 +855,7 @@ describe('/update-team', () => {
                     status: 200,
                     json: [{ email: memberEmail, user_id: memberId, app_metadata: memberData }]
                 }));
-            const getUserUpdates = await watchUserUpdates();
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             // Add the user once:
             const response1 = await updateTeam(apiServer, ownerAuthToken, {
@@ -833,7 +865,7 @@ describe('/update-team', () => {
 
             // Update mocks with the updates this triggers:
             let updates = await getUserUpdates();
-            memberData = applyMetadataUpdate(memberData, updates[0].body.app_metadata);
+            memberData = applyAuth0MetadataUpdate(memberData, updates[0].body.app_metadata);
             updateTeamMembers([{
                 id: memberId,
                 email: memberEmail,
@@ -849,7 +881,7 @@ describe('/update-team', () => {
 
             // Update mocks again
             updates = (await getUserUpdates()).slice(2);
-            memberData = applyMetadataUpdate(memberData, updates[0].body.app_metadata);
+            memberData = applyAuth0MetadataUpdate(memberData, updates[0].body.app_metadata);
             updateTeamMembers([]);
 
             // But override the lock time to pretend 2* the lock duration has passed:

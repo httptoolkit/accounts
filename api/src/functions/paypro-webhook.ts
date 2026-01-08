@@ -1,22 +1,22 @@
-import { initSentry, catchErrors, reportError } from '../errors';
+import { initSentry, catchErrors, reportError } from '../errors.ts';
 initSentry();
 
 import * as querystring from 'querystring';
 import moment from 'moment';
-import * as log from 'loglevel';
+import log from 'loglevel';
 import { SubscriptionStatus } from '@httptoolkit/accounts';
 
-import { isProSubscription, isTeamSubscription, SKUs } from '../products';
-import { recordCancellation, recordSubscription } from '../accounting';
-import { PayingUserMetadata, getUsersByEmail } from '../auth0';
-import { parseCheckoutPassthrough, reportSuccessfulCheckout, updateProUserData, updateTeamData } from '../webhook-handling';
+import { isProSubscription, isTeamSubscription, SKUs } from '../products.ts';
+import { recordCancellation, recordSubscription } from '../accounting.ts';
+import { PayingUserMetadata, getUsersByEmail } from '../user-data-facade.ts';
+import { parseCheckoutPassthrough, reportSuccessfulCheckout, updateProUserData, updateTeamData } from '../webhook-handling.ts';
 import {
     parsePayProCustomFields,
     PayProOrderDateFormat,
     PayProRenewalDateFormat,
     PayProWebhookData,
     validatePayProWebhook
-} from '../paypro';
+} from '../paypro.ts';
 
 export const handler = catchErrors(async (event) => {
     const eventData = querystring.parse(event.body || '') as unknown as PayProWebhookData;

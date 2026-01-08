@@ -1,11 +1,11 @@
-import { initSentry, catchErrors } from '../errors';
+import { initSentry, catchErrors } from '../errors.ts';
 initSentry();
 
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 
-import { AUTH0_DATA_SIGNING_PRIVATE_KEY } from '../auth0';
-import { getCorsResponseHeaders } from '../cors';
-import { getUserAppData } from '../user-data';
+import { DATA_SIGNING_PRIVATE_KEY } from '../user-data-facade.ts';
+import { getCorsResponseHeaders } from '../cors.ts';
+import { getUserAppData } from '../user-data.ts';
 
 const BearerRegex = /^Bearer (\S+)$/;
 
@@ -39,7 +39,7 @@ export const handler = catchErrors(async (event) => {
 
     const userData = await getUserAppData(accessToken);
 
-    const signedAppData = jwt.sign(userData, AUTH0_DATA_SIGNING_PRIVATE_KEY, {
+    const signedAppData = jwt.sign(userData, DATA_SIGNING_PRIVATE_KEY, {
         algorithm: 'RS256',
         // This sets the validity of the JWT, not necessarily the account. This is
         // how long you can use a paid account offline without talking to the account

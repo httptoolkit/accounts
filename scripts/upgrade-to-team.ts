@@ -1,6 +1,6 @@
 import prompts from 'prompts';
 
-import { mgmtClient } from '../api/src/auth0';
+import { mgmtClient } from '../api/src/user-data-facade';
 
 const {
     PADDLE_ID,

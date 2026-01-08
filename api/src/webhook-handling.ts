@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import moment from 'moment';
 
-import * as log from 'loglevel';
+import log from 'loglevel';
 
 import {
     AppMetadata,
@@ -14,9 +14,9 @@ import {
     createUser,
     updateUserMetadata,
     getUserById
-} from './auth0';
-import { formatErrorMessage, reportError, StatusError } from './errors';
-import { flushMetrics, trackEvent } from './metrics';
+} from './user-data-facade.ts';
+import { formatErrorMessage, reportError, StatusError } from './errors.ts';
+import { flushMetrics, trackEvent } from './metrics.ts';
 
 async function getOrCreateUserData(email: string): Promise<User> {
     const users = await getUsersByEmail(email);
@@ -26,12 +26,7 @@ async function getOrCreateUserData(email: string): Promise<User> {
         return users[0];
     } else {
         // Create the user, if they don't already exist:
-        return createUser({
-            email,
-            connection: 'email',
-            email_verified: true, // This ensures users don't receive an email code or verification
-            app_metadata: {}
-        });
+        return createUser(email);
     }
 }
 
@@ -50,7 +45,7 @@ export async function updateProUserData(email: string, subscriptionUpdate: Parti
     dropUndefinedValues(subscriptionUpdate);
 
     const user = await getOrCreateUserData(email);
-    const appData = user.app_metadata as AppMetadata;
+    const appData = user.app_metadata;
 
     // Does the user already have unrelated subscription data?
     if (

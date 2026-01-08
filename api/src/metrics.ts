@@ -1,6 +1,6 @@
 import * as crypto from 'crypto';
 import { PostHog } from 'posthog-node';
-import { reportError } from './errors';
+import { reportError } from './errors.ts';
 import { delay } from '@httptoolkit/util';
 
 const POSTHOG_KEY = process.env.POSTHOG_KEY;

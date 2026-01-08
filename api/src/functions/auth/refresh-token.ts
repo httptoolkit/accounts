@@ -1,8 +1,8 @@
-import { initSentry, catchErrors, StatusError } from '../../errors';
+import { initSentry, catchErrors, StatusError } from '../../errors.ts';
 initSentry();
 
-import { getCorsResponseHeaders } from '../../cors';
-import * as auth0 from '../../auth0';
+import { getCorsResponseHeaders } from '../../cors.ts';
+import { refreshToken } from '../../user-data-facade.ts';
 
 export const handler = catchErrors(async (event) => {
     let headers = getCorsResponseHeaders(event);
@@ -13,16 +13,16 @@ export const handler = catchErrors(async (event) => {
         return { statusCode: 405, headers, body: '' };
     }
 
-    let refreshToken;
+    let token;
     try {
-        ({ refreshToken } = JSON.parse(event.body!));
+        ({ refreshToken: token } = JSON.parse(event.body!));
     } catch (e) {
         throw new StatusError(400, 'Invalid request body');
     }
 
-    if (!refreshToken) throw new StatusError(400, 'Refresh token is required');
+    if (!token) throw new StatusError(400, 'Refresh token is required');
 
-    const result = await auth0.refreshToken(refreshToken, event.requestContext.identity.sourceIp);
+    const result = await refreshToken(token, event.requestContext.identity.sourceIp);
 
     return {
         statusCode: 200,

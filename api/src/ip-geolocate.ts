@@ -1,8 +1,7 @@
 import NodeCache from 'node-cache';
-import fetch from 'node-fetch';
-import * as log from 'loglevel';
+import log from 'loglevel';
 
-import { reportError } from './errors';
+import { reportError } from './errors.ts';
 
 const IP_API_KEY = process.env.IP_API_KEY;
 const IP_API_BASE_URL = process.env.IP_API_BASE_URL

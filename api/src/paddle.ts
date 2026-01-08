@@ -2,15 +2,14 @@ import _ from 'lodash';
 import * as crypto from 'crypto';
 import { URLSearchParams } from 'url';
 
-import fetch, { RequestInit } from 'node-fetch';
 import Serialize from 'php-serialize';
 import NodeCache from 'node-cache';
 import moment from 'moment';
-import * as log from 'loglevel';
+import log from 'loglevel';
 import { CustomError } from '@httptoolkit/util';
 
-import { reportError, StatusError } from './errors';
-import { getLatestRates } from './exchange-rates';
+import { reportError, StatusError } from './errors.ts';
+import { getLatestRates } from './exchange-rates.ts';
 import {
     SKU,
     SubscriptionPricing,

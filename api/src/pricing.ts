@@ -1,6 +1,6 @@
-import * as _ from 'lodash';
+import _ from 'lodash';
 
-import { IpData } from './ip-geolocate';
+import { IpData } from './ip-geolocate.ts';
 
 interface Prices {
     'currency': string,

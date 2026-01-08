@@ -1,5 +1,4 @@
 import * as net from 'net';
-import fetch from 'node-fetch';
 import { DestroyableServer } from 'destroyable-server';
 
 import { expect } from 'chai';
@@ -10,10 +9,12 @@ import {
     givenExchangeRate,
     ipApiServer,
     IP_API_PORT,
+    startAPI
+} from './test-setup/setup.ts';
+import {
     paddleServer,
     PADDLE_PORT,
-    startServer
-} from './test-util';
+} from './test-setup/paddle.ts';
 import type { SKU } from '@httptoolkit/accounts';
 
 const getCheckoutUrl = (
@@ -45,7 +46,7 @@ describe('/redirect-to-checkout', () => {
     let apiServer: DestroyableServer;
 
     beforeEach(async () => {
-        apiServer = await startServer();
+        apiServer = await startAPI();
 
         // Return checkout URLs containing the raw params explicitly to assert on:
         await paddleServer.start(PADDLE_PORT);
@@ -72,7 +73,7 @@ describe('/redirect-to-checkout', () => {
                     json: {
                         success: true,
                         response: {
-                            url: `https://paddle.example?prices=${prices.join(',')}${
+                            url: `https://paddle.example/?prices=${prices.join(',')}${
                                 emailParam
                             }${
                                 quantityParam

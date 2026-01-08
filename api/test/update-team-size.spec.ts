@@ -1,20 +1,20 @@
-import * as _ from 'lodash';
+import _ from 'lodash';
 import * as net from 'net';
-import fetch from 'node-fetch';
 import { DestroyableServer } from 'destroyable-server';
 
 import { expect } from 'chai';
 
 import {
-    startServer,
-    auth0Server,
-    AUTH0_PORT,
+    startAPI,
     freshAuthToken,
-    paddleServer,
-    PADDLE_PORT,
     givenTeam,
     delay
-} from './test-util';
+} from './test-setup/setup.ts';
+import {
+    paddleServer,
+    PADDLE_PORT,
+} from './test-setup/paddle.ts';
+import { auth0Server } from './test-setup/auth0.ts';
 
 const updateTeamSize = (server: net.Server, authToken: string | undefined, newTeamSize: number) => fetch(
     `http://localhost:${(server.address() as net.AddressInfo).port}/api/update-team-size`,
@@ -36,17 +36,12 @@ describe('/update-team-size', () => {
     let apiServer: DestroyableServer;
 
     beforeEach(async () => {
-        apiServer = await startServer();
-
-        await auth0Server.start(AUTH0_PORT);
-        await auth0Server.forPost('/oauth/token').thenJson(200, {});
-
+        apiServer = await startAPI();
         await paddleServer.start(PADDLE_PORT);
     });
 
     afterEach(async () => {
         await apiServer.destroy();
-        await auth0Server.stop();
         await paddleServer.stop();
     });
 

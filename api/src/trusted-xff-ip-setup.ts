@@ -1,8 +1,9 @@
+import * as fs from 'fs';
 import type { Application } from 'express';
-import * as ipAddr from 'ipaddr.js';
-import * as log from 'loglevel';
+import ipAddr from 'ipaddr.js';
+import log from 'loglevel';
 
-import { formatErrorMessage, reportError } from './errors';
+import { formatErrorMessage, reportError } from './errors.ts';
 
 // We need to know our traffic sources to be able to know when to trust the X-Forwarded-For header,
 // so that we can accurately work out the original IP source of incoming requests. We trust local
@@ -22,10 +23,10 @@ const TRUSTED_IP_SOURCES = [
 
 let bunnyCachedIPs: string[] = [];
 try {
-    bunnyCachedIPs.push(...require('../.bunny-ipv4-ips.json'))
+    bunnyCachedIPs.push(...(JSON.parse(fs.readFileSync('../.bunny-ipv4-ips.json', 'utf-8'))));
 } catch {}
 try {
-    bunnyCachedIPs.push(...require('../.bunny-ipv6-ips.json'))
+    bunnyCachedIPs.push(...(JSON.parse(fs.readFileSync('../.bunny-ipv6-ips.json', 'utf-8'))));
 } catch {}
 
 async function getIPs(url: string) {

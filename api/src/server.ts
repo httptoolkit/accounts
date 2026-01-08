@@ -1,14 +1,18 @@
 import * as http from 'http';
-import express = require('express');
+import express from 'express';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import * as log from 'loglevel';
+import log from 'loglevel';
 import rateLimit from 'express-rate-limit';
 
-import { getCorsResponseHeaders } from './cors';
-import { configureAppProxyTrust } from './trusted-xff-ip-setup';
+import { getCorsResponseHeaders } from './cors.ts';
+import { configureAppProxyTrust } from './trusted-xff-ip-setup.ts';
 
 import './connectivity-check';
-import { reportError } from './errors';
+import { reportError } from './errors.ts';
+
+import { initializeDbConnection, testDbConnection, closeDatabase } from './db/database.ts';
+import { runMigrations } from './db/migrator.ts';
+import { testEmailConnection } from './email.ts';
 
 const app = express();
 
@@ -135,10 +139,40 @@ apiRouter.post('/log-abuse-report', (req, res) => {
 
     return res.status(204).send();
 });
+apiRouter.get('/health', async (req, res) => {
+    let ip = req.ip?.replace('::ffff:', '') ?? '';
 
-export function startApiServer() {
+    if (
+        ip !== '127.0.0.1' &&
+        ip !== '::1' &&
+        !ip?.startsWith('172.16.4.') &&
+        !ip?.startsWith('100.64.')
+    ) {
+        res.status(404).send();
+        log.warn(`Health check attempt from unrecognized IP: ${req.ip}`);
+        return;
+    }
+
+    try {
+        await testEmailConnection();
+        await testDbConnection();
+        res.status(200).send('OK');
+    } catch (e: any) {
+        reportError(e);
+        res.status(500).send('UNHEALTHY');
+    }
+});
+
+export async function startApiServer() {
+    const db = await initializeDbConnection();
+    await runMigrations(db);
+
     const server = app.listen(process.env.PORT ?? 4000, () => {
         log.info(`Server (version ${process.env.VERSION}) listening on port ${(server.address() as any).port}`);
+    });
+
+    server.on('close', () => {
+        closeDatabase(db);
     });
 
     return new Promise<http.Server>((resolve) =>
@@ -146,9 +180,10 @@ export function startApiServer() {
     );
 }
 
+
 // Start the server if run directly (this is how things work normally). When run
 // in tests, this is imported and the server is started & stopped manually instead.
-if (require.main === module) {
+if ((import.meta as any).main) {
     const serverStartDelay = parseInt(process.env.SERVER_START_DELAY || '', 10);
     if (serverStartDelay) {
         // We add a delay in some environments, where it's useful to ensure the

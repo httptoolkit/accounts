@@ -1,12 +1,11 @@
 import * as net from 'net';
-import fetch from 'node-fetch';
 import { DestroyableServer } from 'destroyable-server';
 import { RulePriority } from 'mockttp';
 
 import { expect } from 'chai';
 
-import { ipApiServer, IP_API_PORT, startServer } from './test-util';
-import { PRICING } from '../src/pricing';
+import { ipApiServer, IP_API_PORT, startAPI } from './test-setup/setup.ts';
+import { PRICING } from '../src/pricing.ts';
 
 const REAL_IDS = [
     550380,
@@ -47,7 +46,7 @@ describe('/get-prices', () => {
     let apiServer: DestroyableServer;
 
     beforeEach(async () => {
-        apiServer = await startServer();
+        apiServer = await startAPI();
         await ipApiServer.start(IP_API_PORT);
 
         await ipApiServer.forGet().asPriority(RulePriority.FALLBACK).thenJson(200, {
