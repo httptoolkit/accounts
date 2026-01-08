@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import * as crypto from 'crypto';
-import * as forge from 'node-forge';
+import forge from 'node-forge';
 import moment from 'moment';
 import log from 'loglevel';
 
