@@ -22,7 +22,11 @@ export async function initializeDbConnection() {
         max: parseInt(process.env.DB_POOL_SIZE || '10', 10),
 
         ssl: DATABASE_CA_CERT
-            ? { ca: DATABASE_CA_CERT }
+            ? {
+                ca: DATABASE_CA_CERT,
+                // No need to host validation (which doesn't work here for Scaleway)
+                checkServerIdentity: () => undefined
+            }
             : false
     });
 
