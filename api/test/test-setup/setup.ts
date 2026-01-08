@@ -107,7 +107,27 @@ export async function givenTeam(
         { id: string, email: string, joinedAt?: number } | undefined
     )[]
 ) {
-    return auth0.givenAuth0Team(teamMembersAndSpaces);
+    const auth0Team = await auth0.givenAuth0Team(teamMembersAndSpaces);
+
+    // Inefficient loop, but simple and doesn't matter for testing:
+    let writes: Array<Promise<any>> = [];
+    writes.push(testDB.query(`INSERT INTO users (auth0_user_id, email, app_metadata) VALUES ($1, $2, $3)`, [
+        auth0Team.ownerId, auth0Team.ownerEmail, auth0Team.ownerData
+    ]));
+
+    for (let member of teamMembersAndSpaces) {
+        if (!member) continue;
+        writes.push(testDB.query(`INSERT INTO users (auth0_user_id, email, app_metadata) VALUES ($1, $2, $3)`, [
+            member.id, member.email, {
+                subscription_owner_id: auth0Team.ownerId,
+                joined_team_at: member.joinedAt ?? new Date(2000, 0, 0).getTime()
+            }
+        ]));
+    }
+
+    await Promise.all(writes);
+
+    return auth0Team;
 };
 
 export const startAPI = async () => {

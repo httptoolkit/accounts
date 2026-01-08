@@ -67,7 +67,7 @@ export async function createUser(email: string, appMetadata: AppMetadata = {}) {
         .values({
             auth0_user_id: auth0Creation.user_id,
             email,
-            app_metadata: {}
+            app_metadata: appMetadata
         })
         .execute()
         .catch((err) => {

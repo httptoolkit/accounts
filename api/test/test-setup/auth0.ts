@@ -194,6 +194,7 @@ export async function givenAuth0Team(
     return {
         ownerId,
         ownerEmail,
+        ownerData,
         ownerAuthToken,
         updateOwnerData,
         updateTeamMembers

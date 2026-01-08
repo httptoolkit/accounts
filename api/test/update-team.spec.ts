@@ -29,6 +29,7 @@ import {
     PayingUserMetadata,
     TeamMemberMetadata
 } from '../src/user-data-facade.ts';
+import { testDB } from './test-setup/database.ts';
 
 const updateTeam = (server: net.Server, authToken: string | undefined, team: {
     idsToRemove?: string[],
@@ -139,6 +140,7 @@ describe('/update-team', () => {
 
             expect(response.status).to.equal(200);
 
+            // Confirm the writes to Auth0:
             const updates = await getUserUpdates();
             expect(updates).to.deep.equal([
                 {
@@ -172,6 +174,20 @@ describe('/update-team', () => {
                     }
                 }
             ]);
+
+            // Confirm the writes to the DB:
+            const dbUsers = await testDB.query(`SELECT * FROM users ORDER BY auth0_user_id`);
+            expect(dbUsers.rows).to.have.length(5);
+            const [user1, user2, user3, user4, owner] = dbUsers.rows;
+
+            expect(owner.app_metadata.team_member_ids).to.deep.equal([
+                user2.auth0_user_id,
+                user3.auth0_user_id
+            ]);
+            expect(user1.app_metadata.subscription_owner_id).to.equal(null);
+            expect(user2.app_metadata.subscription_owner_id).to.equal(owner.auth0_user_id);
+            expect(user3.app_metadata.subscription_owner_id).to.equal(owner.auth0_user_id);
+            expect(user4.app_metadata.subscription_owner_id).to.equal(null);
         });
 
         it("allows adding a new user by email", async () => {
@@ -313,7 +329,7 @@ describe('/update-team', () => {
             const updates = await getUserUpdates();
             expect(updates.length).to.equal(4);
 
-            // Removes the 2 existing team members:
+            // Removed the 2 existing team members:
             expect(updates.slice(0, 2)).to.deep.equal([
                 {
                     url: `/api/v2/users/${team[0].id}`,
@@ -356,6 +372,21 @@ describe('/update-team', () => {
                     }
                 }
             });
+
+            // Check final DB state:
+            const dbUsers = await testDB.query(`SELECT * FROM users ORDER BY auth0_user_id`);
+            const [billingUser, existingUser, member1, member2, newUser] = dbUsers.rows;
+
+            expect(billingUser.app_metadata.team_member_ids).to.deep.equal([
+                newUser.auth0_user_id,
+                existingUser.auth0_user_id
+            ]);
+            expect(existingUser.app_metadata.subscription_owner_id).to.equal(ownerId);
+            expect(existingUser.app_metadata.joined_team_at).to.be.greaterThan(0);
+            expect(newUser.app_metadata.subscription_owner_id).to.equal(ownerId);
+            expect(newUser.app_metadata.joined_team_at).to.be.greaterThan(0);
+            expect(member1.app_metadata.subscription_owner_id).to.equal(null);
+            expect(member2.app_metadata.subscription_owner_id).to.equal(null);
         });
 
         it("reports failures for internal API issues, after retries", async function () {

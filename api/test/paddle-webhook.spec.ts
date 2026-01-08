@@ -359,6 +359,9 @@ describe('Paddle webhooks', () => {
                 quantity: '1'
             });
 
+            const expectedExpiry = nextRenewal.add(1, 'days').valueOf();
+
+            // Confirm the write to Auth0:
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
@@ -370,7 +373,25 @@ describe('Paddle webhooks', () => {
                     subscription_sku: 'pro-annual',
                     subscription_plan_id: 550382,
                     subscription_quantity: 1,
-                    subscription_expiry: nextRenewal.add(1, 'days').valueOf()
+                    subscription_expiry: expectedExpiry
+                }
+            });
+
+            // Confirm the write to the DB:
+            const dbUsers = await testDB.query(`SELECT * FROM users`);
+            expect(dbUsers.rows.length).to.equal(1);
+            expect(dbUsers.rows[0]).to.deep.include({
+                email: userEmail,
+                auth0_user_id: userId,
+                app_metadata: {
+                    subscription_status: 'active',
+                    payment_provider: 'paddle',
+                    paddle_user_id: '123',
+                    subscription_id: '456',
+                    subscription_sku: 'pro-annual',
+                    subscription_plan_id: 550382,
+                    subscription_quantity: 1,
+                    subscription_expiry: expectedExpiry
                 }
             });
         });
@@ -557,6 +578,9 @@ describe('Paddle webhooks', () => {
                 quantity: '5'
             });
 
+            const expectedExpiry = nextRenewal.add(1, 'days').valueOf();
+
+            // Confirm the write to Auth0:
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
@@ -568,7 +592,28 @@ describe('Paddle webhooks', () => {
                     subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_quantity: 5,
-                    subscription_expiry: nextRenewal.add(1, 'days').valueOf(),
+                    subscription_expiry: expectedExpiry,
+                    team_member_ids: [],
+                    locked_licenses: []
+                }
+            });
+
+            // Confirm the write to the DB:
+            const dbUsers = await testDB.query(`SELECT * FROM users`);
+
+            expect(dbUsers.rows.length).to.equal(1);
+            expect(dbUsers.rows[0]).to.deep.include({
+                email: userEmail,
+                auth0_user_id: userId,
+                app_metadata: {
+                    subscription_status: 'active',
+                    payment_provider: 'paddle',
+                    paddle_user_id: '123',
+                    subscription_id: '456',
+                    subscription_sku: 'team-monthly',
+                    subscription_plan_id: 550789,
+                    subscription_quantity: 5,
+                    subscription_expiry: expectedExpiry,
                     team_member_ids: [],
                     locked_licenses: []
                 }
@@ -604,6 +649,9 @@ describe('Paddle webhooks', () => {
                 quantity: '5'
             });
 
+            const expectedExpiry = nextRenewal.add(1, 'days').valueOf();
+
+            // Confirm the writes to Auth0:
             const createRequests = await userCreate.getSeenRequests();
             expect(createRequests.length).to.equal(1);
             expect(await createRequests[0].body.getJson()).to.deep.equal({
@@ -624,7 +672,27 @@ describe('Paddle webhooks', () => {
                     subscription_sku: 'team-monthly',
                     subscription_plan_id: 550789,
                     subscription_quantity: 5,
-                    subscription_expiry: nextRenewal.add(1, 'days').valueOf(),
+                    subscription_expiry: expectedExpiry,
+                    team_member_ids: [],
+                    locked_licenses: []
+                }
+            });
+
+            // Confirm the write to the DB:
+            const dbUsers = await testDB.query(`SELECT * FROM users`);
+            expect(dbUsers.rows.length).to.equal(1);
+            expect(dbUsers.rows[0]).to.deep.include({
+                email: userEmail,
+                auth0_user_id: userId,
+                app_metadata: {
+                    subscription_status: 'active',
+                    payment_provider: 'paddle',
+                    paddle_user_id: '123',
+                    subscription_id: '456',
+                    subscription_sku: 'team-monthly',
+                    subscription_plan_id: 550789,
+                    subscription_quantity: 5,
+                    subscription_expiry: expectedExpiry,
                     team_member_ids: [],
                     locked_licenses: []
                 }
