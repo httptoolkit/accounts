@@ -10,7 +10,7 @@ import { configureAppProxyTrust } from './trusted-xff-ip-setup.ts';
 import './connectivity-check';
 import { reportError } from './errors.ts';
 
-import { db, testConnection } from './db/database.ts';
+import { closeDatabase, db, testConnection } from './db/database.ts';
 import { runMigrations } from './db/migrator.ts';
 
 const app = express();
@@ -145,6 +145,10 @@ export async function startApiServer() {
 
     const server = app.listen(process.env.PORT ?? 4000, () => {
         log.info(`Server (version ${process.env.VERSION}) listening on port ${(server.address() as any).port}`);
+    });
+
+    server.on('close', () => {
+        closeDatabase(db);
     });
 
     return new Promise<http.Server>((resolve) =>

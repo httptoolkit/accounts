@@ -39,7 +39,7 @@ export async function testConnection(db: Kysely<Database>) {
     }
 }
 
-export async function closeDatabase() {
+export async function closeDatabase(db: Kysely<Database>) {
     await db.destroy();
     log.info('Database connections closed');
 }
