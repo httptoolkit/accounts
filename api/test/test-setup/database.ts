@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Client, Pool } from 'pg';
 import { Kysely, PostgresDialect, sql } from 'kysely';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 
@@ -7,7 +7,7 @@ const DB_PORT = 5445;
 
 console.log('Starting test DB...');
 
-let postgres = new PostgreSqlContainer('postgres:16-alpine')
+const postgresContainer = await new PostgreSqlContainer('postgres:16-alpine')
     .withDatabase(DB_NAME)
     .withUsername('user')
     .withPassword('password')
@@ -21,16 +21,14 @@ let postgres = new PostgreSqlContainer('postgres:16-alpine')
     process.exit(1);
 });
 
-process.env.DATABASE_URL = `postgresql://user:password@localhost:${DB_PORT}/${DB_NAME}`;
+process.env.DATABASE_URL = postgresContainer.getConnectionUri();
 
-before(async function () {
-    this.timeout(20000);
-    await postgres;
-});
+export const testDB = new Client({ connectionString: process.env.DATABASE_URL });
+await testDB.connect();
 
 after(async () => {
-    const db = await postgres;
-    await db.stop();
+    await testDB.end();
+    await postgresContainer.stop();
 });
 
 export async function truncateAllTables() {
@@ -60,4 +58,4 @@ export async function truncateAllTables() {
     }
 }
 
-beforeEach(() => truncateAllTables());
+beforeEach(async () => await truncateAllTables());

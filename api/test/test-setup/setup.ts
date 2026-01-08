@@ -8,6 +8,7 @@ import { makeDestroyable } from 'destroyable-server';
 export { delay } from '@httptoolkit/util';
 
 import * as auth0 from './auth0.ts';
+import { testDB } from './database.ts';
 import { generateKeyPair, keyWithoutHeaders } from './utils.ts';
 
 // We don't need log/debug info in the tests most of the time:
@@ -65,8 +66,22 @@ export function givenExchangeRate(currency: string, rate: number) {
         })
 }
 
-export function givenUser(userId: string, email: string, appMetadata: {} | undefined = undefined) {
-    return auth0.givenAuth0User(userId, email, appMetadata);
+export async function givenUser(userId: string, email: string, appMetadata: {} | undefined = undefined) {
+    const [auth0EndpointMocks] = await Promise.all([
+        auth0.givenAuth0User(userId, email, appMetadata),
+        testDB.query(`INSERT INTO users (auth0_user_id, email, app_metadata) VALUES ($1, $2, $3)`, [userId, email, appMetadata || {}])
+    ]);
+
+    return auth0EndpointMocks;
+}
+
+export async function updateUser(userId: string, email: string, appMetadata: {}) {
+    const [auth0EndpointMocks] = await Promise.all([
+        auth0.givenAuth0User(userId, email, appMetadata),
+        testDB.query(`UPDATE users SET app_metadata = $2 WHERE auth0_user_id = $1`, [userId, appMetadata || {}])
+    ]);
+
+    return auth0EndpointMocks;
 }
 
 export function givenNoUser(email: string) {
@@ -98,7 +113,7 @@ export async function givenTeam(
 export const startAPI = async () => {
     // We defer loading the server until the first call to this, to
     // ensure the env vars above are all set first:
-    const { startApiServer } = await import('../../src/server');
+    const { startApiServer } = await import('../../src/server.ts');
     const server = await startApiServer();
     return makeDestroyable(server);
 }

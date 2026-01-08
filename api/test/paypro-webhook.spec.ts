@@ -10,7 +10,8 @@ import {
     startAPI,
     givenUser,
     givenNoUsers,
-    PAYPRO_IPN_VALIDATION_KEY
+    PAYPRO_IPN_VALIDATION_KEY,
+    updateUser
 } from './test-setup/setup.ts';
 import { profitwellApiServer } from './test-setup/profitwell.ts';
 import { auth0Server } from './test-setup/auth0.ts';
@@ -184,7 +185,7 @@ describe('PayPro webhooks', () => {
         it('successfully handle new subscriptions for an existing user', async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
-            givenUser(userId, userEmail);
+            await givenUser(userId, userEmail);
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
@@ -227,7 +228,7 @@ describe('PayPro webhooks', () => {
             const userEmail = 'user@example.com';
             const nextRenewal = moment('2030-01-01');
 
-            givenUser(userId, userEmail, {
+            await givenUser(userId, userEmail, {
                 subscription_status: 'active',
                 subscription_sku: 'pro-annual',
                 subscription_expiry: nextRenewal.clone().subtract(30, 'days').valueOf()
@@ -268,7 +269,7 @@ describe('PayPro webhooks', () => {
             const userEmail = 'user@example.com';
             const nextRenewal = moment('2030-01-01');
 
-            givenUser(userId, userEmail, {
+            await givenUser(userId, userEmail, {
                 subscription_status: 'active',
                 subscription_sku: 'pro-annual',
                 subscription_expiry: nextRenewal.clone().subtract(30, 'days').valueOf()
@@ -309,7 +310,7 @@ describe('PayPro webhooks', () => {
             const userEmail = 'user@example.com';
             const nextRenewal = moment('2030-01-01');
 
-            givenUser(userId, userEmail, {
+            await givenUser(userId, userEmail, {
                 subscription_status: 'active',
                 subscription_sku: 'pro-annual',
                 subscription_expiry: nextRenewal.clone().subtract(30, 'days').valueOf()
@@ -350,7 +351,7 @@ describe('PayPro webhooks', () => {
             const userEmail = 'user@example.com';
             const nextRenewal = moment('2030-01-01');
 
-            givenUser(userId, userEmail, {
+            await givenUser(userId, userEmail, {
                 subscription_status: 'active',
                 subscription_sku: 'pro-annual',
                 subscription_expiry: nextRenewal.clone().subtract(30, 'days').valueOf()
@@ -389,7 +390,7 @@ describe('PayPro webhooks', () => {
         it('should log subscriptions in Profitwell', async () => {
             const userId = "abc";
             const userEmail = 'profitwell-test-user@example.com';
-            givenUser(userId, userEmail);
+            await givenUser(userId, userEmail);
 
             await auth0Server
                 .forPatch('/api/v2/users/' + userId)
@@ -431,7 +432,7 @@ describe('PayPro webhooks', () => {
                 ORDER_CUSTOM_FIELDS: 'x-passthrough={"country":"ABC"}'
             });
 
-            await givenUser(userId, userEmail, {
+            await updateUser(userId, userEmail, {
                 subscription_expiry: nextRenewal.valueOf()
             });
 
@@ -485,7 +486,7 @@ describe('PayPro webhooks', () => {
         it("should ban the user until they contact support", async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
-            givenUser(userId, userEmail);
+            await givenUser(userId, userEmail);
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)

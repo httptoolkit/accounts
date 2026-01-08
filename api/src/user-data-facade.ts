@@ -1,4 +1,9 @@
+import { sql } from 'kysely';
+import log from 'loglevel';
+
+import { reportError } from './errors.ts'
 import * as auth0 from './auth0.ts';
+import { db } from "./db/database.ts";
 
 // This file wraps the Auth0 APIs, to begin migrating towards DB synchrononization,
 // and eventually towards dropping Auth0 entirely. We intentionally closely match the
@@ -30,16 +35,48 @@ export async function updateUserMetadata<A extends AppMetadata>(
         [K in keyof A]?: A[K] | null // All optional, can pass null to delete
     }
 ) {
-    return auth0.updateUserMetadata(id, update);
+    const auth0Update = auth0.updateUserMetadata(id, update);
+
+    // Mirror user updates into the DB:
+    const dbUpdate = db.updateTable('users')
+        .set({
+            app_metadata: sql`app_metadata || ${JSON.stringify(update)}`
+        })
+        .where('auth0_user_id', '=', id)
+        .execute()
+        .catch((err) => {
+            // For now we don't fail in this case, just while we're doing the initial migration
+            log.error('Error updating user metadata in DB:', err);
+            reportError(err);
+        });
+
+    await Promise.all([auth0Update, dbUpdate]);
+    return auth0Update;
 }
 
 export async function createUser(email: string, appMetadata: AppMetadata = {}) {
-    return auth0.createUser({
+    const auth0Creation = await auth0.createUser({
         email,
         connection: 'email',
         email_verified: true, // This ensures users don't receive an email code or verification
         app_metadata: appMetadata
     });
+
+    // Mirror user creation into our DB:
+    await db.insertInto('users')
+        .values({
+            auth0_user_id: auth0Creation.user_id,
+            email,
+            app_metadata: {}
+        })
+        .execute()
+        .catch((err) => {
+            // For now we don't fail in this case, just while we're doing the initial migration
+            log.error('Error creating user in DB:', err);
+            reportError(err);
+        });
+
+    return auth0Creation;
 }
 
 export function getUsersByEmail(email: string) {

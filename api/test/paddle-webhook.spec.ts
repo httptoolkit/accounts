@@ -13,6 +13,8 @@ import {
     delay
 } from './test-setup/setup.ts';
 import { auth0Server } from './test-setup/auth0.ts';
+import { testDB } from './test-setup/database.ts';
+
 import { serializeWebhookData, PaddleWebhookData, UnsignedWebhookData } from '../src/paddle.ts';
 
 const signBody = (body: UnsignedWebhookData) => {
@@ -72,7 +74,7 @@ describe('Paddle webhooks', () => {
         it('successfully handle new subscriptions for an existing user', async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
-            givenUser(userId, userEmail);
+            await givenUser(userId, userEmail);
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
@@ -88,9 +90,13 @@ describe('Paddle webhooks', () => {
                 subscription_id: '456',
                 subscription_plan_id: '550382', // Pro-annual
                 next_bill_date: nextRenewal.format('YYYY-MM-DD'),
-                quantity: '1'
+                quantity: '1',
+                passthrough: '{"country":"XX"}'
             });
 
+            const expectedExpiry = nextRenewal.add(1, 'days').valueOf();
+
+            // Confirm the write to Auth0:
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
@@ -102,7 +108,26 @@ describe('Paddle webhooks', () => {
                     subscription_sku: 'pro-annual',
                     subscription_plan_id: 550382,
                     subscription_quantity: 1,
-                    subscription_expiry: nextRenewal.add(1, 'days').valueOf()
+                    subscription_expiry: expectedExpiry
+                }
+            });
+
+            // Confirm the write to the DB:
+            const dbUsers = await testDB.query(`SELECT * FROM users`);
+
+            expect(dbUsers.rows.length).to.equal(1);
+            expect(dbUsers.rows[0]).to.deep.include({
+                email: userEmail,
+                auth0_user_id: userId,
+                app_metadata: {
+                    subscription_status: 'active',
+                    payment_provider: 'paddle',
+                    paddle_user_id: '123',
+                    subscription_id: '456',
+                    subscription_sku: 'pro-annual',
+                    subscription_plan_id: 550382,
+                    subscription_quantity: 1,
+                    subscription_expiry: expectedExpiry
                 }
             });
         });
@@ -136,6 +161,9 @@ describe('Paddle webhooks', () => {
                 quantity: '1'
             });
 
+            const expectedExpiry = nextRenewal.add(1, 'days').valueOf();
+
+            // Confirm the writes to Auth0:
             const createRequests = await userCreate.getSeenRequests();
             expect(createRequests.length).to.equal(1);
             expect(await createRequests[0].body.getJson()).to.deep.equal({
@@ -156,9 +184,28 @@ describe('Paddle webhooks', () => {
                     subscription_sku: 'pro-annual',
                     subscription_plan_id: 550382,
                     subscription_quantity: 1,
-                    subscription_expiry: nextRenewal.add(1, 'days').valueOf()
+                    subscription_expiry: expectedExpiry
                 }
             });
+
+            // Confirm the write to the DB:
+            const dbUsers = await testDB.query(`SELECT * FROM users`);
+            expect(dbUsers.rows.length).to.equal(1);
+            expect(dbUsers.rows[0]).to.deep.include({
+                email: userEmail,
+                auth0_user_id: userId,
+                app_metadata: {
+                    subscription_status: 'active',
+                    payment_provider: 'paddle',
+                    paddle_user_id: '123',
+                    subscription_id: '456',
+                    subscription_sku: 'pro-annual',
+                    subscription_plan_id: 550382,
+                    subscription_quantity: 1,
+                    subscription_expiry: expectedExpiry
+                }
+            });
+
         });
 
         it('should accept new Pro subscriptions for an ex-Team user', async () => {
@@ -167,7 +214,7 @@ describe('Paddle webhooks', () => {
             const memberId = "team-member";
             const memberEmail = 'member@example.com';
 
-            givenUser(ownerId, ownerEmail, {
+            await givenUser(ownerId, ownerEmail, {
                 subscription_sku: 'team-annual',
                 team_member_ids: [
                     'other-member-id',
@@ -179,7 +226,7 @@ describe('Paddle webhooks', () => {
                 subscription_expiry: Date.now() - 1
             })
 
-            givenUser(memberId, memberEmail, {
+            await givenUser(memberId, memberEmail, {
                 subscription_owner_id: ownerId
             });
 
@@ -236,7 +283,7 @@ describe('Paddle webhooks', () => {
             const memberId = "team-member";
             const memberEmail = 'member@example.com';
 
-            givenUser(ownerId, ownerEmail, {
+            await givenUser(ownerId, ownerEmail, {
                 subscription_sku: 'team-annual',
                 team_member_ids: [
                     'other-member-id',
@@ -248,7 +295,7 @@ describe('Paddle webhooks', () => {
                 subscription_expiry: Date.now() + 10000
             })
 
-            givenUser(memberId, memberEmail, {
+            await givenUser(memberId, memberEmail, {
                 subscription_owner_id: ownerId
             });
 
@@ -287,7 +334,7 @@ describe('Paddle webhooks', () => {
             const userEmail = 'user@example.com';
             const nextRenewal = moment('2030-01-01');
 
-            givenUser(userId, userEmail, {
+            await givenUser(userId, userEmail, {
                 subscription_status: 'active',
                 payment_provider: 'paddle',
                 paddle_user_id: '123',
@@ -333,7 +380,7 @@ describe('Paddle webhooks', () => {
             const userEmail = 'user@example.com';
             const cancellationDate = moment('2030-01-01');
 
-            givenUser(userId, userEmail, {
+            await givenUser(userId, userEmail, {
                 subscription_status: 'active',
                 paddle_user_id: 123,
                 subscription_id: '456',
@@ -377,7 +424,7 @@ describe('Paddle webhooks', () => {
             const currentDate = moment('2020-01-01');
             const finalDate = moment('2020-01-07');
 
-            givenUser(userId, userEmail, {
+            await givenUser(userId, userEmail, {
                 subscription_status: 'active',
                 paddle_user_id: '123',
                 subscription_id: '456',
@@ -491,7 +538,7 @@ describe('Paddle webhooks', () => {
         it('successfully handle new subscriptions for an existing user', async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
-            givenUser(userId, userEmail);
+            await givenUser(userId, userEmail);
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
@@ -587,7 +634,7 @@ describe('Paddle webhooks', () => {
         it('successfully handle subscriptions renewals', async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
-            givenUser(userId, userEmail, {
+            await givenUser(userId, userEmail, {
                 team_member_ids: ['teamMemberId']
             });
 
@@ -629,7 +676,7 @@ describe('Paddle webhooks', () => {
         it('cleans up expired locks at subscription renewal', async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
-            givenUser(userId, userEmail, {
+            await givenUser(userId, userEmail, {
                 team_member_ids: ['teamMemberId'],
                 locked_licenses: [
                     new Date(2000, 0, 0).getTime(),
@@ -679,7 +726,7 @@ describe('Paddle webhooks', () => {
         it("should ban the user until they contact support", async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
-            givenUser(userId, userEmail);
+            await givenUser(userId, userEmail);
 
             const userUpdate = await auth0Server
                 .forPatch('/api/v2/users/' + userId)
