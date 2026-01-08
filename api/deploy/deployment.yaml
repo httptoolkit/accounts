@@ -32,6 +32,12 @@ spec:
                   name: accounts-api-secrets
                   key: SIGNING_PRIVATE_KEY
 
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-api-secrets
+                  key: DATABASE_URL
+
             # Email setup:
             - name: CONTACT_FORM_DESTINATION
               value: "tim@httptoolkit.com"
