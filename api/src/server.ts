@@ -140,7 +140,14 @@ apiRouter.post('/log-abuse-report', (req, res) => {
     return res.status(204).send();
 });
 apiRouter.get('/health', async (req, res) => {
-    if (req.ip !== '127.0.0.1' && req.ip !== '::1' && !req.ip?.startsWith('172.16.4.')) {
+    let ip = req.ip?.replace('::ffff:', '') ?? '';
+
+    if (
+        ip !== '127.0.0.1' &&
+        ip !== '::1' &&
+        !ip?.startsWith('172.16.4.') &&
+        !ip?.startsWith('100.64.')
+    ) {
         res.status(404).send();
         log.warn(`Health check attempt from unrecognized IP: ${req.ip}`);
         return;
