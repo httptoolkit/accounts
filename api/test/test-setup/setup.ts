@@ -28,10 +28,15 @@ export const PAYPRO_IPN_VALIDATION_KEY = 'test_key_123';
 // We generate one key, then use it for both paddle webhook signing and our own
 // /get-app-data data signing, because we're lazy like that. It's good enough though.
 process.env.PADDLE_PUBLIC_KEY = keyWithoutHeaders(publicKey);
-process.env.SIGNING_PRIVATE_KEY = keyWithoutHeaders(privateKey);
+process.env.SIGNING_PRIVATE_KEY = keyWithoutHeaders(privateKey as string);
 
 process.env.PAYPRO_IPN_VALIDATION_KEY = PAYPRO_IPN_VALIDATION_KEY;
 process.env.SENTRY_DSN = '';
+process.env.SMTP_HOST = 'smtp.test';
+process.env.SMTP_PORT = '465';
+process.env.SMTP_USERNAME = 'user';
+process.env.SMTP_PASSWORD = 'pass';
+process.env.CONTACT_FORM_DESTINATION = '@';
 
 export const IP_API_PORT = 9093;
 process.env.IP_API_BASE_URL = `http://localhost:${IP_API_PORT}`;

@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import log from 'loglevel';
 
 const {
     SMTP_HOST,
@@ -21,3 +22,13 @@ export const mailer = nodemailer.createTransport({
         pass: SMTP_PASSWORD
     }
 });
+
+export async function testEmailConnection() {
+    try {
+        await mailer.verify();
+        log.info('SMTP transporter verified');
+    } catch (e: any) {
+        log.error(e);
+        throw new Error(`Error verifying SMTP connection: ${e.message || e}`);
+    }
+}

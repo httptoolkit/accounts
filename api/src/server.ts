@@ -10,8 +10,9 @@ import { configureAppProxyTrust } from './trusted-xff-ip-setup.ts';
 import './connectivity-check';
 import { reportError } from './errors.ts';
 
-import { closeDatabase, initializeDbConnection } from './db/database.ts';
+import { initializeDbConnection, testDbConnection, closeDatabase } from './db/database.ts';
 import { runMigrations } from './db/migrator.ts';
+import { testEmailConnection } from './email.ts';
 
 const app = express();
 
@@ -137,6 +138,22 @@ apiRouter.post('/log-abuse-report', (req, res) => {
     });
 
     return res.status(204).send();
+});
+apiRouter.get('/health', async (req, res) => {
+    if (req.ip !== '127.0.0.1' && req.ip !== '::1' && !req.ip?.startsWith('172.16.4.')) {
+        res.status(404).send();
+        log.warn(`Health check attempt from unrecognized IP: ${req.ip}`);
+        return;
+    }
+
+    try {
+        await testEmailConnection();
+        await testDbConnection();
+        res.status(200).send('OK');
+    } catch (e: any) {
+        reportError(e);
+        res.status(500).send('UNHEALTHY');
+    }
 });
 
 export async function startApiServer() {

@@ -38,14 +38,19 @@ export async function initializeDbConnection() {
         dialect: new PostgresDialect({ pool })
     });
 
+    await testDbConnection();
+    return db;
+}
+
+export async function testDbConnection() {
+    if (!db) throw new Error('Database not initialized');
+
     try {
         await db.executeQuery(sql`SELECT 1`.compile(db));
     } catch (error) {
         reportError('COULD NOT CONNECT TO DATABASE');
         throw error;
     }
-
-    return db;
 }
 
 export async function closeDatabase(db: Kysely<Database>) {
