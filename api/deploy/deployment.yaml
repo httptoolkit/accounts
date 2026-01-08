@@ -32,11 +32,36 @@ spec:
                   name: accounts-api-secrets
                   key: SIGNING_PRIVATE_KEY
 
+            # Database connection:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: accounts-api-secrets
                   key: DATABASE_URL
+
+            - name: DATABASE_CA_CERT
+              value: |
+                -----BEGIN CERTIFICATE-----
+                MIIDYDCCAkigAwIBAgIUGd62Hg2Hs4McPZwuBc4/FjmwF7UwDQYJKoZIhvcNAQEL
+                BQAwVjELMAkGA1UEBhMCRlIxDjAMBgNVBAgMBVBhcmlzMQ4wDAYDVQQHDAVQYXJp
+                czERMA8GA1UECgwIU2NhbGV3YXkxFDASBgNVBAMMCzE3Mi4xNi40LjExMB4XDTI2
+                MDEwODEwNTgwMloXDTM2MDEwNjEwNTgwMlowVjELMAkGA1UEBhMCRlIxDjAMBgNV
+                BAgMBVBhcmlzMQ4wDAYDVQQHDAVQYXJpczERMA8GA1UECgwIU2NhbGV3YXkxFDAS
+                BgNVBAMMCzE3Mi4xNi40LjExMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKC
+                AQEAsHSp4wUDJFqSO9gK9PgNsXk6zfp4hSQktYcwMHjWlB7qxiY5mP/v1jvDHbQB
+                NfvwzVb1DQiVUqubJ9G6tG0v5Yl9dWvoKhpSJAxysb9S32Ynf4mTf8QeSzzw8i9s
+                lf9A0+2fMQshjxbZUAfbp5SvHmIGMhs6wsZHN6WCMmTwaSpa9s+c7kKwHN+rmiPM
+                fSl23IixMXglHUyi6lNNHvS5qEUI2CI5h5v/7KDtq6Tby+75M58NOSABnYENf/5g
+                LO5QP6Q5aA6hn8ah2cqp3nNFssmjkl+FYa15cBTeyte+jaQ+c57H6Un8ITLLiTMD
+                24gjanFkidO6CATYlrcQ/IcZGQIDAQABoyYwJDAiBgNVHREEGzAZggsxNzIuMTYu
+                NC4xMYcEM55K1IcErBAECzANBgkqhkiG9w0BAQsFAAOCAQEAPgNRRwPIvn29/WkY
+                Ki9qH+NfqBjoWQwr5IbSlZHffu3FYpcLFqA+8fUdExP6ENt71Um2zKV+qaNm2f0X
+                gJ8xQJoOvVfDkBtW+b3XbLyFO+Av09GL+jrpgdsjqiYrJFwPP2gDNYmvy7CNDer3
+                JmYFZsBdjvXlLGXlMo2u7xG7Op018uZjLd7IHSDD+FmAVSTsahoaYnaW/2ul2OgA
+                XSytaOHUQtzOMQxEem+csezGA2Sm+wSAZETOUVBOnlX48YFvc8Kx+AqnUPH8HC8h
+                6DYp59qvreqNlUsimyjCs/zMjDl6uiznHXip8uobUkpNFZYYOeyYIsuz6Uw+p6M2
+                2ui4yw==
+                -----END CERTIFICATE-----
 
             # Email setup:
             - name: CONTACT_FORM_DESTINATION

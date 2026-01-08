@@ -10,7 +10,7 @@ import { configureAppProxyTrust } from './trusted-xff-ip-setup.ts';
 import './connectivity-check';
 import { reportError } from './errors.ts';
 
-import { closeDatabase, db, testConnection } from './db/database.ts';
+import { closeDatabase, initializeDbConnection } from './db/database.ts';
 import { runMigrations } from './db/migrator.ts';
 
 const app = express();
@@ -140,7 +140,7 @@ apiRouter.post('/log-abuse-report', (req, res) => {
 });
 
 export async function startApiServer() {
-    await testConnection(db);
+    const db = await initializeDbConnection();
     await runMigrations(db);
 
     const server = app.listen(process.env.PORT ?? 4000, () => {
