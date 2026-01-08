@@ -21,6 +21,8 @@ spec:
           env:
             - name: PORT
               value: "4000"
+            - name: NODE_ENV
+              value: "production"
             - name: LOGLEVEL
               value: "info"
             - name: ORIGIN_REGEX
