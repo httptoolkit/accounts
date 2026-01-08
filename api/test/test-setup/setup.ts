@@ -2,17 +2,16 @@ import _ from 'lodash';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { getLocal } from 'mockttp';
-import loglevel from 'loglevel';
 
 import { makeDestroyable } from 'destroyable-server';
 export { delay } from '@httptoolkit/util';
 
+// We don't need log/debug info in the tests most of the time:
+process.env.LOGLEVEL = 'warn';
+
 import * as auth0 from './auth0.ts';
 import { testDB } from './database.ts';
 import { generateKeyPair, keyWithoutHeaders } from './utils.ts';
-
-// We don't need log/debug info in the tests most of the time:
-loglevel.setLevel('warn');
 
 // Set up self-managing mocks:
 import './profitwell';
