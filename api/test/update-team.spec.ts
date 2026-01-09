@@ -174,10 +174,10 @@ describe('/update-team', () => {
                 user2.auth0_user_id,
                 user3.auth0_user_id
             ]);
-            expect(user1.app_metadata.subscription_owner_id).to.equal(null);
+            expect(user1.app_metadata.subscription_owner_id).to.equal(undefined);
             expect(user2.app_metadata.subscription_owner_id).to.equal(owner.auth0_user_id);
             expect(user3.app_metadata.subscription_owner_id).to.equal(owner.auth0_user_id);
-            expect(user4.app_metadata.subscription_owner_id).to.equal(null);
+            expect(user4.app_metadata.subscription_owner_id).to.equal(undefined);
         });
 
         it("allows adding a new user by email", async () => {
@@ -375,8 +375,8 @@ describe('/update-team', () => {
             expect(existingUser.app_metadata.joined_team_at).to.be.greaterThan(0);
             expect(newUser.app_metadata.subscription_owner_id).to.equal(ownerId);
             expect(newUser.app_metadata.joined_team_at).to.be.greaterThan(0);
-            expect(member1.app_metadata.subscription_owner_id).to.equal(null);
-            expect(member2.app_metadata.subscription_owner_id).to.equal(null);
+            expect(member1.app_metadata.subscription_owner_id).to.equal(undefined);
+            expect(member2.app_metadata.subscription_owner_id).to.equal(undefined);
         });
 
         it("reports failures for internal API issues, after retries", async function () {

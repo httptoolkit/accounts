@@ -42,7 +42,7 @@ export async function updateUserMetadata<A extends AppMetadata>(
     // Mirror user updates into the DB:
     const dbUpdate = db.updateTable('users')
         .set({
-            app_metadata: sql`app_metadata || ${JSON.stringify(update)}`
+            app_metadata: sql`jsonb_strip_nulls(app_metadata || ${JSON.stringify(update)})`
         })
         .where('auth0_user_id', '=', id)
         .execute()
