@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import { sql } from 'kysely';
 import log from 'loglevel';
 
@@ -117,8 +118,33 @@ export function getUsersByEmail(email: string) {
     return auth0.getUsersByEmail(email);
 }
 
-export function getUserById(id: string) {
-    return auth0.getUserById(id);
+export async function getUserById(id: string) {
+    const auth0User = await auth0.getUserById(id);
+
+    // Compare Auth0 state to DB, to validate our sync setup:
+    const dbUser = await db.selectFrom('users')
+        .where('auth0_user_id', '=', id)
+        .selectAll()
+        .executeTakeFirst();
+
+    if (!auth0User) return auth0User;
+
+    if (!dbUser) {
+        reportError(`User ${id} exists in Auth0 but not in DB`);
+    }
+
+    if (dbUser?.email !== auth0User.email) {
+        reportError(`User ${id} email mismatch between Auth0 (${auth0User.email}) and DB (${dbUser?.email})`);
+    }
+
+    if (_.isEqual(dbUser?.app_metadata || {}, auth0User.app_metadata || {}) === false) {
+        log.warn('Auth0 app_metadata:', auth0User.app_metadata);
+        log.warn('DB app_metadata:', dbUser?.app_metadata);
+        log.warn('Diff', getFullDiff(dbUser?.app_metadata || {}, auth0User.app_metadata || {}));
+        reportError(`User ${id} app_metadata mismatch between Auth0 and DB`);
+    }
+
+    return auth0User;
 }
 
 export function getUserInfoFromToken(token: string) {
@@ -154,3 +180,14 @@ export async function loginWithPasswordlessCode(email: string, code: string, use
 export function refreshToken(refreshToken: string, userIp: string) {
     return auth0.refreshToken(refreshToken, userIp);
 }
+
+const getFullDiff = (base: any, object: any) => {
+  const allKeys = _.union(_.keys(base), _.keys(object));
+
+  return _.reduce(allKeys, (result, key) => {
+    if (!_.isEqual(base[key], object[key])) {
+      result[key] = { from: base[key], to: object[key] };
+    }
+    return result;
+  }, {} as Record<string, { from: any; to: any }>);
+};
