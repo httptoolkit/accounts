@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import { sql } from 'kysely';
 import log from 'loglevel';
+import jwt from 'jsonwebtoken';
 
 import { reportError } from './errors.ts'
 import * as auth0 from './auth0.ts';
@@ -160,21 +161,43 @@ export function sendPasswordlessCode(email: string, userIp: string) {
 }
 
 export async function loginWithPasswordlessCode(email: string, code: string, userIp: string) {
-    await db.updateTable('users')
-        .set({
+    const auth0LoginResult = await auth0.loginWithPasswordlessCode(email, code, userIp);
+
+    let auth0UserId: string | undefined;
+    try {
+        // We get the JWT directly from Auth0 - no need to validate beyond that.
+        const idTokenData = jwt.decode(auth0LoginResult.id_token || '');
+        auth0UserId = (idTokenData as any)?.sub;
+    } catch (e) {
+        console.info('Unreadable id token:', auth0LoginResult.id_token);
+        log.error('Error decoding ID token JWT:', e);
+    }
+
+    await db.insertInto('users')
+        .values({
+            email,
+            auth0_user_id: auth0UserId || null,
             last_ip: userIp,
-            logins_count: sql`COALESCE(logins_count, 0) + 1`,
-            last_login: new Date()
+            logins_count: 1,
+            last_login: new Date(),
+            app_metadata: {}
         })
-        .where('email', '=', email)
+        .onConflict((oc) => oc
+            .column('email')
+            .doUpdateSet({
+                last_ip: (eb) => eb.ref('excluded.last_ip'),
+                last_login: (eb) => eb.ref('excluded.last_login'),
+                logins_count: sql`COALESCE(users.logins_count, 0) + 1`
+            })
+        )
         .execute()
         .catch((err) => {
             // For now we don't fail in this case, just while we're doing the initial migration
-            log.error('Error updating user login info in DB:', err);
+            log.error('Error upserting user login info in DB:', err);
             reportError(err);
         });
 
-    return auth0.loginWithPasswordlessCode(email, code, userIp);
+    return auth0LoginResult;
 }
 
 export function refreshToken(refreshToken: string, userIp: string) {
