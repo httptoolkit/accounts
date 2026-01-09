@@ -133,7 +133,21 @@ export function sendPasswordlessCode(email: string, userIp: string) {
     return auth0.sendPasswordlessEmail(email, userIp);
 }
 
-export function loginWithPasswordlessCode(email: string, code: string, userIp: string) {
+export async function loginWithPasswordlessCode(email: string, code: string, userIp: string) {
+    await db.updateTable('users')
+        .set({
+            last_ip: userIp,
+            logins_count: sql`COALESCE(logins_count, 0) + 1`,
+            last_login: new Date()
+        })
+        .where('email', '=', email)
+        .execute()
+        .catch((err) => {
+            // For now we don't fail in this case, just while we're doing the initial migration
+            log.error('Error updating user login info in DB:', err);
+            reportError(err);
+        });
+
     return auth0.loginWithPasswordlessCode(email, code, userIp);
 }
 
