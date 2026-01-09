@@ -133,23 +133,6 @@ jobs:
 
           kubectl rollout status deployment/accounts-api -n accounts-api
 
-      # These can be removed (along with their secrets) once we're happy with the k8s setup:
-      - name: Redeploy SCW container
-        uses: httptoolkit/scaleway-serverless-container-deploy-action@v1
-        with:
-          container_id: ${{ vars.SCW_API_CONTAINER_ID }}
-          region: ${{ vars.SCW_API_CONTAINER_REGION }}
-          secret_key: ${{ secrets.SCW_SECRET_KEY }}
-          registry_image_url: "ghcr.io/httptoolkit/accounts-api:prod"
-
-      - name: Redeploy SCW failover container
-        uses: httptoolkit/scaleway-serverless-container-deploy-action@v1
-        with:
-          container_id: ${{ vars.SCW_FAILOVER_API_CONTAINER_ID }}
-          region: ${{ vars.SCW_FAILOVER_API_CONTAINER_REGION }}
-          secret_key: ${{ secrets.SCW_SECRET_KEY }}
-          registry_image_url: "ghcr.io/httptoolkit/accounts-api:prod"
-
   deploy-dashboard:
     name: Deploy Dashboard to production
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
