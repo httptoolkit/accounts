@@ -1,4 +1,4 @@
-#!./node_modules/.bin/ts-node
+#!./node_modules/.bin/tsx
 
 import moment from 'moment';
 import { getUsersByEmail, createUser, updateUserMetadata } from '../api/src/user-data-facade';

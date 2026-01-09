@@ -1,4 +1,4 @@
-#!./node_modules/.bin/ts-node
+#!./node_modules/.bin/tsx
 
 import { getUsersByEmail, updateUserMetadata } from '../api/src/user-data-facade';
 
