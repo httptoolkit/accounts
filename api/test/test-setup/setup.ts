@@ -131,6 +131,14 @@ export async function givenTeam(
 
     await Promise.all(writes);
 
+    const updateAuth0OwnerData = auth0Team.updateOwnerData;
+    auth0Team.updateOwnerData = async (newData: {}) => {
+        updateAuth0OwnerData(newData);
+        await testDB.query(`UPDATE users SET app_metadata = (app_metadata || $2) WHERE auth0_user_id = $1`, [
+            auth0Team.ownerId, newData
+        ]);
+    };
+
     return auth0Team;
 };
 

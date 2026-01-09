@@ -8,7 +8,9 @@ import {
     startAPI,
     freshAuthToken,
     givenTeam,
-    delay
+    delay,
+    givenAuthToken,
+    givenUser
 } from './test-setup/setup.ts';
 import {
     paddleServer,
@@ -58,13 +60,8 @@ describe('/update-team-size', () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
 
-            await auth0Server.forGet('/userinfo')
-                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
-                .thenJson(200, { sub: userId });
-            await auth0Server.forGet('/api/v2/users/' + userId).thenJson(200, {
-                email: userEmail,
-                app_metadata: { }
-            });
+            await givenAuthToken(authToken, userId);
+            await givenUser(userId, userEmail);
             await auth0Server.forGet('/api/v2/users').thenJson(200, []);
 
             const response = await updateTeamSize(apiServer, authToken, 5);
@@ -79,19 +76,13 @@ describe('/update-team-size', () => {
             const userEmail = 'user@example.com';
             const subExpiry = Date.now();
 
-            await auth0Server.forGet('/userinfo')
-                .withHeaders({ 'Authorization': 'Bearer ' + authToken })
-                .thenJson(200, { sub: userId });
-            await auth0Server.forGet('/api/v2/users/' + userId)
-                .thenJson(200, {
-                    email: userEmail,
-                    app_metadata: {
-                        subscription_expiry: subExpiry,
-                        subscription_id: '2',
-                        subscription_plan_id: 550380,
-                        subscription_status: "active"
-                    }
-                });
+            await givenAuthToken(authToken, userId);
+            await givenUser(userId, userEmail, {
+                subscription_expiry: subExpiry,
+                subscription_id: '2',
+                subscription_plan_id: 550380,
+                subscription_status: "active"
+            });
             await auth0Server.forGet('/api/v2/users').thenJson(200, []);
 
             const response = await updateTeamSize(apiServer, authToken, 5);
