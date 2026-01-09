@@ -9,26 +9,12 @@ import {
     PayingUserMetadata,
     TeamOwnerMetadata,
     TeamMemberMetadata,
-    User,
-    getUsersByEmail,
-    createUser,
+    getOrCreateUser,
     updateUserMetadata,
     getUserById
 } from './user-data-facade.ts';
 import { formatErrorMessage, reportError, StatusError } from './errors.ts';
 import { flushMetrics, trackEvent } from './metrics.ts';
-
-async function getOrCreateUserData(email: string): Promise<User> {
-    const users = await getUsersByEmail(email);
-    if (users.length > 1) {
-        throw new Error(`More than one user found for ${email}`);
-    } else if (users.length === 1) {
-        return users[0];
-    } else {
-        // Create the user, if they don't already exist:
-        return createUser(email);
-    }
-}
 
 function dropUndefinedValues(obj: { [key: string]: any }) {
     Object.keys(obj).forEach((key: any) => {
@@ -37,14 +23,14 @@ function dropUndefinedValues(obj: { [key: string]: any }) {
 }
 
 export async function banUser(email: string) {
-    const user = await getOrCreateUserData(email);
+    const user = await getOrCreateUser(email);
     await updateUserMetadata(user.user_id!, { banned: true });
 }
 
 export async function updateProUserData(email: string, subscriptionUpdate: Partial<PayingUserMetadata>) {
     dropUndefinedValues(subscriptionUpdate);
 
-    const user = await getOrCreateUserData(email);
+    const user = await getOrCreateUser(email);
     const appData = user.app_metadata;
 
     // Does the user already have unrelated subscription data?
@@ -109,7 +95,7 @@ export async function updateProUserData(email: string, subscriptionUpdate: Parti
 
 
 export async function updateTeamData(email: string, subscription: Partial<PayingUserMetadata>) {
-    const currentUserData = await getOrCreateUserData(email);
+    const currentUserData = await getOrCreateUser(email);
     const currentMetadata = (currentUserData.app_metadata ?? {}) as AppMetadata;
     const newMetadata: Partial<TeamOwnerMetadata> = subscription;
 

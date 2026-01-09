@@ -63,13 +63,7 @@ export async function createUser(email: string, appMetadata: AppMetadata = {}) {
     });
 
     // Mirror user creation into our DB:
-    await db.insertInto('users')
-        .values({
-            auth0_user_id: auth0Creation.user_id,
-            email,
-            app_metadata: appMetadata
-        })
-        .execute()
+    await createDbUser(auth0Creation.user_id, email, appMetadata)
         .catch((err) => {
             // For now we don't fail in this case, just while we're doing the initial migration
             log.error('Error creating user in DB:', err);
@@ -77,6 +71,46 @@ export async function createUser(email: string, appMetadata: AppMetadata = {}) {
         });
 
     return auth0Creation;
+}
+
+function createDbUser(auth0Id: string, email: string, appMetadata: AppMetadata = {}) {
+    return db.insertInto('users')
+        .values({
+            auth0_user_id: auth0Id,
+            email,
+            app_metadata: appMetadata
+        })
+        .execute();
+}
+
+export async function getOrCreateUser(email: string): Promise<User> {
+    const auth0Users = await auth0.getUsersByEmail(email);
+
+    let auth0User: User;
+    if (auth0Users.length > 1) {
+        throw new Error(`More than one user found for ${email}`);
+    } else if (auth0Users.length === 1) {
+        auth0User = auth0Users[0];
+    } else {
+        // Create the user, if they don't already exist:
+        auth0User = await createUser(email);
+    }
+
+    const dbUsers = await db.selectFrom('users')
+        .where('email', '=', email)
+        .selectAll()
+        .execute();
+
+    if (dbUsers.length === 0) {
+        await createDbUser(auth0User.user_id, email, auth0User.app_metadata)
+        .catch((err) => {
+            // For now we don't fail in this case, just while we're doing the initial migration
+            log.error('Error auto-creating user in DB:', err);
+            reportError(err);
+        });
+    } // Can't be >1 since this is unique
+
+    return auth0User;
 }
 
 export function getUsersByEmail(email: string) {
