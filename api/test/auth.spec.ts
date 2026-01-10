@@ -1,9 +1,11 @@
 import * as net from 'net';
 import { expect } from 'chai';
 
+import jwt from 'jsonwebtoken';
+
 import { DestroyableServer } from 'destroyable-server';
-import { startAPI } from './test-setup/setup.ts';
-import { auth0Server } from './test-setup/auth0.ts';
+import { startAPI, privateKey, givenUser } from './test-setup/setup.ts';
+import { AUTH0_PORT, auth0Server } from './test-setup/auth0.ts';
 import { testDB } from './test-setup/database.ts';
 
 
@@ -12,7 +14,19 @@ const TOKEN_RESPONSE = {
     "refresh_token": "rt",
     "scope": "email offline_access",
     "expires_in": 86400,
-    "token_type": "Bearer"
+    "token_type": "Bearer",
+    "id_token": jwt.sign(
+        JSON.stringify({
+            "iss": `https://localhost:${AUTH0_PORT}/`,
+            "aud": "auth-client-id",
+            "exp": Date.now() + 86400,
+            "iat": Date.now(),
+            "email": "test-user@example.test",
+            "sub": "auth0|userid"
+        }),
+        privateKey.toString(),
+        { algorithm: 'RS256' }
+    )
 };
 
 describe("API auth endpoints", () => {
@@ -174,6 +188,8 @@ describe("API auth endpoints", () => {
         });
 
         it("sends a request to Auth0 to refresh the token", async () => {
+            await givenUser('auth0|userid', 'test-user@example.test');
+
             const refreshToken = 'rt';
             const tokenEndpoint = await auth0Server.forPost('/oauth/token')
                 .withForm({
@@ -195,6 +211,21 @@ describe("API auth endpoints", () => {
             expect(result.accessToken).to.equal('at');
             expect(result.expiresAt).to.be.greaterThan(Date.now());
             expect(result.expiresAt).to.be.lessThan(Date.now() + 100_000_000);
+
+            const users = (await testDB.query('SELECT * FROM users')).rows;
+            expect(users).to.have.length(1);
+            const user = users[0];
+
+            // The tokens issued by Auth0 should be cached in the DB:
+            const dbRefreshTokens = (await testDB.query('SELECT * FROM refresh_tokens')).rows;
+            expect(dbRefreshTokens).to.have.length(1);
+            expect(dbRefreshTokens[0].user_id).to.equal(user.id);
+            expect(dbRefreshTokens[0].value).to.equal('rt');
+
+            const dbAccessTokens = (await testDB.query('SELECT * FROM access_tokens')).rows;
+            expect(dbAccessTokens).to.have.length(1);
+            expect(dbAccessTokens[0].value).to.equal('at');
+            expect(dbAccessTokens[0].refresh_token).to.equal('rt');
         });
     });
 

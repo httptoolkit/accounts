@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import { reportError } from './errors.ts'
 import * as auth0 from './auth0.ts';
 import { db } from "./db/database.ts";
+import { TokenSet } from 'auth0';
 
 // This file wraps the Auth0 APIs, to begin migrating towards DB synchrononization,
 // and eventually towards dropping Auth0 entirely. We intentionally closely match the
@@ -162,65 +163,82 @@ export function sendPasswordlessCode(email: string, userIp: string) {
 
 export async function loginWithPasswordlessCode(email: string, code: string, userIp: string) {
     const auth0LoginResult = await auth0.loginWithPasswordlessCode(email, code, userIp);
-
-    let auth0UserId: string | undefined;
-    try {
-        // We get the JWT directly from Auth0 - no need to validate beyond that.
-        const idTokenData = jwt.decode(auth0LoginResult.id_token || '');
-        auth0UserId = (idTokenData as any)?.sub;
-    } catch (e) {
-        console.info('Unreadable id token:', auth0LoginResult.id_token);
-        log.error('Error decoding ID token JWT:', e);
-    }
-
-    await db.insertInto('users')
-        .values({
-            email,
-            auth0_user_id: auth0UserId || null,
-            last_ip: userIp,
-            logins_count: 1,
-            last_login: new Date(),
-            app_metadata: {}
-        })
-        .onConflict((oc) => oc
-            .column('email')
-            .doUpdateSet({
-                last_ip: (eb) => eb.ref('excluded.last_ip'),
-                last_login: (eb) => eb.ref('excluded.last_login'),
-                logins_count: sql`COALESCE(users.logins_count, 0) + 1`
-            })
-        )
-        .returning('id')
-        .executeTakeFirstOrThrow()
-        .then(async (user) => {
-            if (!auth0LoginResult.refresh_token) {
-                throw new Error(`Can't cache non-set refresh token for user ${email}`);
-            }
-
-            // Store the tokens we received from Auth0 in our DB:
-            await db.insertInto('refresh_tokens').values({
-                value: auth0LoginResult.refresh_token,
-                user_id: user.id,
-                last_used: new Date()
-            }).execute();
-
-            await db.insertInto('access_tokens').values({
-                value: auth0LoginResult.access_token,
-                refresh_token: auth0LoginResult.refresh_token,
-                expires_at: new Date(Date.now() + (auth0LoginResult.expires_in * 1000))
-            }).execute();
-        })
-        .catch((err) => {
-            // For now we don't fail in this case, just while we're doing the initial migration
-            log.error('Error upserting user login info & tokens in DB:', err);
-            reportError(err);
-        });
-
+    await pullUserIntoDBFromToken(auth0LoginResult, userIp);
     return auth0LoginResult;
 }
 
-export function refreshToken(refreshToken: string, userIp: string) {
-    return auth0.refreshToken(refreshToken, userIp);
+export async function refreshToken(refreshToken: string, userIp: string) {
+    const auth0RefreshResult = await auth0.refreshToken(refreshToken, userIp);
+    await pullUserIntoDBFromToken(auth0RefreshResult, userIp);
+    return auth0RefreshResult;
+}
+
+// On initial login or token refresh, we pull the user data from Auth0 en route, and migrate it
+// into our own DB, so we can start to wean off Auth0:
+async function pullUserIntoDBFromToken(tokens: TokenSet, userIp: string) {
+    const idToken = parseAuth0IdToken(tokens.id_token);
+
+    if (idToken?.email && idToken?.auth0Id) {
+        await db.insertInto('users')
+            .values({
+                email: idToken.email,
+                auth0_user_id: idToken.auth0Id,
+                last_ip: userIp,
+                logins_count: 1,
+                last_login: new Date(),
+                app_metadata: {}
+            })
+            .onConflict((oc) => oc
+                .column('auth0_user_id')
+                .doUpdateSet({
+                    last_ip: (eb) => eb.ref('excluded.last_ip'),
+                    last_login: (eb) => eb.ref('excluded.last_login'),
+                    logins_count: sql`COALESCE(users.logins_count, 0) + 1`
+                })
+            )
+            .returning('id')
+            .executeTakeFirstOrThrow()
+            .then(async (user) => {
+                if (!tokens.refresh_token) {
+                    throw new Error(`Can't cache non-set refresh token for user ${user.id}`);
+                }
+
+                // Store the tokens we received from Auth0 in our DB:
+                await db.insertInto('refresh_tokens').values({
+                    value: tokens.refresh_token,
+                    user_id: user.id,
+                    last_used: new Date()
+                }).execute();
+
+                await db.insertInto('access_tokens').values({
+                    value: tokens.access_token,
+                    refresh_token: tokens.refresh_token,
+                    expires_at: new Date(Date.now() + (tokens.expires_in * 1000))
+                }).execute();
+            })
+            .catch((err) => {
+                // For now we don't fail in this case, just while we're doing the initial migration
+                log.error('Error upserting user login info & tokens in DB:', err);
+                reportError(err);
+            });
+    } else {
+        console.error('ID token not present or usable on login:', tokens);
+        reportError(`Could not parse detailsd from ID token during PWL login for ${tokens.id_token}`);
+    }
+}
+
+function parseAuth0IdToken(idToken: string | undefined) {
+    try {
+        // We get the JWT directly from Auth0 - no need to validate beyond that.
+        const idTokenData = jwt.decode(idToken || '');
+        return {
+            auth0Id: (idTokenData as any)?.sub,
+            email: (idTokenData as any)?.email
+        };
+    } catch (e) {
+        console.info('Unreadable id token:', idToken);
+        log.error('Error decoding ID token JWT:', e);
+    }
 }
 
 const getFullDiff = (base: any, object: any) => {

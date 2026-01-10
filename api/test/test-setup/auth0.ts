@@ -5,7 +5,8 @@ import { getLocal, RulePriority } from 'mockttp';
 import { AppMetadata } from '../../src/user-data-facade.ts';
 
 import { id } from './utils.ts';
-import{ freshAuthToken } from './setup.ts';
+import{ freshAuthToken, publicKey } from './setup.ts';
+import { createPublicKey } from 'crypto';
 
 export const AUTH0_PORT = 9091;
 process.env.AUTH0_DOMAIN = `localhost:${AUTH0_PORT}`;
@@ -218,6 +219,18 @@ beforeEach(async () => {
         .forPost('/oauth/token')
         .asPriority(RulePriority.FALLBACK)
         .thenJson(200, {});
+
+    await auth0Server
+        .forGet('/.well-known/jwks.json')
+        .asPriority(RulePriority.FALLBACK)
+        .thenJson(200, {
+            keys: [{
+                ...createPublicKey(publicKey).export({ format: 'jwk' }),
+                use: 'sig',
+                alg: 'RS256',
+                kid: 'test-key'
+            }]
+        });
 });
 
 afterEach(async () => {
