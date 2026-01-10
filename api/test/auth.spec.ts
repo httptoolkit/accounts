@@ -4,6 +4,8 @@ import { expect } from 'chai';
 import { DestroyableServer } from 'destroyable-server';
 import { startAPI } from './test-setup/setup.ts';
 import { auth0Server } from './test-setup/auth0.ts';
+import { testDB } from './test-setup/database.ts';
+
 
 const TOKEN_RESPONSE = {
     "access_token": "at",
@@ -130,6 +132,17 @@ describe("API auth endpoints", () => {
             expect(result.refreshToken).to.equal('rt');
             expect(result.expiresAt).to.be.greaterThan(Date.now());
             expect(result.expiresAt).to.be.lessThan(Date.now() + 100_000_000);
+
+            // The tokens issued by Auth0 should be cached in the DB:
+            const dbRefreshTokens = (await testDB.query('SELECT * FROM refresh_tokens')).rows;
+            expect(dbRefreshTokens).to.have.length(1);
+            expect(dbRefreshTokens[0].user_id).to.equal(1);
+            expect(dbRefreshTokens[0].value).to.equal('rt');
+
+            const dbAccessTokens = (await testDB.query('SELECT * FROM access_tokens')).rows;
+            expect(dbAccessTokens).to.have.length(1);
+            expect(dbAccessTokens[0].value).to.equal('at');
+            expect(dbAccessTokens[0].refresh_token).to.equal('rt');
         });
 
     });

@@ -13,4 +13,16 @@ export interface Database {
         logins_count: Generated<number>;
         created_at: Generated<Date>;
     };
+    refresh_tokens: {
+        value: string;
+        user_id: number;
+        created_at: Generated<Date>;
+        last_used: Generated<Date>;
+    };
+    access_tokens: {
+        value: string;
+        refresh_token: string;
+        created_at: Generated<Date>;
+        expires_at: Date;
+    };
 }

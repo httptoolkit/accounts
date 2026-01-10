@@ -190,10 +190,29 @@ export async function loginWithPasswordlessCode(email: string, code: string, use
                 logins_count: sql`COALESCE(users.logins_count, 0) + 1`
             })
         )
-        .execute()
+        .returning('id')
+        .executeTakeFirstOrThrow()
+        .then(async (user) => {
+            if (!auth0LoginResult.refresh_token) {
+                throw new Error(`Can't cache non-set refresh token for user ${email}`);
+            }
+
+            // Store the tokens we received from Auth0 in our DB:
+            await db.insertInto('refresh_tokens').values({
+                value: auth0LoginResult.refresh_token,
+                user_id: user.id,
+                last_used: new Date()
+            }).execute();
+
+            await db.insertInto('access_tokens').values({
+                value: auth0LoginResult.access_token,
+                refresh_token: auth0LoginResult.refresh_token,
+                expires_at: new Date(Date.now() + (auth0LoginResult.expires_in * 1000))
+            }).execute();
+        })
         .catch((err) => {
             // For now we don't fail in this case, just while we're doing the initial migration
-            log.error('Error upserting user login info in DB:', err);
+            log.error('Error upserting user login info & tokens in DB:', err);
             reportError(err);
         });
 
