@@ -1,3 +1,5 @@
+#!./node_modules/.bin/tsx
+
 import * as fs from 'fs';
 import csv from 'csv-parser';
 import moment from 'moment';

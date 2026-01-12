@@ -1,6 +1,7 @@
 #!./node_modules/.bin/tsx
 
 import { getUsersByEmail, updateUserMetadata } from '../api/src/user-data-facade';
+import { initializeDbConnection } from '../api/src/db/database';
 
 // Cancel an account - closing the subscription and setting the expiry date to
 // now. This immediately ends any active subscription, useful for refunds or
@@ -12,6 +13,7 @@ import { getUsersByEmail, updateUserMetadata } from '../api/src/user-data-facade
     const email = process.argv[2];
     console.log(`Cancelling account for ${email}`);
 
+    await initializeDbConnection();
     const users = await getUsersByEmail(email);
 
     if (users.length !== 1) {
