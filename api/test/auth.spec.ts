@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import jwt from 'jsonwebtoken';
 
 import { DestroyableServer } from 'destroyable-server';
-import { startAPI, privateKey, givenUser } from './test-setup/setup.ts';
+import { startAPI, privateKey, givenUser, givenAuthToken } from './test-setup/setup.ts';
 import { AUTH0_PORT, auth0Server } from './test-setup/auth0.ts';
 import { testDB } from './test-setup/database.ts';
 
@@ -198,6 +198,8 @@ describe("API auth endpoints", () => {
                 })
                 .thenJson(200, TOKEN_RESPONSE);
 
+            await givenAuthToken(TOKEN_RESPONSE.access_token, 'auth0|userid', 'test-user@example.test');
+
             const response = await fetch(`${apiAddress}/api/auth/refresh-token`, {
                 method: 'POST',
                 headers: { 'content-type': 'application/json' },
@@ -212,6 +214,7 @@ describe("API auth endpoints", () => {
             expect(result.expiresAt).to.be.greaterThan(Date.now());
             expect(result.expiresAt).to.be.lessThan(Date.now() + 100_000_000);
 
+            // The user should have been implicitly created in the DB:
             const users = (await testDB.query('SELECT * FROM users')).rows;
             expect(users).to.have.length(1);
             const user = users[0];

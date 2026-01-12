@@ -58,10 +58,13 @@ export function givenNoAuth0Users() {
         .thenJson(200, []);
 }
 
-export function givenAuth0Token(authToken: string, userId: string) {
+export function givenAuth0Token(authToken: string, userId: string, email?: string) {
     return auth0Server.forGet('/userinfo')
         .withHeaders({ 'Authorization': 'Bearer ' + authToken })
-        .thenJson(200, { sub: userId });
+        .thenJson(200, {
+            sub: userId,
+            email
+        });
 }
 
 export async function withAuth0UserUpdateNetworkFailures() {

@@ -100,8 +100,8 @@ export function freshAuthToken() {
     return crypto.randomBytes(20).toString('hex');
 }
 
-export function givenAuthToken(authToken: string, userId: string) {
-    return auth0.givenAuth0Token(authToken, userId);
+export function givenAuthToken(authToken: string, userId: string, email?: string) {
+    return auth0.givenAuth0Token(authToken, userId, email);
 }
 
 // Create a team, with the given list of users, and 'undefined' for each

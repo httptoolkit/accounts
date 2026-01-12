@@ -163,19 +163,19 @@ export function sendPasswordlessCode(email: string, userIp: string) {
 
 export async function loginWithPasswordlessCode(email: string, code: string, userIp: string) {
     const auth0LoginResult = await auth0.loginWithPasswordlessCode(email, code, userIp);
-    await pullUserIntoDBFromToken(auth0LoginResult, userIp);
+    await pullUserIntoDBFromLogin(auth0LoginResult, userIp);
     return auth0LoginResult;
 }
 
 export async function refreshToken(refreshToken: string, userIp: string) {
     const auth0RefreshResult = await auth0.refreshToken(refreshToken, userIp);
-    await pullUserIntoDBFromToken(auth0RefreshResult, userIp);
+    await pullUserIntoDBFromRefresh(refreshToken, auth0RefreshResult, userIp);
     return auth0RefreshResult;
 }
 
 // On initial login or token refresh, we pull the user data from Auth0 en route, and migrate it
 // into our own DB, so we can start to wean off Auth0:
-async function pullUserIntoDBFromToken(tokens: TokenSet, userIp: string) {
+async function pullUserIntoDBFromLogin(tokens: TokenSet, userIp: string) {
     const idToken = parseAuth0IdToken(tokens.id_token);
 
     if (idToken?.email && idToken?.auth0Id) {
@@ -203,27 +203,88 @@ async function pullUserIntoDBFromToken(tokens: TokenSet, userIp: string) {
                     throw new Error(`Can't cache non-set refresh token for user ${user.id}`);
                 }
 
-                // Store the tokens we received from Auth0 in our DB:
-                await db.insertInto('refresh_tokens').values({
-                    value: tokens.refresh_token,
-                    user_id: user.id,
-                    last_used: new Date()
-                }).execute();
-
-                await db.insertInto('access_tokens').values({
-                    value: tokens.access_token,
-                    refresh_token: tokens.refresh_token,
-                    expires_at: new Date(Date.now() + (tokens.expires_in * 1000))
-                }).execute();
+                await storeRefreshAndAccessTokens(
+                    user.id,
+                    tokens.refresh_token,
+                    tokens.access_token!,
+                    tokens.expires_in!
+                );
             })
-            .catch((err) => {
+            .catch((err: any) => {
                 // For now we don't fail in this case, just while we're doing the initial migration
                 log.error('Error upserting user login info & tokens in DB:', err);
                 reportError(err);
             });
     } else {
         console.error('ID token not present or usable on login:', tokens);
-        reportError(`Could not parse detailsd from ID token during PWL login for ${tokens.id_token}`);
+        reportError(`Could not parse details from ID token during PWL login for ${tokens.id_token}`);
+    }
+}
+
+async function pullUserIntoDBFromRefresh(refreshToken: string, refreshResult: TokenSet, userIp: string) {
+    try {
+        // Insert refresh token, access token & user, if each is not already present. Go from the user down?
+        // We need to do a query to get the user data from auth0, if we don't have it already... Awkward.
+
+        if (!refreshResult.access_token) {
+            throw new Error('No access token present after refresh');
+        }
+
+        const refreshTokenExists = await db.insertInto('access_tokens')
+            .values({
+                value: refreshResult.access_token,
+                refresh_token: refreshToken,
+                expires_at: new Date(Date.now() + (refreshResult.expires_in * 1000))
+            })
+            .execute()
+            .then(() => {
+                return true;
+            }).catch((err: any) => {
+                if (err.constraint === 'access_tokens_refresh_token_fkey') {
+                    return false;
+                } else {
+                    throw err;
+                }
+            });
+
+        if (refreshTokenExists) return; // All done
+
+        // If the refresh token didn't exist, we need to fetch the user data given the access token, and
+        // then create the RT to reference it (and maybe create the user too, if required).
+        const auth0User = await auth0.getUserInfoFromToken(refreshResult.access_token);
+        if (!auth0User?.sub || !auth0User?.email) {
+            console.warn(`Returned user data:`, auth0User);
+            throw new Error('Could not get user info from access token during refresh');
+        }
+
+        // Create user (or just get id) in our DB, in case it doesn't exist:
+        const user = await db.insertInto('users')
+            .values({
+                email: auth0User.email,
+                auth0_user_id: auth0User.sub,
+                last_ip: userIp,
+                logins_count: 1,
+                app_metadata: {},
+            })
+            .onConflict((oc) => oc
+                .column('auth0_user_id')
+                .doUpdateSet({
+                    last_ip: (eb) => eb.ref('excluded.last_ip')
+                })
+            )
+            .returning('id')
+            .executeTakeFirstOrThrow();
+
+        // Store the refresh & access tokens again with the full info this time round:
+        await storeRefreshAndAccessTokens(
+            user.id,
+            refreshToken,
+            refreshResult.access_token!,
+            refreshResult.expires_in!
+        );
+    } catch (err: any) {
+        log.error('Error pulling user into DB during token refresh:', err);
+        reportError(err);
     }
 }
 
@@ -239,6 +300,21 @@ function parseAuth0IdToken(idToken: string | undefined) {
         console.info('Unreadable id token:', idToken);
         log.error('Error decoding ID token JWT:', e);
     }
+}
+
+async function storeRefreshAndAccessTokens(userId: number, refreshToken: string, accessToken: string, expiresIn: number) {
+    // Store the tokens we received from Auth0 in our DB:
+    await db.insertInto('refresh_tokens').values({
+        value: refreshToken,
+        user_id: userId,
+        last_used: new Date()
+    }).execute();
+
+    await db.insertInto('access_tokens').values({
+        value: accessToken,
+        refresh_token: refreshToken,
+        expires_at: new Date(Date.now() + (expiresIn * 1000))
+    }).execute();
 }
 
 const getFullDiff = (base: any, object: any) => {
