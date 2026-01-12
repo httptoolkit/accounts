@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 
 import { DestroyableServer } from 'destroyable-server';
 import { startAPI, privateKey, givenUser, givenAuthToken } from './test-setup/setup.ts';
-import { AUTH0_PORT, auth0Server } from './test-setup/auth0.ts';
+import { AUTH0_PORT, auth0Server, givenAuth0Token } from './test-setup/auth0.ts';
 import { testDB } from './test-setup/database.ts';
 
 
@@ -189,6 +189,33 @@ describe("API auth endpoints", () => {
 
         it("sends a request to Auth0 to refresh the token", async () => {
             await givenUser('auth0|userid', 'test-user@example.test');
+            await givenAuth0Token(TOKEN_RESPONSE.access_token, 'auth0|userid', 'test-user@example.test');
+
+            const refreshToken = 'rt';
+            const tokenEndpoint = await auth0Server.forPost('/oauth/token')
+                .withForm({
+                    refresh_token: refreshToken,
+                    grant_type: 'refresh_token'
+                })
+                .thenJson(200, TOKEN_RESPONSE);
+
+            const response = await fetch(`${apiAddress}/api/auth/refresh-token`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ refreshToken })
+            });
+
+            expect(response.status).to.equal(200);
+            expect(await tokenEndpoint.getSeenRequests()).to.have.length(1);
+
+            const result = await response.json();
+            expect(result.accessToken).to.equal('at');
+            expect(result.expiresAt).to.be.greaterThan(Date.now());
+            expect(result.expiresAt).to.be.lessThan(Date.now() + 100_000_000);
+        });
+
+        it("caches the token in the DB, if not seen before", async () => {
+            await givenUser('auth0|userid', 'test-user@example.test');
 
             const refreshToken = 'rt';
             const tokenEndpoint = await auth0Server.forPost('/oauth/token')
@@ -199,6 +226,56 @@ describe("API auth endpoints", () => {
                 .thenJson(200, TOKEN_RESPONSE);
 
             await givenAuthToken(TOKEN_RESPONSE.access_token, 'auth0|userid', 'test-user@example.test');
+
+            await testDB.query('DELETE FROM access_tokens');
+            await testDB.query('DELETE FROM refresh_tokens');
+
+            const response = await fetch(`${apiAddress}/api/auth/refresh-token`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ refreshToken })
+            });
+
+            expect(response.status).to.equal(200);
+            expect(await tokenEndpoint.getSeenRequests()).to.have.length(1);
+
+            const result = await response.json();
+            expect(result.accessToken).to.equal('at');
+            expect(result.expiresAt).to.be.greaterThan(Date.now());
+            expect(result.expiresAt).to.be.lessThan(Date.now() + 100_000_000);
+
+            const users = (await testDB.query('SELECT * FROM users')).rows;
+            expect(users).to.have.length(1);
+            const user = users[0];
+
+            // The tokens issued by Auth0 should be cached in the DB:
+            const dbRefreshTokens = (await testDB.query('SELECT * FROM refresh_tokens')).rows;
+            expect(dbRefreshTokens).to.have.length(1);
+            expect(dbRefreshTokens[0].user_id).to.equal(user.id);
+            expect(dbRefreshTokens[0].value).to.equal('rt');
+
+            const dbAccessTokens = (await testDB.query('SELECT * FROM access_tokens')).rows;
+            expect(dbAccessTokens).to.have.length(1);
+            expect(dbAccessTokens[0].value).to.equal('at');
+            expect(dbAccessTokens[0].refresh_token).to.equal('rt');
+        });
+
+        it("caches the user themselves and the token in the DB, if not seen before", async () => {
+            await givenUser('auth0|userid', 'test-user@example.test');
+
+            const refreshToken = 'rt';
+            const tokenEndpoint = await auth0Server.forPost('/oauth/token')
+                .withForm({
+                    refresh_token: refreshToken,
+                    grant_type: 'refresh_token'
+                })
+                .thenJson(200, TOKEN_RESPONSE);
+
+            await givenAuthToken(TOKEN_RESPONSE.access_token, 'auth0|userid', 'test-user@example.test');
+
+            await testDB.query('DELETE FROM access_tokens');
+            await testDB.query('DELETE FROM refresh_tokens');
+            await testDB.query('DELETE FROM users');
 
             const response = await fetch(`${apiAddress}/api/auth/refresh-token`, {
                 method: 'POST',
@@ -218,6 +295,8 @@ describe("API auth endpoints", () => {
             const users = (await testDB.query('SELECT * FROM users')).rows;
             expect(users).to.have.length(1);
             const user = users[0];
+            expect(user.auth0_user_id).to.equal('auth0|userid');
+            expect(user.email).to.equal('test-user@example.test');
 
             // The tokens issued by Auth0 should be cached in the DB:
             const dbRefreshTokens = (await testDB.query('SELECT * FROM refresh_tokens')).rows;

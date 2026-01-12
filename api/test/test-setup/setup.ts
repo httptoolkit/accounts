@@ -100,8 +100,14 @@ export function freshAuthToken() {
     return crypto.randomBytes(20).toString('hex');
 }
 
-export function givenAuthToken(authToken: string, userId: string, email?: string) {
-    return auth0.givenAuth0Token(authToken, userId, email);
+export async function givenAuthToken(authToken: string, auth0UserId: string, email?: string) {
+    const auth0Endpoint = await auth0.givenAuth0Token(authToken, auth0UserId, email);
+
+    const userId = (await testDB.query(`SELECT id FROM users WHERE auth0_user_id = $1`, [auth0UserId])).rows[0].id;
+    await testDB.query('INSERT INTO refresh_tokens (value, user_id) VALUES ($1, $2)', ['rt-' + authToken, userId]);
+    await testDB.query(`INSERT INTO access_tokens (value, refresh_token, expires_at) VALUES ($1, $2, $3)`, [authToken, 'rt-' + authToken, new Date(Date.now() + 3600 * 1000)]);
+
+    return auth0Endpoint;
 }
 
 // Create a team, with the given list of users, and 'undefined' for each
@@ -115,9 +121,15 @@ export async function givenTeam(
 
     // Inefficient loop, but simple and doesn't matter for testing:
     let writes: Array<Promise<any>> = [];
-    writes.push(testDB.query(`INSERT INTO users (auth0_user_id, email, app_metadata) VALUES ($1, $2, $3)`, [
+    const owner = await testDB.query(`INSERT INTO users (auth0_user_id, email, app_metadata) VALUES ($1, $2, $3) RETURNING id`, [
         auth0Team.ownerId, auth0Team.ownerEmail, auth0Team.ownerData
-    ]));
+    ]);
+
+    const rt = 'rt-' + auth0Team.ownerAuthToken;
+    await testDB.query('INSERT INTO refresh_tokens (user_id, value) VALUES ($1, $2)', [owner.rows[0].id, rt]);
+    await testDB.query(`INSERT INTO access_tokens (value, refresh_token, expires_at) VALUES ($1, $2, $3)`, [
+        auth0Team.ownerAuthToken, rt, new Date(Date.now() + 3600 * 1000)
+    ]);
 
     for (let member of teamMembersAndSpaces) {
         if (!member) continue;

@@ -23,7 +23,7 @@ import {
     TeamOwnerMetadata,
     TeamMemberMetadata,
     PayingUserMetadata,
-    getUserInfoFromToken,
+    getAuth0UserIdFromToken,
     getUserById,
     searchUsers
 } from './user-data-facade.ts';
@@ -42,7 +42,7 @@ type RawMetadata = Partial<AppMetadata> & {
 // for teams: team members have the subscription of the team owner. Team owners
 // have no effective subscription (unless they are owner + member).
 export async function getUserAppData(accessToken: string): Promise<UserAppData> {
-    const userId = await getUserId(accessToken);
+    const userId = await getAuth0UserIdFromToken(accessToken);
     const rawUserData = await loadRawUserData(userId);
     return await buildUserAppData(rawUserData) as UserAppData;
 }
@@ -51,7 +51,7 @@ export async function getUserAppData(accessToken: string): Promise<UserAppData> 
 // easy, for teams: team members have no subscription, just a membership,
 // while owners have all their normal subscription state + a list of members.
 export async function getUserBillingData(accessToken: string) {
-    const userId = await getUserId(accessToken);
+    const userId = await getAuth0UserIdFromToken(accessToken);
     const rawUserData = await loadRawUserData(userId);
     return buildUserBillingData(rawUserData);
 }
@@ -61,33 +61,8 @@ export async function getUserBillingData(accessToken: string) {
 // handling, not the full with-invoices with-team-members data that getUserBillingData
 // returns, and not the only-user-visible data that getUserAppData returns.
 export async function getUserBaseData(accessToken: string) {
-    const userId = await getUserId(accessToken);
+    const userId = await getAuth0UserIdFromToken(accessToken);
     return await loadRawUserData(userId);
-}
-
-// A cache to avoid hitting userinfo unnecessarily.
-const tokenIdCache: { [accessToken: string]: string } = {};
-
-export async function getUserId(accessToken: string): Promise<string> {
-    let userId = tokenIdCache[accessToken];
-
-    if (userId) {
-        log.debug(`Matched token to user id ${userId} from cache`);
-        return userId;
-    } else {
-        const user = await getUserInfoFromToken(accessToken);
-
-        if (!user) {
-            throw new Error("User could not be found in getUserId");
-        } else if (typeof user.sub !== 'string') {
-            const userDataString = JSON.stringify(user);
-            throw new Error(`Unexpected getProfile result: ${userDataString}`);
-        }
-
-        userId = tokenIdCache[accessToken] = user.sub;
-        log.debug(`Looked up user id ${userId} from token`);
-        return userId;
-    }
 }
 
 async function loadRawUserData(userId: string): Promise<RawMetadata> {

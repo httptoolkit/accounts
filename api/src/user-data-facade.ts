@@ -149,8 +149,24 @@ export async function getUserById(id: string) {
     return auth0User;
 }
 
-export function getUserInfoFromToken(token: string) {
-    return auth0.getUserInfoFromToken(token);
+export async function getAuth0UserIdFromToken(token: string) {
+    const dbUser = await db.selectFrom('users')
+        .selectAll()
+        .innerJoin('refresh_tokens', 'users.id', 'refresh_tokens.user_id')
+        .innerJoin('access_tokens', 'refresh_tokens.value', 'access_tokens.refresh_token')
+        .where('access_tokens.value', '=', token)
+        .executeTakeFirstOrThrow()
+        .catch((err) => {
+            reportError('Error querying user from token in DB:', err);
+            return undefined;
+        });
+
+    if (dbUser) {
+        return dbUser.auth0_user_id;
+    }
+
+    const userInfo = await auth0.getUserInfoFromToken(token);
+    return userInfo.sub;
 }
 
 export function searchUsers(query: { q: string, per_page: number }) {

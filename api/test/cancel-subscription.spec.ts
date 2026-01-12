@@ -49,12 +49,12 @@ describe('Subscription cancellation API', () => {
         const userId = "abc";
         const userEmail = 'user@example.com';
 
-        await givenAuthToken(authToken, userId);
         await givenUser(userId, userEmail, {
             payment_provider: 'paddle',
             subscription_id: '2',
             subscription_status: "active"
         });
+        await givenAuthToken(authToken, userId);
 
         const cancelEndpoint = await paddleServer.forPost('/api/2.0/subscription/users_cancel')
             .thenJson(200, { success: true });
@@ -73,12 +73,12 @@ describe('Subscription cancellation API', () => {
         const userId = "abc";
         const userEmail = 'user@example.com';
 
-        await givenAuthToken(authToken, userId);
         await givenUser(userId, userEmail, {
             payment_provider: 'paypro',
             subscription_id: '2',
             subscription_status: "active"
         });
+        await givenAuthToken(authToken, userId);
 
         const cancelEndpoint = await payproApiServer.forPost('/api/Subscriptions/Terminate')
             .thenJson(200, { isSuccess: true });
@@ -97,8 +97,8 @@ describe('Subscription cancellation API', () => {
         const userId = "abc";
         const userEmail = 'user@example.com';
 
-        await givenAuthToken(authToken, userId);
         await givenUser(userId, userEmail, {});
+        await givenAuthToken(authToken, userId);
 
         const cancelEndpoint = await paddleServer.forPost('/api/2.0/subscription/users_cancel')
             .thenJson(200, { success: true });
@@ -115,15 +115,14 @@ describe('Subscription cancellation API', () => {
         const billingUserId = "abc";
         const billingUserEmail = 'billinguser@example.com';
         const teamUserId = "def";
-        const teamUserEmail = 'teamuser@example.com';
 
-        await givenAuthToken(authToken, billingUserId);
         await givenUser(billingUserId, billingUserEmail, {
             payment_provider: 'paddle',
             team_member_ids: ['123', '456', teamUserId],
             subscription_id: '2',
             subscription_status: "active"
         });
+        await givenAuthToken(authToken, billingUserId);
 
         const cancelEndpoint = await paddleServer.forPost('/api/2.0/subscription/users_cancel')
             .thenJson(200, { success: true });
@@ -144,10 +143,11 @@ describe('Subscription cancellation API', () => {
         const teamUserId = "def";
         const teamUserEmail = 'teamuser@example.com';
 
-        await givenAuthToken(authToken, teamUserId);
         await givenUser(teamUserId, teamUserEmail, {
             subscription_owner_id: billingUserId
         });
+        await givenAuthToken(authToken, teamUserId);
+
         await givenUser(billingUserId, billingUserEmail, {
             payment_provider: 'paddle',
             team_member_ids: ['123', '456', teamUserId],
@@ -170,12 +170,12 @@ describe('Subscription cancellation API', () => {
         const userId = "abc";
         const userEmail = 'user@example.com';
 
-        await givenAuthToken(authToken, userId);
         await givenUser(userId, userEmail, {
             payment_provider: 'paddle',
             subscription_id: '2',
             subscription_status: "deleted"
         });
+        await givenAuthToken(authToken, userId);
 
         const cancelEndpoint = await paddleServer.forPost('/api/2.0/subscription/users_cancel')
             .thenJson(200, { success: true });

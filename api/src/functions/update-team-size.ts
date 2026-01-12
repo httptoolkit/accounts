@@ -6,10 +6,10 @@ initSentry();
 
 import {
     TeamOwnerMetadata,
+    getAuth0UserIdFromToken,
     getUserById
 } from '../user-data-facade.ts';
 import { getCorsResponseHeaders } from '../cors.ts';
-import { getUserId } from '../user-data.ts';
 import { getSku, isTeamSubscription } from '../products.ts';
 import { updateSubscriptionQuantity } from '../paddle.ts';
 
@@ -49,7 +49,7 @@ export const handler = catchErrors(async (event) => {
     const accessToken = tokenMatch[1];
 
     try {
-        const ownerId = await getUserId(accessToken);
+        const ownerId = await getAuth0UserIdFromToken(accessToken);
         const userData = await getUserById(ownerId);
         const ownerData = userData.app_metadata as TeamOwnerMetadata;
 

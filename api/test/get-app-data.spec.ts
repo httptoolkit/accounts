@@ -13,6 +13,7 @@ import {
 } from './test-setup/setup.ts';
 import { auth0Server } from './test-setup/auth0.ts';
 import { TeamOwnerMetadata } from '../src/user-data-facade.ts';
+import { testDB } from './test-setup/database.ts';
 
 const getAppData = (server: net.Server, authToken?: string) => fetch(
     `http://localhost:${(server.address() as net.AddressInfo).port}/api/get-app-data`,
@@ -73,8 +74,8 @@ describe('/get-app-data', () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
 
-            await givenAuthToken(authToken, userId);
             await givenUser(userId, userEmail, {});
+            await givenAuthToken(authToken, userId);
 
             const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
@@ -95,8 +96,9 @@ describe('/get-app-data', () => {
                 .once()
                 .thenReply(500, 'OH NO');
 
-            await givenAuthToken(authToken, userId);
             await givenUser(userId, userEmail, {});
+            await givenAuthToken(authToken, userId);
+            await testDB.query('DELETE FROM access_tokens'); // Force Auth0 fallback
 
             const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
@@ -119,8 +121,9 @@ describe('/get-app-data', () => {
                 .once()
                 .thenResetConnection();
 
-            await givenAuthToken(authToken, userId);
             await givenUser(userId, userEmail, {});
+            await givenAuthToken(authToken, userId);
+            await testDB.query('DELETE FROM access_tokens'); // Force Auth0 fallback
 
             const startTime = Date.now();
             const response = await getAppData(apiServer, authToken);
@@ -167,7 +170,6 @@ describe('/get-app-data', () => {
             const userEmail = 'user@example.com';
             const subExpiry = Date.now();
 
-            await givenAuthToken(authToken, userId);
             await givenUser(userId, userEmail, {
                 subscription_expiry: subExpiry,
                 subscription_id: '2',
@@ -176,6 +178,7 @@ describe('/get-app-data', () => {
                 subscription_status: "active",
                 subscription_quantity: 1
             });
+            await givenAuthToken(authToken, userId);
 
             const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
@@ -194,39 +197,6 @@ describe('/get-app-data', () => {
             });
         });
 
-        it("caches userinfo lookups", async () => {
-            const authToken = freshAuthToken();
-            const userId = "abc";
-            const userEmail = 'user@example.com';
-            const subExpiry = Date.now();
-
-            const userInfoLookup = await givenAuthToken(authToken, userId);
-            const [userDataLookup] = await givenUser(userId, userEmail, {
-                subscription_expiry: subExpiry,
-                subscription_id: '2',
-                subscription_sku: 'pro-monthly',
-                subscription_plan_id: 550380,
-                subscription_status: "active",
-                subscription_quantity: 1
-            });
-
-            const response1 = await getAppData(apiServer, authToken);
-            expect(response1.status).to.equal(200);
-            expect(getJwtData((await response1.text())).subscription_status).to.equal('active');
-
-            const response2 = await getAppData(apiServer, authToken);
-            expect(response1.status).to.equal(200);
-            expect(getJwtData((await response2.text())).subscription_status).to.equal('active');
-
-            const [userInfoRequests, userDataRequests] = await Promise.all([
-                userInfoLookup.getSeenRequests(),
-                userDataLookup.getSeenRequests()
-            ]);
-
-            expect(userInfoRequests.length).to.equal(1);
-            expect(userDataRequests.length).to.equal(2);
-        });
-
         it("returns valid but expired data for 24h after expiry", async () => {
             const authToken = freshAuthToken();
             const userId = "abc";
@@ -235,7 +205,6 @@ describe('/get-app-data', () => {
             // Expire the data 23 hours ago:
             const subExpiry = Date.now() - (23 * 60 * 60 * 1000);
 
-            await givenAuthToken(authToken, userId);
             await givenUser(userId, userEmail, {
                 feature_flags: ['test_flag'],
                 subscription_expiry: subExpiry,
@@ -245,6 +214,7 @@ describe('/get-app-data', () => {
                 subscription_status: "active",
                 subscription_quantity: 1
             });
+            await givenAuthToken(authToken, userId);
 
             const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
@@ -272,7 +242,6 @@ describe('/get-app-data', () => {
             // Expire the data 25 hours ago:
             const subExpiry = Date.now() - (25 * 60 * 60 * 1000);
 
-            await givenAuthToken(authToken, userId);
             await givenUser(userId, userEmail, {
                 feature_flags: ['test_flag'],
                 subscription_expiry: subExpiry,
@@ -282,6 +251,7 @@ describe('/get-app-data', () => {
                 subscription_status: "active",
                 subscription_quantity: 1
             });
+            await givenAuthToken(authToken, userId);
 
             const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
@@ -304,10 +274,11 @@ describe('/get-app-data', () => {
             const teamUserEmail = 'teamuser@example.com';
             const subExpiry = Date.now();
 
-            await givenAuthToken(authToken, teamUserId);
             await givenUser(teamUserId, teamUserEmail, {
                 subscription_owner_id: billingUserId
             });
+            await givenAuthToken(authToken, teamUserId);
+
             await givenUser(billingUserId, billingUserEmail, {
                 team_member_ids: ['123', '456', teamUserId],
                 subscription_expiry: subExpiry,
@@ -344,7 +315,6 @@ describe('/get-app-data', () => {
             const billingUserEmail = 'billinguser@example.com';
             const subExpiry = Date.now();
 
-            await givenAuthToken(authToken, billingUserId);
             await givenUser(billingUserId, billingUserEmail, {
                 feature_flags: ['a flag'],
                 team_member_ids: ['123', '456'],
@@ -358,6 +328,7 @@ describe('/get-app-data', () => {
                 cancel_url: 'cu',
                 update_url: 'uu',
             });
+            await givenAuthToken(authToken, billingUserId);
 
             const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
@@ -388,7 +359,6 @@ describe('/get-app-data', () => {
             const billingUserEmail = 'billinguser@example.com';
             const subExpiry = Date.now();
 
-            await givenAuthToken(authToken, billingUserId);
             await givenUser(billingUserId, billingUserEmail, {
                 subscription_owner_id: billingUserId, // Points to their own id
                 feature_flags: ['a flag'],
@@ -403,6 +373,7 @@ describe('/get-app-data', () => {
                 cancel_url: 'cu',
                 update_url: 'uu',
             });
+            await givenAuthToken(authToken, billingUserId);
 
             const response = await getAppData(apiServer, authToken);
             expect(response.status).to.equal(200);
@@ -444,10 +415,11 @@ describe('/get-app-data', () => {
             const teamUserEmail = 'teamuser@example.com';
             const subExpiry = Date.now();
 
-            await givenAuthToken(authToken, teamUserId);
             await givenUser(teamUserId, teamUserEmail, {
                 subscription_owner_id: billingUserId
             });
+            await givenAuthToken(authToken, teamUserId);
+
             await givenUser(billingUserId, billingUserEmail, {
                 team_member_ids: ['123', '456', teamUserId],
                 subscription_quantity: 2, // <-- 2 allowed, but we're 3rd in the ids above
@@ -479,10 +451,11 @@ describe('/get-app-data', () => {
             const teamUserEmail = 'teamuser@example.com';
             const subExpiry = Date.now();
 
-            await givenAuthToken(authToken, teamUserId);
             await givenUser(teamUserId, teamUserEmail, {
                 subscription_owner_id: billingUserId
             });
+            await givenAuthToken(authToken, teamUserId);
+
             await givenUser(billingUserId, billingUserEmail, {
                 team_member_ids: ['123', '456', teamUserId],
                 locked_licenses: [new Date(2050, 0, 0).getTime()], // Locked for ~30 years
@@ -515,10 +488,11 @@ describe('/get-app-data', () => {
             const teamUserEmail = 'teamuser@example.com';
             const subExpiry = Date.now();
 
-            await givenAuthToken(authToken, teamUserId);
             await givenUser(teamUserId, teamUserEmail, {
                 subscription_owner_id: billingUserId
             });
+            await givenAuthToken(authToken, teamUserId);
+
             await givenUser(billingUserId, billingUserEmail, {
                 team_member_ids: [], // <-- doesn't include this user
                 subscription_expiry: subExpiry,

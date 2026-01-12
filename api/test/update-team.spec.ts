@@ -79,8 +79,8 @@ describe('/update-team', () => {
             const userId = "abc";
             const userEmail = 'user@example.com';
 
-            await givenAuthToken(authToken, userId);
             await givenUser(userId, userEmail);
+            await givenAuthToken(authToken, userId);
             await auth0Server.forGet('/api/v2/users').thenJson(200, []);
 
             const response = await updateTeam(apiServer, authToken, {
@@ -97,13 +97,13 @@ describe('/update-team', () => {
             const userEmail = 'user@example.com';
             const subExpiry = Date.now();
 
-            await givenAuthToken(authToken, userId);
             await givenUser(userId, userEmail, {
                 subscription_expiry: subExpiry,
                 subscription_id: '2',
                 subscription_plan_id: 550380,
                 subscription_status: "active"
             });
+            await givenAuthToken(authToken, userId);
             await auth0Server.forGet('/api/v2/users').thenJson(200, []);
 
             const response = await updateTeam(apiServer, authToken, {

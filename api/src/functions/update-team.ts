@@ -11,12 +11,13 @@ import {
     User,
     LICENSE_LOCK_DURATION_MS,
     getUserById,
+    getAuth0UserIdFromToken,
     getUsersByEmail,
     updateUserMetadata,
     createUser
 } from '../user-data-facade.ts';
 import { getCorsResponseHeaders } from '../cors.ts';
-import { getMaxTeamSize, getTeamMemberData, getUserId } from '../user-data.ts';
+import { getMaxTeamSize, getTeamMemberData } from '../user-data.ts';
 import { getSku, isTeamSubscription } from '../products.ts';
 
 const BearerRegex = /^Bearer (\S+)$/;
@@ -50,7 +51,7 @@ export const handler = catchErrors(async (event) => {
     const accessToken = tokenMatch[1];
 
     try {
-        const ownerId = await getUserId(accessToken);
+        const ownerId = await getAuth0UserIdFromToken(accessToken);
 
         const [userData, memberData] = await Promise.all([
             getUserById(ownerId),
