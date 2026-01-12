@@ -4,7 +4,7 @@ import { AppMetadata } from '../user-data-facade.ts';
 export interface Database {
     users: {
         id: Generated<number>;
-        auth0_user_id: string | null;
+        auth0_user_id: string;
         email: string;
         app_metadata: AppMetadata;
 
