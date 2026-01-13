@@ -2,6 +2,7 @@ import _ from 'lodash';
 import { sql, Transaction } from 'kysely';
 import log from 'loglevel';
 import jwt from 'jsonwebtoken';
+import { randomBytes } from 'crypto';
 
 import { reportError } from './errors.ts'
 import * as auth0 from './auth0.ts';
@@ -184,10 +185,51 @@ export async function loginWithPasswordlessCode(email: string, code: string, use
     return auth0LoginResult;
 }
 
-export async function refreshToken(refreshToken: string, userIp: string) {
-    const auth0RefreshResult = await auth0.refreshToken(refreshToken, userIp);
-    await pullUserIntoDBFromRefresh(refreshToken, auth0RefreshResult, userIp);
-    return auth0RefreshResult;
+export function refreshToken(refreshToken: string, userIp: string) {
+    return db.transaction().execute(async (trx) => {
+        // If we're already in the DB, we skip Auth0 entirely:
+        if (await doesRefreshTokenExist(trx, refreshToken)) {
+            const newAccessToken = `at-${randomBytes(32).toString('hex')}`;
+            const expiresAt = Date.now() + (1000 * 60 * 60 * 24);
+
+            await Promise.all([
+                trx.insertInto('access_tokens')
+                    .values({
+                        value: newAccessToken,
+                        refresh_token: refreshToken,
+                        expires_at: new Date(expiresAt)
+                    })
+                    .execute(),
+                trx.updateTable('refresh_tokens')
+                    .set({
+                        last_used: new Date()
+                    })
+                    .where('value', '=', refreshToken)
+                    .execute()
+            ]);
+
+            return {
+                accessToken: newAccessToken,
+                expiresAt
+            };
+        } else {
+            // If not, we go to Auth0 as before, and then cache the result:
+            const auth0RefreshResult = await auth0.refreshToken(refreshToken, userIp);
+            await pullUserIntoDBFromRefresh(trx, refreshToken, auth0RefreshResult, userIp);
+            return {
+                accessToken: auth0RefreshResult.access_token!,
+                expiresAt: Date.now() + auth0RefreshResult.expires_in! * 1000
+            };
+        }
+    });
+}
+
+function doesRefreshTokenExist(trx: Transaction<Database>, refreshToken: string) {
+    return trx.selectFrom('refresh_tokens')
+        .where('value', '=', refreshToken)
+        .selectAll()
+        .executeTakeFirst()
+        .then((rt) => !!rt);
 }
 
 // On initial login or token refresh, we pull the user data from Auth0 en route, and migrate it
@@ -241,7 +283,7 @@ async function pullUserIntoDBFromLogin(tokens: TokenSet, userIp: string) {
     }
 }
 
-async function pullUserIntoDBFromRefresh(refreshToken: string, refreshResult: TokenSet, userIp: string) {
+async function pullUserIntoDBFromRefresh(trx: Transaction<Database>, refreshToken: string, refreshResult: TokenSet, userIp: string) {
     try {
         // Insert refresh token, access token & user, if each is not already present. Go from the user down?
         // We need to do a query to get the user data from auth0, if we don't have it already... Awkward.
@@ -250,58 +292,38 @@ async function pullUserIntoDBFromRefresh(refreshToken: string, refreshResult: To
             throw new Error('No access token present after refresh');
         }
 
-        await db.transaction().execute(async (trx) => {
-            const refreshTokenExists = await trx.selectFrom('refresh_tokens')
-                .where('value', '=', refreshToken)
-                .selectAll()
-                .executeTakeFirst()
-                .then((rt) => !!rt);
+        const auth0User = await auth0.getUserInfoFromToken(refreshResult.access_token);
+        if (!auth0User?.sub || !auth0User?.email) {
+            console.warn(`Returned user data:`, auth0User);
+            throw new Error('Could not get user info from access token during refresh');
+        }
 
-            if (refreshTokenExists) {
-                return trx.insertInto('access_tokens')
-                    .values({
-                        value: refreshResult.access_token,
-                        refresh_token: refreshToken,
-                        expires_at: new Date(Date.now() + (refreshResult.expires_in * 1000))
-                    })
-                    .execute();
-            }
-
-            // If the refresh token didn't exist, we need to fetch the user data given the access token,
-            // and then create the RT to reference it (and maybe create the user too, if required).
-            const auth0User = await auth0.getUserInfoFromToken(refreshResult.access_token);
-            if (!auth0User?.sub || !auth0User?.email) {
-                console.warn(`Returned user data:`, auth0User);
-                throw new Error('Could not get user info from access token during refresh');
-            }
-
-            // Create user (or just get id) in our DB, in case it doesn't exist:
-            const user = await trx.insertInto('users')
-                .values({
-                    email: auth0User.email,
-                    auth0_user_id: auth0User.sub,
-                    last_ip: userIp,
-                    logins_count: 1,
-                    app_metadata: {},
+        // Create user (or just get id) in our DB, in case it doesn't exist:
+        const user = await trx.insertInto('users')
+            .values({
+                email: auth0User.email,
+                auth0_user_id: auth0User.sub,
+                last_ip: userIp,
+                logins_count: 1,
+                app_metadata: {},
+            })
+            .onConflict((oc) => oc
+                .column('auth0_user_id')
+                .doUpdateSet({
+                    last_ip: (eb) => eb.ref('excluded.last_ip')
                 })
-                .onConflict((oc) => oc
-                    .column('auth0_user_id')
-                    .doUpdateSet({
-                        last_ip: (eb) => eb.ref('excluded.last_ip')
-                    })
-                )
-                .returning('id')
-                .executeTakeFirstOrThrow();
+            )
+            .returning('id')
+            .executeTakeFirstOrThrow();
 
-            // Store the refresh & access tokens again with the full info this time round:
-            await storeRefreshAndAccessTokens(
-                trx,
-                user.id,
-                refreshToken,
-                refreshResult.access_token!,
-                refreshResult.expires_in!
-            );
-        });
+        // Store the refresh & access tokens again with the full info this time round:
+        await storeRefreshAndAccessTokens(
+            trx,
+            user.id,
+            refreshToken,
+            refreshResult.access_token!,
+            refreshResult.expires_in!
+        );
     } catch (err: any) {
         log.error('Error pulling user into DB during token refresh:', err);
         reportError(err);

@@ -100,6 +100,11 @@ export function freshAuthToken() {
     return crypto.randomBytes(20).toString('hex');
 }
 
+export async function givenRefreshToken(refreshToken: string, auth0UserId: string) {
+    const dbUserId = (await testDB.query(`SELECT id FROM users WHERE auth0_user_id = $1`, [auth0UserId])).rows[0].id;
+    await testDB.query('INSERT INTO refresh_tokens (value, user_id) VALUES ($1, $2)', [refreshToken, dbUserId]);
+}
+
 export async function givenAuthToken(authToken: string, auth0UserId: string, email?: string) {
     const auth0Endpoint = await auth0.givenAuth0Token(authToken, auth0UserId, email);
 

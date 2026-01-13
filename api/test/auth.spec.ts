@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import jwt from 'jsonwebtoken';
 
 import { DestroyableServer } from 'destroyable-server';
-import { startAPI, privateKey, givenUser, givenAuthToken } from './test-setup/setup.ts';
+import { startAPI, privateKey, givenUser, givenAuthToken, givenRefreshToken } from './test-setup/setup.ts';
 import { AUTH0_PORT, auth0Server, givenAuth0Token } from './test-setup/auth0.ts';
 import { testDB } from './test-setup/database.ts';
 
@@ -308,6 +308,41 @@ describe("API auth endpoints", () => {
             expect(dbAccessTokens).to.have.length(1);
             expect(dbAccessTokens[0].value).to.equal('at');
             expect(dbAccessTokens[0].refresh_token).to.equal('rt');
+        });
+
+        it("skips Auth0 entirely if the user is already in the DB", async () => {
+            const refreshToken = 'rt';
+            await givenUser('auth0|userid', 'test-user@example.test');
+            await givenRefreshToken(refreshToken, 'auth0|userid');
+
+            const tokenEndpoint = await auth0Server.forPost('/oauth/token')
+                .withForm({
+                    refresh_token: refreshToken,
+                    grant_type: 'refresh_token'
+                })
+                .thenCallback(() => {
+                    throw new Error('Should not be called');
+                });
+
+            const response = await fetch(`${apiAddress}/api/auth/refresh-token`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ refreshToken })
+            });
+
+            expect(response.status).to.equal(200);
+            expect(await tokenEndpoint.getSeenRequests()).to.have.length(0);
+
+            const result = await response.json();
+            expect(result.accessToken).to.match(/^at-.{64}$/);
+            expect(result.expiresAt).to.be.greaterThan(Date.now());
+            expect(result.expiresAt).to.be.lessThan(Date.now() + 100_000_000);
+
+            // The resulting token should appear in the DB:
+            const dbAccessTokens = (await testDB.query('SELECT * FROM access_tokens')).rows;
+            expect(dbAccessTokens).to.have.length(1);
+            expect(dbAccessTokens[0].value).to.equal(result.accessToken);
+            expect(dbAccessTokens[0].refresh_token).to.equal(refreshToken);
         });
     });
 
