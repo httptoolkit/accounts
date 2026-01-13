@@ -157,6 +157,7 @@ export async function getAuth0UserIdFromToken(token: string) {
         .innerJoin('refresh_tokens', 'users.id', 'refresh_tokens.user_id')
         .innerJoin('access_tokens', 'refresh_tokens.value', 'access_tokens.refresh_token')
         .where('access_tokens.value', '=', token)
+        .where('access_tokens.expires_at', '>=', new Date())
         .executeTakeFirst()
         .catch((err) => {
             reportError('Error querying user from token in DB:', err);
