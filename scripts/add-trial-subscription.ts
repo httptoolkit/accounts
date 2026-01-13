@@ -2,7 +2,7 @@
 
 import moment from 'moment';
 import { getUsersByEmail, createUser, updateUserMetadata } from '../api/src/user-data-facade';
-import { initializeDbConnection } from '../api/src/db/database';
+import { closeDatabase, initializeDbConnection } from '../api/src/db/database';
 
 // Add a trial subscription in Auth0 for the target user. Occasionally useful
 // for actual custom trials in some cases, but mostly for open-source contributors
@@ -23,7 +23,7 @@ import { initializeDbConnection } from '../api/src/db/database';
 
     console.log(`Adding ${duration.asDays()} day subscription for ${email}`);
 
-    await initializeDbConnection();
+    const db = await initializeDbConnection();
     const users = await getUsersByEmail(email);
 
     let userId: string;
@@ -47,10 +47,11 @@ import { initializeDbConnection } from '../api/src/db/database';
         return process.exit(1);
     }
 
-    updateUserMetadata(userId!, {
+    await updateUserMetadata(userId!, {
         subscription_status: 'trialing',
         subscription_sku: 'pro-monthly',
         subscription_expiry: Date.now() + duration.asMilliseconds(),
         subscription_quantity: 1
     });
+    await closeDatabase(db);
 })();
