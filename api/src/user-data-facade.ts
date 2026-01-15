@@ -134,7 +134,14 @@ export async function getUserById(id: string) {
     if (!auth0User) return auth0User;
 
     if (!dbUser) {
-        reportError(`User ${id} exists in Auth0 but not in DB`);
+        // This can happen sometime for fresh auth0 logins via an old
+        // UI & Auth0 widget that doesn't login through the API, but that
+        // should be the only (and rare) case.
+        if (!_.isEmpty(auth0User.app_metadata)) {
+            reportError(`User ${id} with data exists in Auth0 but not in DB`);
+        }
+
+        return auth0User;
     }
 
     if (dbUser?.email !== auth0User.email) {
