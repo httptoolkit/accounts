@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import { sql, Transaction } from 'kysely';
+import { QueryCreator, sql, Transaction } from 'kysely';
 import log from 'loglevel';
 import jwt from 'jsonwebtoken';
 import { randomBytes } from 'crypto';
@@ -193,51 +193,49 @@ export async function loginWithPasswordlessCode(email: string, code: string, use
     return auth0LoginResult;
 }
 
-export function refreshToken(refreshToken: string, userIp: string) {
-    return db.transaction().execute(async (trx) => {
-        // If we're already in the DB, we skip Auth0 entirely:
-        if (await doesRefreshTokenExist(trx, refreshToken)) {
-            const newAccessToken = `at-${randomBytes(32).toString('hex')}`;
-            const expiresAt = Date.now() + (1000 * 60 * 60 * 24);
+export async function refreshToken(refreshToken: string, userIp: string) {
+    // If we're already in the DB, we skip Auth0 entirely:
+    if (await doesRefreshTokenExist(db, refreshToken)) {
+        const newAccessToken = `at-${randomBytes(32).toString('hex')}`;
+        const expiresAt = Date.now() + (1000 * 60 * 60 * 24);
 
-            await Promise.all([
-                trx.insertInto('access_tokens')
-                    .values({
-                        value: newAccessToken,
-                        refresh_token: refreshToken,
-                        expires_at: new Date(expiresAt)
-                    })
-                    .execute(),
-                trx.updateTable('refresh_tokens')
-                    .set({
-                        last_used: new Date()
-                    })
-                    .where('value', '=', refreshToken)
-                    .execute()
-            ]);
+        await Promise.all([
+            db.insertInto('access_tokens')
+                .values({
+                    value: newAccessToken,
+                    refresh_token: refreshToken,
+                    expires_at: new Date(expiresAt)
+                })
+                .execute(),
+            db.updateTable('refresh_tokens')
+                .set({
+                    last_used: new Date()
+                })
+                .where('value', '=', refreshToken)
+                .execute()
+        ]);
 
-            return {
-                accessToken: newAccessToken,
-                expiresAt
-            };
-        } else {
-            // If not, we go to Auth0 as before, and then cache the result:
-            const auth0RefreshResult = await auth0.refreshToken(refreshToken, userIp);
-            await pullUserIntoDBFromRefresh(trx, refreshToken, auth0RefreshResult, userIp);
-            return {
-                accessToken: auth0RefreshResult.access_token!,
-                expiresAt: Date.now() + auth0RefreshResult.expires_in! * 1000
-            };
-        }
-    });
+        return {
+            accessToken: newAccessToken,
+            expiresAt
+        };
+    } else {
+        // If not, we go to Auth0 as before, and then cache the result:
+        const auth0RefreshResult = await auth0.refreshToken(refreshToken, userIp);
+        await pullUserIntoDBFromRefresh(db, refreshToken, auth0RefreshResult, userIp);
+        return {
+            accessToken: auth0RefreshResult.access_token!,
+            expiresAt: Date.now() + auth0RefreshResult.expires_in! * 1000
+        };
+    }
 }
 
-function doesRefreshTokenExist(trx: Transaction<Database>, refreshToken: string) {
-    return trx.selectFrom('refresh_tokens')
+async function doesRefreshTokenExist(db: QueryCreator<Database>, refreshToken: string) {
+    const rt = await db.selectFrom('refresh_tokens')
         .where('value', '=', refreshToken)
         .selectAll()
-        .executeTakeFirst()
-        .then((rt) => !!rt);
+        .executeTakeFirst();
+    return !!rt;
 }
 
 // On initial login or token refresh, we pull the user data from Auth0 en route, and migrate it
@@ -291,7 +289,7 @@ async function pullUserIntoDBFromLogin(tokens: TokenSet, userIp: string) {
     }
 }
 
-async function pullUserIntoDBFromRefresh(trx: Transaction<Database>, refreshToken: string, refreshResult: TokenSet, userIp: string) {
+async function pullUserIntoDBFromRefresh(db: QueryCreator<Database>, refreshToken: string, refreshResult: TokenSet, userIp: string) {
     try {
         // Insert refresh token, access token & user, if each is not already present. Go from the user down?
         // We need to do a query to get the user data from auth0, if we don't have it already... Awkward.
@@ -307,7 +305,7 @@ async function pullUserIntoDBFromRefresh(trx: Transaction<Database>, refreshToke
         }
 
         // Create user (or just get id) in our DB, in case it doesn't exist:
-        const user = await trx.insertInto('users')
+        const user = await db.insertInto('users')
             .values({
                 email: auth0User.email,
                 auth0_user_id: auth0User.sub,
@@ -326,7 +324,7 @@ async function pullUserIntoDBFromRefresh(trx: Transaction<Database>, refreshToke
 
         // Store the refresh & access tokens again with the full info this time round:
         await storeRefreshAndAccessTokens(
-            trx,
+            db,
             user.id,
             refreshToken,
             refreshResult.access_token!,
@@ -353,24 +351,35 @@ function parseAuth0IdToken(idToken: string | undefined) {
 }
 
 async function storeRefreshAndAccessTokens(
-    trx: Transaction<Database>,
+    db: QueryCreator<Database>,
     userId: number,
     refreshToken: string,
     accessToken: string,
     expiresIn: number
 ) {
     // Store the tokens we received from Auth0 in our DB:
-    await trx.insertInto('refresh_tokens').values({
-        value: refreshToken,
-        user_id: userId,
-        last_used: new Date()
-    }).execute();
+    await db.insertInto('refresh_tokens')
+        .values({
+            value: refreshToken,
+            user_id: userId,
+            last_used: new Date()
+        })
+        // Conflicts can happen given parallel refresh attempts, not a big deal.
+        .onConflict((oc) => oc
+            .column('value')
+            .doUpdateSet({
+                last_used: new Date()
+            })
+        )
+        .execute();
 
-    await trx.insertInto('access_tokens').values({
-        value: accessToken,
-        refresh_token: refreshToken,
-        expires_at: new Date(Date.now() + (expiresIn * 1000))
-    }).execute();
+    await db.insertInto('access_tokens')
+        .values({
+            value: accessToken,
+            refresh_token: refreshToken,
+            expires_at: new Date(Date.now() + (expiresIn * 1000))
+        })
+        .execute();
 }
 
 const getFullDiff = (base: any, object: any) => {
