@@ -1,0 +1,15 @@
+<html>
+    <style>p { margin-bottom: 10px; }</style>
+    <body>
+        <div style="display:none; font-size:1px; color:#333333; line-height:1px; max-height:0px; max-width:0px; opacity:0; overflow:hidden;">
+            {{ summary }}
+            &zwnj;&nbsp;&zwnj;&nbsp;&mdash;&zwnj;&nbsp;&zwnj;&nbsp;
+        </div>
+
+        <h2>New contact form submission</h2>
+
+        <p><strong>Name:</strong> {{ name }}</p>
+        <p><strong>Email:</strong> {{ email }}</p>
+        <p><strong>Message:</strong><br/><div style="white-space: pre-wrap;">{{{ message }}}</div></p>
+    </body>
+</html>

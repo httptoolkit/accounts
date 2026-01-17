@@ -4,10 +4,7 @@ import { delay } from '@httptoolkit/util';
 
 import { catchErrors, reportError } from '../errors.ts';
 import { getCorsResponseHeaders } from '../cors.ts';
-import { mailer } from '../email.ts';
-
-const { CONTACT_FORM_DESTINATION } = process.env;
-if (!CONTACT_FORM_DESTINATION) throw new Error('No contact form destination configured');
+import { sendContactFormEmail } from '../email/mailer.ts';
 
 const THANK_YOU_PAGE = 'https://httptoolkit.com/contact-thank-you/'
 
@@ -61,26 +58,7 @@ export const handler = catchErrors(async (event) => {
         }
     }
 
-    await mailer.sendMail({
-        from: 'Contact form <contact-form@httptoolkit.com>',
-        to: CONTACT_FORM_DESTINATION,
-        replyTo: email,
-        subject: 'HTTP Toolkit contact form message',
-        html: `<html><style>p { margin-bottom: 10px; }</style><body>
-        ${
-            fields.map(([field, value]) => {
-                return `<p><strong>${field}</strong>:<br/>${
-                    // Escape any HTML in inputs and preserve newlines:
-                    field === 'Message'
-                    ? _.escape(value)
-                        .replace(/\n/g, '<br>')
-                        .replace(/  /g, '&nbsp;&nbsp;')
-                    : _.escape(value)
-                }</p>`;
-            }).join('')
-        }</body></html>`
-    });
-
+    await sendContactFormEmail(name, email, message);
     log.info('Sent contract form email from ' + email);
 
     return {

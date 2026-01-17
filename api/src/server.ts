@@ -12,7 +12,7 @@ import { reportError } from './errors.ts';
 
 import { initializeDbConnection, testDbConnection, closeDatabase } from './db/database.ts';
 import { runMigrations } from './db/migrator.ts';
-import { testEmailConnection } from './email.ts';
+import { testEmailConnection } from './email/mailer.ts';
 
 const app = express();
 
