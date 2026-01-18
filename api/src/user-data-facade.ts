@@ -260,6 +260,7 @@ export async function loginWithPasswordlessCode(email: string, code: string, use
             email: email,
             auth0_user_id: auth0User.user_id,
             last_ip: userIp,
+            last_login: new Date(),
             logins_count: 1,
             app_metadata: {},
         })
