@@ -30,10 +30,6 @@ export const handler = catchErrors(async (event) => {
         headers: { ...headers,
             'content-type': 'application/json'
         },
-        body: JSON.stringify({
-            accessToken: result.access_token,
-            refreshToken: result.refresh_token,
-            expiresAt: Date.now() + result.expires_in * 1000
-        })
+        body: JSON.stringify(result)
     };
 });

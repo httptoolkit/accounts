@@ -76,39 +76,6 @@ const withUserIpHeader = (userIp: string) =>
         }
     });
 
-export const sendPasswordlessEmail = withRetries('sendPWLEmail', async (email: string, userIp: string) =>
-    await authClient.passwordless.sendEmail({
-        email,
-        send: 'code'
-    }, withUserIpHeader(userIp))
-);
-
-export const loginWithPasswordlessCode = withRetries('loginPWL', async (email: string, code: string, userIp: string) =>
-    (await authClient.passwordless.loginWithEmail({
-        email: email,
-        code: code,
-        scope: 'email openid offline_access app_metadata'
-    }, {
-        initOverrides: withUserIpHeader(userIp)
-    })).data,
-    {
-        shouldThrow: (e) => {
-            console.log(`PWL login failed with status ${e.statusCode}: ${e.message}`);
-
-            if (e?.statusCode === 403) {
-                // Don't retry hard authentication failures - return them explicitly
-                return new StatusError(403, "Login failed")
-            } else if (e?.statusCode >= 400 && e?.statusCode < 500) {
-                // Don't retry other request errors
-                return new StatusError(500, "Error during login")
-            } else {
-                // We do retry all kinds of connection or server errors (500+)
-                return undefined;
-            }
-        }
-    }
-);
-
 export const refreshToken = withRetries('refreshToken', async (refreshToken: string, userIp: string) =>
     (await authClient.oauth.refreshTokenGrant({
         grant_type: 'refresh_token',

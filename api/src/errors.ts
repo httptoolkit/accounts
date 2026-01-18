@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import * as Sentry from '@sentry/node';
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Handler } from 'aws-lambda';
 import { FetchError, ResponseError } from 'auth0';
-import { CustomError } from '@httptoolkit/util';
+import { CustomError, StatusError } from '@httptoolkit/util';
 
 import log from 'loglevel';
 import { getCorsResponseHeaders } from './cors.ts';
@@ -34,14 +34,7 @@ export function initSentry() {
     }
 }
 
-export class StatusError extends CustomError {
-    constructor(
-        public readonly statusCode: number,
-        message: string
-    ) {
-        super(message);
-    }
-}
+export { StatusError };
 
 function getErrorCause(error: any) {
     let underlyingCause = error;

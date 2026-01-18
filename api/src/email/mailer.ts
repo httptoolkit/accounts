@@ -10,7 +10,8 @@ const {
     SMTP_HOST,
     SMTP_PORT,
     SMTP_USERNAME,
-    SMTP_PASSWORD
+    SMTP_PASSWORD,
+    SMTP_IS_SECURE // True by default
 } = process.env;
 
 if (!SMTP_HOST) throw new Error('No SMTP host configured');
@@ -27,6 +28,10 @@ const buildContactFormEmail = Handlebars.compile(
     fs.readFileSync(path.join(TEMPLATES_DIR, 'contact-form.html'), 'utf8')
 );
 
+const buildLoginCodeEmail = Handlebars.compile(
+    fs.readFileSync(path.join(TEMPLATES_DIR, 'login-code.html'), 'utf8')
+);
+
 const THEME = {
     light: {
         containerBackground:    "#e4e8ed",
@@ -40,7 +45,7 @@ const THEME = {
         containerBackground:    "#1e2028",
         mainBackground:         "#32343B",
         mainLowlightBackground: "#25262e",
-        mainLowlightColor:      "#818490",
+        mainLowlightColor:      "#9a9da8",
         mainColor:              "#ffffff",
         containerBorder:        "#000000"
     }
@@ -49,7 +54,7 @@ const THEME = {
 const mailer = nodemailer.createTransport({
     host: SMTP_HOST,
     port: Number(SMTP_PORT),
-    secure: true,
+    secure: SMTP_IS_SECURE !== 'false',
     auth: {
         user: SMTP_USERNAME,
         pass: SMTP_PASSWORD
@@ -79,6 +84,21 @@ export function sendContactFormEmail(name: string, email: string, message: strin
         to: CONTACT_FORM_DESTINATION,
         replyTo: email,
         subject: 'HTTP Toolkit contact form message',
+        html: cssInline.inline(html, { keepStyleTags: true })
+    });
+}
+
+export function sendLoginCodeEmail(email: string, code: string) {
+    const html = buildLoginCodeEmail({
+        theme: THEME,
+        code
+    });
+
+    return mailer.sendMail({
+        from: 'HTTP Toolkit <login@httptoolkit.com>',
+        to: email,
+        subject: 'Welcome to HTTP Toolkit',
+        text: `Your HTTP Toolkit login code is: ${code}`,
         html: cssInline.inline(html, { keepStyleTags: true })
     });
 }

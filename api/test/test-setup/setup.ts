@@ -16,6 +16,7 @@ import { generateKeyPair, keyWithoutHeaders } from './utils.ts';
 // Set up self-managing mocks:
 import './profitwell';
 import './database';
+import './smtp';
 
 export const {
     privateKey,
@@ -31,10 +32,6 @@ process.env.SIGNING_PRIVATE_KEY = keyWithoutHeaders(privateKey as string);
 
 process.env.PAYPRO_IPN_VALIDATION_KEY = PAYPRO_IPN_VALIDATION_KEY;
 process.env.SENTRY_DSN = '';
-process.env.SMTP_HOST = 'smtp.test';
-process.env.SMTP_PORT = '465';
-process.env.SMTP_USERNAME = 'user';
-process.env.SMTP_PASSWORD = 'pass';
 process.env.CONTACT_FORM_DESTINATION = '@';
 
 export const IP_API_PORT = 9093;

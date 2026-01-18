@@ -25,4 +25,13 @@ export interface Database {
         created_at: Generated<Date>;
         expires_at: Date;
     };
+    login_tokens: {
+        id: Generated<number>;
+        value: string;
+        email: string;
+        user_ip: string;
+        created_at: Generated<Date>;
+        expires_at: Date;
+        attempts: Generated<number>;
+    };
 }

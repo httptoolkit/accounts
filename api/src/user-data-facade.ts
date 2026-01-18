@@ -1,14 +1,14 @@
 import _ from 'lodash';
-import { QueryCreator, sql, Transaction } from 'kysely';
+import { QueryCreator, sql } from 'kysely';
 import log from 'loglevel';
-import jwt from 'jsonwebtoken';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomInt } from 'crypto';
+import { TokenSet } from 'auth0';
 
-import { reportError } from './errors.ts'
+import { reportError, StatusError } from './errors.ts'
 import * as auth0 from './auth0.ts';
 import { db } from "./db/database.ts";
-import { TokenSet } from 'auth0';
 import { Database } from './db/schema.ts';
+import * as mailer from './email/mailer.ts';
 
 // This file wraps the Auth0 APIs, to begin migrating towards DB synchrononization,
 // and eventually towards dropping Auth0 entirely. We intentionally closely match the
@@ -183,14 +183,123 @@ export function searchUsers(query: { q: string, per_page: number }) {
     return auth0.searchUsers(query);
 }
 
-export function sendPasswordlessCode(email: string, userIp: string) {
-    return auth0.sendPasswordlessEmail(email, userIp);
+const PASSWORDLESS_CODE_DURATION = 60 * 60 * 1000;
+
+export async function sendPasswordlessCode(email: string, userIp: string) {
+    const code = randomInt(0, 1_000_000).toString().padStart(6, '0');
+
+    await db.transaction().execute(async (trx) => {
+        // We use the # of existing codes to rate limit this - no more than 3 per hour:
+        const existingCodes = await trx.selectFrom('login_tokens')
+            .where('email', '=', email)
+            .where('created_at', '>=', new Date(Date.now() - 60 * 60 * 1000))
+            .selectAll()
+            .execute();
+
+        if (existingCodes.length >= 3) {
+            throw new StatusError(429, 'Too many login attempts for this email - please try again later');
+        }
+
+        await trx.insertInto('login_tokens')
+            .values({
+                email,
+                user_ip: userIp,
+                value: code,
+                expires_at: new Date(Date.now() + PASSWORDLESS_CODE_DURATION)
+            })
+            .execute();
+
+        await mailer.sendLoginCodeEmail(email, code);
+    });
 }
 
+const ATTEMPTS_LIMIT = 5;
+
 export async function loginWithPasswordlessCode(email: string, code: string, userIp: string) {
-    const auth0LoginResult = await auth0.loginWithPasswordlessCode(email, code, userIp);
-    await pullUserIntoDBFromLogin(auth0LoginResult, userIp);
-    return auth0LoginResult;
+    // We intentionally compare to all currently valid codes - to avoid issues with repeated
+    // code requests (users do this relatively often due to email delivery delay etc).
+    const existingCodes = await db.selectFrom('login_tokens')
+        .where('email', '=', email)
+        .where('expires_at', '>', new Date())
+        .where('attempts', '<', ATTEMPTS_LIMIT)
+        .selectAll()
+        .execute();
+
+    const matchingCode = existingCodes.find(c => c.value === code);
+
+    if (!matchingCode) {
+        // Increment attempts for all existing codes for this email:
+        await db.updateTable('login_tokens')
+            .set({
+                attempts: sql`attempts + 1`
+            })
+            .where('email', '=', email)
+            .where('id', 'in', existingCodes.map(c => c.id))
+            .execute();
+
+        throw new StatusError(403, 'Invalid or expired login code');
+    }
+
+    await db.deleteFrom('login_tokens')
+        .where('value', '=', code)
+        .execute();
+
+    let auth0User = await auth0.getUsersByEmail(email).then(users => users[0]);
+    if (!auth0User) {
+        auth0User = await auth0.createUser({
+            email,
+            connection: 'email',
+            email_verified: true, // This ensures users don't receive an email code or verification
+            app_metadata: {}
+        });
+    }
+
+    // Create the user at this point, if they don't already exist:
+    const user = await db.insertInto('users')
+        .values({
+            email: email,
+            auth0_user_id: auth0User.user_id,
+            last_ip: userIp,
+            logins_count: 1,
+            app_metadata: {},
+        })
+        .onConflict((oc) => oc
+            .column('email')
+            .doUpdateSet({
+                last_ip: (eb) => eb.ref('excluded.last_ip'),
+                last_login: (eb) => eb.ref('excluded.last_login'),
+                logins_count: sql`COALESCE(users.logins_count, 0) + 1`
+            })
+        )
+        .returning('id')
+        .executeTakeFirstOrThrow();
+
+    // And issue them a refresh & access token for this session:
+    const newRefreshToken = `rt-${randomBytes(32).toString('hex')}`;
+
+    const newAccessToken = `at-${randomBytes(32).toString('hex')}`;
+    const expiresAt = Date.now() + (1000 * 60 * 60 * 24);
+
+    await db.insertInto('refresh_tokens')
+        .values({
+            user_id: user.id,
+            value: newRefreshToken
+        })
+        .execute();
+
+    await db.insertInto('access_tokens')
+        .values({
+            value: newAccessToken,
+            refresh_token: newRefreshToken,
+            expires_at: new Date(expiresAt)
+        })
+        .execute();
+
+    return {
+        refreshToken: newRefreshToken,
+        accessToken: newAccessToken,
+        expiresAt
+    };
 }
 
 export async function refreshToken(refreshToken: string, userIp: string) {
@@ -238,57 +347,6 @@ async function doesRefreshTokenExist(db: QueryCreator<Database>, refreshToken: s
     return !!rt;
 }
 
-// On initial login or token refresh, we pull the user data from Auth0 en route, and migrate it
-// into our own DB, so we can start to wean off Auth0:
-async function pullUserIntoDBFromLogin(tokens: TokenSet, userIp: string) {
-    const idToken = parseAuth0IdToken(tokens.id_token);
-
-    if (idToken?.email && idToken?.auth0Id) {
-        await db.transaction().execute(async (trx) => {
-            await trx.insertInto('users')
-                .values({
-                    email: idToken.email,
-                    auth0_user_id: idToken.auth0Id,
-                    last_ip: userIp,
-                    logins_count: 1,
-                    last_login: new Date(),
-                    app_metadata: {}
-                })
-                .onConflict((oc) => oc
-                    .column('auth0_user_id')
-                    .doUpdateSet({
-                        last_ip: (eb) => eb.ref('excluded.last_ip'),
-                        last_login: (eb) => eb.ref('excluded.last_login'),
-                        logins_count: sql`COALESCE(users.logins_count, 0) + 1`
-                    })
-                )
-                .returning('id')
-                .executeTakeFirstOrThrow()
-                .then(async (user) => {
-                    if (!tokens.refresh_token) {
-                        throw new Error(`Can't cache non-set refresh token for user ${user.id}`);
-                    }
-
-                    await storeRefreshAndAccessTokens(
-                        trx,
-                        user.id,
-                        tokens.refresh_token,
-                        tokens.access_token!,
-                        tokens.expires_in!
-                    );
-                })
-                .catch((err: any) => {
-                    // For now we don't fail in this case, just while we're doing the initial migration
-                    log.error('Error upserting user login info & tokens in DB:', err);
-                    reportError(err);
-                });
-            });
-    } else {
-        console.error('ID token not present or usable on login:', tokens);
-        reportError(`Could not parse details from ID token during PWL login for ${tokens.id_token}`);
-    }
-}
-
 async function pullUserIntoDBFromRefresh(db: QueryCreator<Database>, refreshToken: string, refreshResult: TokenSet, userIp: string) {
     try {
         // Insert refresh token, access token & user, if each is not already present. Go from the user down?
@@ -333,20 +391,6 @@ async function pullUserIntoDBFromRefresh(db: QueryCreator<Database>, refreshToke
     } catch (err: any) {
         log.error('Error pulling user into DB during token refresh:', err);
         reportError(err);
-    }
-}
-
-function parseAuth0IdToken(idToken: string | undefined) {
-    try {
-        // We get the JWT directly from Auth0 - no need to validate beyond that.
-        const idTokenData = jwt.decode(idToken || '');
-        return {
-            auth0Id: (idTokenData as any)?.sub,
-            email: (idTokenData as any)?.email
-        };
-    } catch (e) {
-        console.info('Unreadable id token:', idToken);
-        log.error('Error decoding ID token JWT:', e);
     }
 }
 
