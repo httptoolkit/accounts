@@ -272,7 +272,6 @@ describe("API auth endpoints", () => {
             expect(dbLoginTokens).to.have.length(0);
         });
 
-
         it("rejects wrong codes for login and tracks the attempt", async () => {
             const email = 'test-user@example.test';
             const code = '123456';
@@ -293,6 +292,52 @@ describe("API auth endpoints", () => {
             const loginTokens = (await testDB.query('SELECT * FROM login_tokens')).rows;
             expect(loginTokens).to.have.length(1);
             expect(loginTokens[0].attempts).to.equal(1);
+
+            const dbUsers = (await testDB.query('SELECT * FROM users')).rows;
+            expect(dbUsers).to.have.length(0);
+        });
+
+        it("blocks all login codes after 5 attempts", async () => {
+            const email = 'test-user@example.test';
+            const code1 = '123456';
+            const code2 = '000000';
+
+            await testDB.query(`
+                INSERT INTO login_tokens (value, email, user_ip, expires_at)
+                VALUES ($1, $2, $3, NOW() + INTERVAL '15 minutes')
+            `, [code1, email, '1.2.3.4']);
+
+            await testDB.query(`
+                INSERT INTO login_tokens (value, email, user_ip, expires_at)
+                VALUES ($1, $2, $3, NOW() + INTERVAL '15 minutes')
+            `, [code2, email, '1.2.3.4']);
+
+            const sendCode = async (code: string) => {
+                const response = (await fetch(`${apiAddress}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ email, code })
+                }));
+                return response.status;
+            };
+
+            // Test the wrong code 5 times:
+            for (let i = 0; i < 5; i++) {
+                expect(await sendCode("654321")).to.equal(403);
+            }
+
+            // Invalid codes get a 429 now:
+            expect(await sendCode("654321")).to.equal(429);
+
+            // Both valid codes are now unusable:
+            expect(await sendCode("123456")).to.equal(429);
+            expect(await sendCode("000000")).to.equal(429);
+
+            // Both login tokens now show 8 attempts:
+            const loginTokens = (await testDB.query('SELECT * FROM login_tokens')).rows;
+            expect(loginTokens).to.have.length(2);
+            expect(loginTokens[0].attempts).to.equal(8);
+            expect(loginTokens[1].attempts).to.equal(8);
 
             const dbUsers = (await testDB.query('SELECT * FROM users')).rows;
             expect(dbUsers).to.have.length(0);

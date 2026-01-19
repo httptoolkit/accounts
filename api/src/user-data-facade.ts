@@ -197,7 +197,7 @@ export async function sendPasswordlessCode(email: string, userIp: string) {
             .execute();
 
         if (existingCodes.length >= 3) {
-            throw new StatusError(429, 'Too many login attempts for this email - please try again later');
+            throw new StatusError(429, 'Too many codes requested - please try again later');
         }
 
         await trx.insertInto('login_tokens')
@@ -221,13 +221,13 @@ export async function loginWithPasswordlessCode(email: string, code: string, use
     const existingCodes = await db.selectFrom('login_tokens')
         .where('email', '=', email)
         .where('expires_at', '>', new Date())
-        .where('attempts', '<', ATTEMPTS_LIMIT)
         .selectAll()
         .execute();
 
-    const matchingCode = existingCodes.find(c => c.value === code);
+    const overusedCode = !!existingCodes.find(c => c.attempts >= ATTEMPTS_LIMIT);
+    const matchingCode = !overusedCode && !!existingCodes.find(c => c.value === code);
 
-    if (!matchingCode) {
+    if (!matchingCode || overusedCode) {
         // Increment attempts for all existing codes for this email:
         await db.updateTable('login_tokens')
             .set({
@@ -237,7 +237,13 @@ export async function loginWithPasswordlessCode(email: string, code: string, use
             .where('id', 'in', existingCodes.map(c => c.id))
             .execute();
 
-        throw new StatusError(403, 'Invalid or expired login code');
+        if (overusedCode) {
+            throw new StatusError(429, 'Too many login attempts - please try again later');
+        }
+
+        if (!matchingCode) {
+            throw new StatusError(403, 'Invalid or expired login code');
+        }
     }
 
     await db.deleteFrom('login_tokens')
