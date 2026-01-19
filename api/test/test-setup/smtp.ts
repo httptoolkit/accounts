@@ -8,6 +8,9 @@ console.log('Starting test SMTP...');
 const smtpContainer = await new GenericContainer('axllent/mailpit')
     .withExposedPorts(SMTP_INTERNAL_PORT, API_INTERNAL_PORT)
     .withWaitStrategy(Wait.forLogMessage(/accessible via/))
+    .withEnvironment({
+        MP_SMTP_DISABLE_RDNS: 'true' // Significant boost given slow DNS
+    })
     .start()
     .then((startedContainer) => {
         console.log('SMTP started');
