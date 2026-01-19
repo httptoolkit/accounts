@@ -144,7 +144,7 @@ export async function getUserById(id: string) {
         return auth0User;
     }
 
-    if (dbUser?.email !== auth0User.email) {
+    if (dbUser?.email.toLowerCase() !== auth0User.email.toLowerCase()) {
         reportError(`User ${id} email mismatch between Auth0 (${auth0User.email}) and DB (${dbUser?.email})`);
     }
 
