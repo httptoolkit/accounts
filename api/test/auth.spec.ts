@@ -112,6 +112,35 @@ describe("API auth endpoints", () => {
             expect(await pwStartEndpoint.getSeenRequests()).to.have.length(0);
         });
 
+        it("blocks sending more than 3 codes", async function () {
+            this.timeout(5000); // SMTP can be a bit slow
+
+            const email = 'test-user@example.test'
+
+            for (let i = 0; i < 3; i++) {
+                const response = await fetch(`${apiAddress}/api/auth/send-code`, {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ email, source: 'test' })
+                });
+
+                expect(response.status).to.equal(200);
+            }
+
+            // We have now received 3 codes:
+            expect(await getReceivedEmails()).to.have.length(3);
+
+            const fourthResponse = await fetch(`${apiAddress}/api/auth/send-code`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ email, source: 'test' })
+            });
+
+            // Subsequent requests get a 429 and send no more emails:
+            expect(fourthResponse.status).to.equal(429);
+            expect(await getReceivedEmails()).to.have.length(3);
+        });
+
     });
 
     describe("/auth/login", () => {
