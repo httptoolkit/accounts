@@ -228,20 +228,20 @@ export async function loginWithPasswordlessCode(email: string, code: string, use
     const matchingCode = !overusedCode && !!existingCodes.find(c => c.value === code);
 
     if (!matchingCode || overusedCode) {
-        // Increment attempts for all existing codes for this email:
-        await db.updateTable('login_tokens')
-            .set({
-                attempts: sql`attempts + 1`
-            })
-            .where('email', '=', email)
-            .where('id', 'in', existingCodes.map(c => c.id))
-            .execute();
+        if (existingCodes.length) {
+            // Increment attempts for all existing codes for this email:
+            await db.updateTable('login_tokens')
+                .set({
+                    attempts: sql`attempts + 1`
+                })
+                .where('email', '=', email)
+                .where('id', 'in', existingCodes.map(c => c.id))
+                .execute();
+        }
 
         if (overusedCode) {
             throw new StatusError(429, 'Too many login attempts - please try again later');
-        }
-
-        if (!matchingCode) {
+        } else {
             throw new StatusError(403, 'Invalid or expired login code');
         }
     }
