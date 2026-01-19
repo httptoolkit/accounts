@@ -1,8 +1,8 @@
 import _ from 'lodash';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { getLocal } from 'mockttp';
 
+import { getLocal } from 'mockttp';
 import { makeDestroyable } from 'destroyable-server';
 export { delay } from '@httptoolkit/util';
 
@@ -159,7 +159,13 @@ export async function givenTeam(
 export const startAPI = async () => {
     // We defer loading the server until the first call to this, to
     // ensure the env vars above are all set first:
-    const { startApiServer } = await import('../../src/server.ts');
+    const { startApiServer, resetRateLimits } = await import('../../src/server.ts');
+
+    resetRateLimits('localhost');
+    resetRateLimits('127.0.0.1');
+    resetRateLimits('::ffff:127.0.0.1');
+    resetRateLimits('::1');
+
     const server = await startApiServer();
     return makeDestroyable(server);
 }

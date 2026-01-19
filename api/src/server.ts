@@ -117,12 +117,14 @@ apiRouter.post('/paypro-webhook', lambdaWrapper('paypro-webhook'));
 apiRouter.get('/redirect-to-checkout', lambdaWrapper('redirect-to-checkout'));
 apiRouter.get('/redirect-paypro-to-thank-you', lambdaWrapper('redirect-paypro-to-thank-you'));
 
-apiRouter.post('/auth/send-code', rateLimit(RATE_LIMIT_PARAMS), lambdaWrapper('auth/send-code'));
-apiRouter.post('/auth/login',
-    rateLimit({ ...RATE_LIMIT_PARAMS, skipSuccessfulRequests: true }), // Just limiting failed codes
-    lambdaWrapper('auth/login')
-);
-apiRouter.post('/auth/refresh-token', rateLimit(RATE_LIMIT_PARAMS), lambdaWrapper('auth/refresh-token'));
+const sendCodeRateLimiter = rateLimit(RATE_LIMIT_PARAMS);
+apiRouter.post('/auth/send-code', sendCodeRateLimiter, lambdaWrapper('auth/send-code'));
+
+const loginRateLimiter = rateLimit({ ...RATE_LIMIT_PARAMS, skipSuccessfulRequests: true }); // Just limiting failed codes
+apiRouter.post('/auth/login', loginRateLimiter, lambdaWrapper('auth/login'));
+
+const refreshTokenRateLimiter = rateLimit({ ...RATE_LIMIT_PARAMS });
+apiRouter.post('/auth/refresh-token', refreshTokenRateLimiter, lambdaWrapper('auth/refresh-token'));
 
 apiRouter.post('/contact-form', lambdaWrapper('contact-form'));
 
@@ -180,6 +182,15 @@ export async function startApiServer() {
     );
 }
 
+export function resetRateLimits(key: string) {
+    [
+        sendCodeRateLimiter,
+        loginRateLimiter,
+        refreshTokenRateLimiter
+    ].forEach(limiter => {
+        limiter.resetKey(key);
+    });
+}
 
 // Start the server if run directly (this is how things work normally). When run
 // in tests, this is imported and the server is started & stopped manually instead.
