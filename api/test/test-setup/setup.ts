@@ -6,6 +6,10 @@ import { getLocal } from 'mockttp';
 import { makeDestroyable } from 'destroyable-server';
 export { delay } from '@httptoolkit/util';
 
+if (process.env.NODE_ENV === 'production') {
+    throw new Error("Test setup should not be run with production env");
+}
+
 // We don't need log/debug info in the tests most of the time:
 process.env.LOGLEVEL = 'warn';
 
