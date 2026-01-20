@@ -22,7 +22,7 @@ if (!SMTP_PASSWORD) throw new Error('No SMTP password configured');
 const { CONTACT_FORM_DESTINATION } = process.env;
 if (!CONTACT_FORM_DESTINATION) throw new Error('No contact form destination configured');
 
-const TEMPLATES_DIR = import.meta.dirname;
+const TEMPLATES_DIR = import.meta.dirname || __dirname;
 
 const buildContactFormEmail = Handlebars.compile(
     fs.readFileSync(path.join(TEMPLATES_DIR, 'contact-form.html'), 'utf8')
