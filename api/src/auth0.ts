@@ -41,7 +41,9 @@ export const getUserById = withRetries('getUserById', async (userId: string) =>
 );
 
 export const getUsersByEmail = withRetries('getUsersByEmail', async (email: string) =>
-    (await mgmtClient.usersByEmail.getByEmail({ email })).data as User[]
+    (await mgmtClient.usersByEmail.getByEmail({
+        email: email.toLowerCase()
+    })).data as User[]
 );
 
 export const searchUsers = withRetries('searchUsers', async (query: auth0.GetUsersRequest) =>
@@ -59,7 +61,10 @@ export const updateUserMetadata = withRetries('updateUserMetadata', async <A ext
 );
 
 export const createUser = withRetries('createUser', async (parameters: auth0.UserCreate) =>
-    (await mgmtClient.users.create(parameters)).data as User
+    (await mgmtClient.users.create({
+        ...parameters,
+        email: parameters.email!.toLowerCase()
+    })).data as User
 );
 
 const authClient = new auth0.AuthenticationClient({

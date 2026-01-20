@@ -119,7 +119,7 @@ export async function getOrCreateUser(email: string): Promise<User> {
 }
 
 export function getUsersByEmail(email: string) {
-    return auth0.getUsersByEmail(email.toLowerCase());
+    return auth0.getUsersByEmail(email);
 }
 
 export async function getUserById(id: string) {
