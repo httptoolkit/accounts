@@ -25,6 +25,22 @@ export const handler = catchErrors(async (event) => {
         phone: honeypot
     } = Object.fromEntries(formData);
 
+    const fields = [
+        ['Name', name],
+        ['Email', email],
+        ['Message', message]
+    ]
+
+    for (let [field, value] of fields) {
+        if (!value) {
+            return {
+                statusCode: 400,
+                headers,
+                body: `${field} is required`
+            };
+        }
+    }
+
     // We get some spam with random strings (SMSINiyNSHbJXPwUTmR). Single word messages
     // are not plausibly real/meaningful contact messages, so just treat them as spam.
     const isRandomSpamMessage = message.length > 10 && message.length < 30 && !message.trim().includes(' ');
@@ -55,22 +71,6 @@ export const handler = catchErrors(async (event) => {
             },
             body: ''
         };
-    }
-
-    const fields = [
-        ['Name', name],
-        ['Email', email],
-        ['Message', message]
-    ]
-
-    for (let [field, value] of fields) {
-        if (!value) {
-            return {
-                statusCode: 400,
-                headers,
-                body: `${field} is required`
-            };
-        }
     }
 
     await sendContactFormEmail(name, email, message);
