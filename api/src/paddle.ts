@@ -353,6 +353,7 @@ export async function createCheckout(options: {
     countryCode?: string,
     currency: string,
     price: number,
+    initialPrice?: number, // Optional, if setting different initial vs recurring price
     source: string,
     returnUrl?: string,
     passthrough?: string
@@ -362,12 +363,14 @@ export async function createCheckout(options: {
 
     const productId = getPaddleIdForSku(options.sku);
 
-    const prices: { [currency: string]: number } = {};
+    const recurringPrices: { [currency: string]: number } = {};
+    const initialPrices: { [currency: string]: number } = {};
 
     // We include the currency only if Paddle understands it - otherwise
     // we drop it - we'll send it converted as EUR anyway.
     if (PADDLE_CURRENCIES.includes(options.currency)) {
-        prices[options.currency] = options.price;
+        initialPrices[options.currency] = (options.initialPrice ?? options.price);
+        recurringPrices[options.currency] = options.price;
     } else {
         // We do report this though - it shouldn't happen normally, but we don't fail
         // hard here so we can support special cases later on (e.g. fallback from other
@@ -393,8 +396,8 @@ export async function createCheckout(options: {
             );
         }
 
-        const eurPrice = options.price / eurRate;
-        prices['EUR'] = eurPrice;
+        initialPrices['EUR'] = (options.initialPrice ?? options.price) / eurRate;
+        recurringPrices['EUR'] = options.price / eurRate;
     }
 
     // Prices should now contain an EUR price, plus an equivalent non-EUR price if
@@ -404,13 +407,14 @@ export async function createCheckout(options: {
     // from EUR - messy, but equivalent so acceptable.
 
     // We have to send prices in price[0]=EUR:123 format, so we collapse our
-    // array into separate object keys here:
-    const priceParams = Object.entries(prices)
-        .reduce((priceParams, [currency, price], i) => {
-            const pricing = `${currency}:${price}`;
-            priceParams[`prices[${i}]`] = pricing;
-            // We also need the same value as recurring pricing:
-            priceParams[`recurring_prices[${i}]`] = pricing;
+    // arrays into separate object keys here:
+    const priceParams = Object.keys(recurringPrices)
+        .reduce((priceParams, currency, i) => {
+            const initialPrice = initialPrices[currency];
+            const recurringPrice = recurringPrices[currency];
+
+            priceParams[`prices[${i}]`] = `${currency}:${initialPrice}`;
+            priceParams[`recurring_prices[${i}]`] = `${currency}:${recurringPrice}`;
             return priceParams;
         }, {} as { [key: string]: string })
 
