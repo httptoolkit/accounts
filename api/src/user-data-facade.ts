@@ -123,7 +123,11 @@ export function getUsersByEmail(email: string) {
 }
 
 export async function getUserById(id: string) {
-    const auth0User = await auth0.getUserById(id);
+    const auth0User = await auth0.getUserById(id)
+        .catch((e) => {
+            reportError(`getUserById from Auth0 failed: ${e.message}`, { cause: e });
+            return 'error' as const;
+        });
 
     // Compare Auth0 state to DB, to validate our sync setup:
     const dbUser = await db.selectFrom('users')
@@ -132,6 +136,10 @@ export async function getUserById(id: string) {
         .executeTakeFirst();
 
     if (!auth0User) return auth0User;
+    if (auth0User === 'error') {
+        if (dbUser) return dbUser;
+        else throw new Error(`Error fetching user ${id}`);
+    }
 
     if (!dbUser) {
         // This can happen sometime for fresh auth0 logins via an old
