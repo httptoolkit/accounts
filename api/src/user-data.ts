@@ -25,7 +25,7 @@ import {
     PayingUserMetadata,
     getAuth0UserIdFromToken,
     getUserById,
-    searchUsers
+    getUsersBySubscriptionOwner
 } from './user-data-facade.ts';
 import {
     getSku,
@@ -73,7 +73,7 @@ async function loadRawUserData(userId: string): Promise<RawMetadata> {
     return migrateOldUserData({
         ...metadata,
         user_id: userId,
-        email: userData.email!
+        email: userData.email
     });
 }
 
@@ -426,12 +426,7 @@ async function getTeamMembers(userId: string, rawMetadata: RawMetadata) {
 }
 
 export async function getTeamMemberData(teamOwnerId: string) {
-    return searchUsers({
-        q: `app_metadata.subscription_owner_id:${teamOwnerId}`,
-        // 100 is the max value. If we have a team of >100 users, we'll need some paging
-        // on our end in the UI anyway, so this'll do for now.
-        per_page: 100
-    });
+    return getUsersBySubscriptionOwner(teamOwnerId);
 }
 
 async function getTeamOwner(userId: string, rawMetadata: RawMetadata) {

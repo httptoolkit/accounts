@@ -113,7 +113,7 @@ describe('/update-team-size', () => {
             }
 
             // Simulate the user being updated by an async webhook:
-            updateOwnerData({ subscription_quantity: newQuantity });
+            await updateOwnerData({ subscription_quantity: newQuantity });
 
             const response = await teamUpdatePromise;
             expect(response.status).to.equal(200);
@@ -160,7 +160,7 @@ describe('/update-team-size', () => {
             }
 
             // Simulate the user being updated by an async webhook:
-            updateOwnerData({ subscription_quantity: newQuantity });
+            await updateOwnerData({ subscription_quantity: newQuantity });
 
             const response = await teamUpdatePromise;
             expect(response.status).to.equal(200);

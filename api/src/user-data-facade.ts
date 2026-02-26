@@ -1,4 +1,3 @@
-import _ from 'lodash';
 import { QueryCreator, sql } from 'kysely';
 import log from 'loglevel';
 import { randomBytes, randomInt } from 'crypto';
@@ -10,9 +9,9 @@ import { db } from "./db/database.ts";
 import { Database } from './db/schema.ts';
 import * as mailer from './email/mailer.ts';
 
-// This file wraps the Auth0 APIs, to begin migrating towards DB synchrononization,
-// and eventually towards dropping Auth0 entirely. We intentionally closely match the
-// Auth0 model for now - we'll go properly relational later.
+// This file wraps user data access, with DB as the authoritative source. Auth0 is
+// kept as a secondary mirror (fire-and-forget writes) for legacy compatibility, and
+// as a fallback read source during the migration period.
 
 // For now, we reexport the key Auth0 types:
 export type AppMetadata = auth0.AppMetadata;
@@ -34,32 +33,35 @@ ${process.env.SIGNING_PRIVATE_KEY}
 
 export const LICENSE_LOCK_DURATION_MS = 1000 * 60 * 60 * 24 * 2; // 48h limit on reassigning licenses
 
+function dbRowToUser(row: { auth0_user_id: string; email: string; app_metadata: AppMetadata }): User {
+    return { user_id: row.auth0_user_id, email: row.email, app_metadata: row.app_metadata };
+}
+
 export async function updateUserMetadata<A extends AppMetadata>(
     id: string,
     update: {
         [K in keyof A]?: A[K] | null // All optional, can pass null to delete
     }
 ) {
-    const auth0Update = auth0.updateUserMetadata(id, update);
-
-    // Mirror user updates into the DB:
-    const dbUpdate = db.updateTable('users')
+    const dbUser = await db.updateTable('users')
         .set({
             app_metadata: sql`jsonb_strip_nulls(app_metadata || ${JSON.stringify(update)})`
         })
         .where('auth0_user_id', '=', id)
-        .execute()
-        .catch((err) => {
-            // For now we don't fail in this case, just while we're doing the initial migration
-            log.error('Error updating user metadata in DB:', err);
-            reportError(err);
-        });
+        .returningAll()
+        .executeTakeFirstOrThrow();
 
-    await Promise.all([auth0Update, dbUpdate]);
-    return auth0Update;
+    // Mirror to Auth0 fire-and-forget:
+    auth0.updateUserMetadata(id, update).catch((err) => {
+        log.error('Error mirroring user metadata update to Auth0:', err);
+        reportError(err);
+    });
+
+    return dbRowToUser(dbUser);
 }
 
 export async function createUser(email: string, appMetadata: AppMetadata = {}) {
+    // Auth0 creation stays synchronous - we need the auth0_user_id:
     const auth0Creation = await auth0.createUser({
         email,
         connection: 'email',
@@ -67,15 +69,10 @@ export async function createUser(email: string, appMetadata: AppMetadata = {}) {
         app_metadata: appMetadata
     });
 
-    // Mirror user creation into our DB:
-    await createDbUser(auth0Creation.user_id, email, appMetadata)
-        .catch((err) => {
-            // For now we don't fail in this case, just while we're doing the initial migration
-            log.error('Error creating user in DB:', err);
-            reportError(err);
-        });
+    // DB creation is now blocking:
+    await createDbUser(auth0Creation.user_id, email, appMetadata);
 
-    return auth0Creation;
+    return { user_id: auth0Creation.user_id, email, app_metadata: appMetadata } as User;
 }
 
 function createDbUser(auth0Id: string, email: string, appMetadata: AppMetadata = {}) {
@@ -89,79 +86,73 @@ function createDbUser(auth0Id: string, email: string, appMetadata: AppMetadata =
 }
 
 export async function getOrCreateUser(email: string): Promise<User> {
-    const auth0Users = await auth0.getUsersByEmail(email);
+    const dbUser = await db.selectFrom('users')
+        .where('email', '=', email)
+        .selectAll()
+        .executeTakeFirst();
 
-    let auth0User: User;
+    if (dbUser) return dbRowToUser(dbUser);
+
+    // Not in DB - check Auth0 as migration fallback:
+    const auth0Users = await auth0.getUsersByEmail(email);
     if (auth0Users.length > 1) {
         throw new Error(`More than one user found for ${email}`);
     } else if (auth0Users.length === 1) {
-        auth0User = auth0Users[0];
-    } else {
-        // Create the user, if they don't already exist:
-        auth0User = await createUser(email);
+        // Pull into DB from Auth0:
+        await createDbUser(auth0Users[0].user_id, email, auth0Users[0].app_metadata)
+            .catch((err) => {
+                log.error('Error pulling Auth0 user into DB:', err);
+                reportError(err);
+            });
+        return auth0Users[0];
     }
 
+    // Nowhere - create in both Auth0 + DB:
+    return createUser(email);
+}
+
+export async function getUsersByEmail(email: string): Promise<User[]> {
     const dbUsers = await db.selectFrom('users')
         .where('email', '=', email)
         .selectAll()
         .execute();
 
-    if (dbUsers.length === 0) {
-        await createDbUser(auth0User.user_id, email, auth0User.app_metadata)
-        .catch((err) => {
-            // For now we don't fail in this case, just while we're doing the initial migration
-            log.error('Error auto-creating user in DB:', err);
+    if (dbUsers.length > 0) return dbUsers.map(dbRowToUser);
+
+    // Fallback to Auth0 for migration:
+    const auth0Users = await auth0.getUsersByEmail(email);
+    // Opportunistically pull into DB:
+    for (const user of auth0Users) {
+        await createDbUser(user.user_id, user.email, user.app_metadata).catch((err) => {
+            log.error('Error pulling Auth0 user into DB by email:', err);
             reportError(err);
         });
-    } // Can't be >1 since this is unique
-
-    return auth0User;
-}
-
-export function getUsersByEmail(email: string) {
-    return auth0.getUsersByEmail(email);
+    }
+    return auth0Users;
 }
 
 export async function getUserById(id: string) {
-    const auth0User = await auth0.getUserById(id)
-        .catch((e) => {
-            reportError(`getUserById from Auth0 failed: ${e.message}`, { cause: e });
-            return 'error' as const;
-        });
-
-    // Compare Auth0 state to DB, to validate our sync setup:
     const dbUser = await db.selectFrom('users')
         .where('auth0_user_id', '=', id)
         .selectAll()
         .executeTakeFirst();
 
-    if (!auth0User) return auth0User;
-    if (auth0User === 'error') {
-        if (dbUser) return dbUser;
-        else throw new Error(`Error fetching user ${id}`);
-    }
+    if (dbUser) return dbRowToUser(dbUser);
 
-    if (!dbUser) {
-        // This can happen sometime for fresh auth0 logins via an old
-        // UI & Auth0 widget that doesn't login through the API, but that
-        // should be the only (and rare) case.
-        if (!_.isEmpty(auth0User.app_metadata)) {
-            reportError(`User ${id} with data exists in Auth0 but not in DB`);
-        }
+    // Fallback to Auth0 for legacy/migration:
+    const auth0User = await auth0.getUserById(id)
+        .catch((e) => {
+            reportError(`getUserById from Auth0 failed: ${e.message}`, { cause: e });
+            return undefined;
+        });
 
-        return auth0User;
-    }
+    if (!auth0User) throw new Error(`User not found: ${id}`);
 
-    if (dbUser?.email.toLowerCase() !== auth0User.email.toLowerCase()) {
-        reportError(`User ${id} email mismatch between Auth0 (${auth0User.email}) and DB (${dbUser?.email})`);
-    }
-
-    if (_.isEqual(dbUser?.app_metadata || {}, auth0User.app_metadata || {}) === false) {
-        log.warn('Auth0 app_metadata:', auth0User.app_metadata);
-        log.warn('DB app_metadata:', dbUser?.app_metadata);
-        log.warn('Diff', getFullDiff(dbUser?.app_metadata || {}, auth0User.app_metadata || {}));
-        reportError(`User ${id} app_metadata mismatch between Auth0 and DB`);
-    }
+    // Opportunistically pull into DB:
+    await createDbUser(auth0User.user_id, auth0User.email, auth0User.app_metadata).catch((err) => {
+        log.error('Error pulling Auth0 user into DB by id:', err);
+        reportError(err);
+    });
 
     return auth0User;
 }
@@ -187,8 +178,12 @@ export async function getAuth0UserIdFromToken(token: string) {
     return userInfo.sub;
 }
 
-export function searchUsers(query: { q: string, per_page: number }) {
-    return auth0.searchUsers(query);
+export async function getUsersBySubscriptionOwner(ownerId: string): Promise<User[]> {
+    const dbUsers = await db.selectFrom('users')
+        .where(sql`app_metadata->>'subscription_owner_id'`, '=', ownerId)
+        .selectAll()
+        .execute();
+    return dbUsers.map(dbRowToUser);
 }
 
 const PASSWORDLESS_CODE_DURATION = 60 * 60 * 1000;
@@ -258,21 +253,34 @@ export async function loginWithPasswordlessCode(email: string, code: string, use
         .where('value', '=', code)
         .execute();
 
-    let auth0User = await auth0.getUsersByEmail(email).then(users => users[0]);
-    if (!auth0User) {
-        auth0User = await auth0.createUser({
-            email,
-            connection: 'email',
-            email_verified: true, // This ensures users don't receive an email code or verification
-            app_metadata: {}
-        });
+    // Check DB for existing user first, skip Auth0 entirely if found:
+    const existingDbUser = await db.selectFrom('users')
+        .where('email', '=', email)
+        .selectAll()
+        .executeTakeFirst();
+
+    let auth0UserId: string;
+    if (existingDbUser) {
+        auth0UserId = existingDbUser.auth0_user_id;
+    } else {
+        // Not in DB - check/create in Auth0 (need the auth0_user_id):
+        let auth0User = await auth0.getUsersByEmail(email).then(users => users[0]);
+        if (!auth0User) {
+            auth0User = await auth0.createUser({
+                email,
+                connection: 'email',
+                email_verified: true,
+                app_metadata: {}
+            });
+        }
+        auth0UserId = auth0User.user_id;
     }
 
-    // Create the user at this point, if they don't already exist:
+    // Create/update the user in DB:
     const user = await db.insertInto('users')
         .values({
             email: email,
-            auth0_user_id: auth0User.user_id,
+            auth0_user_id: auth0UserId,
             last_ip: userIp,
             last_login: new Date(),
             logins_count: 1,
@@ -440,14 +448,3 @@ async function storeRefreshAndAccessTokens(
         })
         .execute();
 }
-
-const getFullDiff = (base: any, object: any) => {
-  const allKeys = _.union(_.keys(base), _.keys(object));
-
-  return _.reduce(allKeys, (result, key) => {
-    if (!_.isEqual(base[key], object[key])) {
-      result[key] = { from: base[key], to: object[key] };
-    }
-    return result;
-  }, {} as Record<string, { from: any; to: any }>);
-};

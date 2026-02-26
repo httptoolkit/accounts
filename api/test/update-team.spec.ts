@@ -130,9 +130,15 @@ describe('/update-team', () => {
 
             expect(response.status).to.equal(200);
 
+            // Auth0 writes are fire-and-forget, give them a moment:
+            await delay(50);
+
             // Confirm the writes to Auth0:
             const updates = await getUserUpdates();
-            expect(updates).to.deep.equal([
+
+            // Auth0 member removals are parallel fire-and-forget, so order is non-deterministic:
+            const removals = updates.slice(0, 2).sort((a, b) => a.url.localeCompare(b.url));
+            expect(removals).to.deep.equal([
                 {
                     url: `/api/v2/users/${team[0].id}`,
                     body: {
@@ -150,8 +156,9 @@ describe('/update-team', () => {
                             joined_team_at: null
                         }
                     }
-                },
-                {
+                }
+            ]);
+            expect(updates[2]).to.deep.equal({
                     url: `/api/v2/users/${ownerId}`,
                     body: {
                         app_metadata: {
@@ -162,8 +169,7 @@ describe('/update-team', () => {
                             locked_licenses: []
                         }
                     }
-                }
-            ]);
+            });
 
             // Confirm the writes to the DB:
             const dbUsers = await testDB.query(`SELECT * FROM users ORDER BY auth0_user_id`);
@@ -197,6 +203,9 @@ describe('/update-team', () => {
             });
 
             expect(response.status).to.equal(200);
+
+            // Auth0 writes are fire-and-forget, give them a moment:
+            await delay(50);
 
             const newUsers = await getNewUsers();
             expect(newUsers.length).to.equal(1);
@@ -248,6 +257,9 @@ describe('/update-team', () => {
             });
 
             expect(response.status).to.equal(200);
+
+            // Auth0 writes are fire-and-forget, give them a moment:
+            await delay(50);
 
             const newUsers = await getNewUsers();
             expect(newUsers.length).to.equal(0);
@@ -302,6 +314,9 @@ describe('/update-team', () => {
 
             expect(response.status).to.equal(200);
 
+            // Auth0 writes are fire-and-forget, give them a moment:
+            await delay(50);
+
             // Creates 1 new user on the team:
             const newUsers = await getNewUsers();
             expect(newUsers.length).to.equal(1);
@@ -319,8 +334,9 @@ describe('/update-team', () => {
             const updates = await getUserUpdates();
             expect(updates.length).to.equal(4);
 
-            // Removed the 2 existing team members:
-            expect(updates.slice(0, 2)).to.deep.equal([
+            // Removed the 2 existing team members (order is non-deterministic):
+            const removals = updates.slice(0, 2).sort((a, b) => a.url.localeCompare(b.url));
+            expect(removals).to.deep.equal([
                 {
                     url: `/api/v2/users/${team[0].id}`,
                     body: {
@@ -379,8 +395,8 @@ describe('/update-team', () => {
             expect(member2.app_metadata.subscription_owner_id).to.equal(undefined);
         });
 
-        it("reports failures for internal API issues, after retries", async function () {
-            this.timeout(5000);
+        it("succeeds even when Auth0 updates fail (fire-and-forget)", async function () {
+            this.timeout(10000);
 
             const team = [
                 undefined
@@ -393,16 +409,17 @@ describe('/update-team', () => {
 
             await givenUser(newUserId, newUserEmail);
 
-            const userUpdateEndpoint = await withAuth0UserUpdateNetworkFailures();
+            await withAuth0UserUpdateNetworkFailures();
 
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 emailsToAdd: [newUserEmail]
             });
 
-            expect(response.status).to.equal(500);
+            // Auth0 failures are now ignored - only DB failures cause errors:
+            expect(response.status).to.equal(200);
 
-            const updateRequests = await userUpdateEndpoint.getSeenRequests();
-            expect(updateRequests.length).to.equal(4); // Attempt + 3 retries
+            // Wait for fire-and-forget Auth0 retries to exhaust (3 retries × 1s):
+            await delay(3500);
         });
 
         it("does not allow adding team members beyond the subscribed quantity", async () => {
@@ -544,6 +561,10 @@ describe('/update-team', () => {
             });
 
             expect(response.status).to.equal(200);
+
+            // Auth0 writes are fire-and-forget, give them a moment:
+            await delay(50);
+
             const updates = await getUserUpdates();
             expect(updates.length).to.equal(2); // Takes 2 updates, it's fiddly to combine unfortunately
 
@@ -591,6 +612,7 @@ describe('/update-team', () => {
             });
 
             expect(response.status).to.equal(200);
+            await delay(50);
             expect((await getUserUpdates()).length).to.equal(2);
         });
 
@@ -662,7 +684,7 @@ describe('/update-team', () => {
             const { ownerAuthToken, updateOwnerData } = await givenTeam(team);
             const getUserUpdates = await watchAuth0UserUpdates();
 
-            updateOwnerData({ team_member_ids: [] }); // Lose the id from team_member_ids
+            await updateOwnerData({ team_member_ids: [] }); // Lose the id from team_member_ids
 
             const response = await updateTeam(apiServer, ownerAuthToken, {
                 idsToRemove: [team[0].id]
@@ -687,6 +709,9 @@ describe('/update-team', () => {
                 idsToRemove: [team[0].id]
             });
             expect(response.status).to.equal(200);
+
+            // Auth0 writes are fire-and-forget, give them a moment:
+            await delay(50);
 
             const updates = await getUserUpdates();
             expect(updates).to.deep.equal([
@@ -741,6 +766,9 @@ describe('/update-team', () => {
             });
             expect(response1.status).to.equal(200);
 
+            // Auth0 writes are fire-and-forget, give them a moment:
+            await delay(50);
+
             // Update mocks with the updates this triggers:
             let updates = await getUserUpdates();
             memberData = applyAuth0MetadataUpdate(memberData, updates[0].body.app_metadata);
@@ -749,7 +777,7 @@ describe('/update-team', () => {
                 email: memberEmail,
                 joinedAt: memberData.joined_team_at
             }]);
-            updateOwnerData(updates[1].body.app_metadata);
+            await updateOwnerData(updates[1].body.app_metadata);
 
             // Remove the user again:
             const response2 = await updateTeam(apiServer, ownerAuthToken, {
@@ -757,11 +785,13 @@ describe('/update-team', () => {
             });
             expect(response2.status).to.equal(200);
 
+            await delay(50);
+
             // Update mocks again
             updates = (await getUserUpdates()).slice(2);
             memberData = applyAuth0MetadataUpdate(memberData, updates[0].body.app_metadata);
             updateTeamMembers([]);
-            updateOwnerData(updates[1].body.app_metadata);
+            await updateOwnerData(updates[1].body.app_metadata);
 
             // Try to re-add the user, nope:
             const response3 = await updateTeam(apiServer, ownerAuthToken, {
@@ -800,6 +830,9 @@ describe('/update-team', () => {
             });
             expect(response1.status).to.equal(200);
 
+            // Auth0 writes are fire-and-forget, give them a moment:
+            await delay(50);
+
             // Update mocks with the updates this triggers:
             const updates = await getUserUpdates();
             memberData = applyAuth0MetadataUpdate(memberData, updates[0].body.app_metadata);
@@ -808,7 +841,7 @@ describe('/update-team', () => {
                 email: memberEmail,
                 joinedAt: memberData.joined_team_at
             }]);
-            updateOwnerData(updates[1].body.app_metadata);
+            await updateOwnerData(updates[1].body.app_metadata);
 
             const replacementMemberId = "2nd-member";
             const replacementMemberEmail = "2nd@example.com";
@@ -853,6 +886,9 @@ describe('/update-team', () => {
             });
             expect(response1.status).to.equal(200);
 
+            // Auth0 writes are fire-and-forget, give them a moment:
+            await delay(50);
+
             // Update mocks with the updates this triggers:
             let updates = await getUserUpdates();
             memberData = applyAuth0MetadataUpdate(memberData, updates[0].body.app_metadata);
@@ -861,13 +897,15 @@ describe('/update-team', () => {
                 email: memberEmail,
                 joinedAt: memberData.joined_team_at
             }]);
-            updateOwnerData(updates[1].body.app_metadata);
+            await updateOwnerData(updates[1].body.app_metadata);
 
             // Remove the user again:
             const response2 = await updateTeam(apiServer, ownerAuthToken, {
                 idsToRemove: [memberId]
             });
             expect(response2.status).to.equal(200);
+
+            await delay(50);
 
             // Update mocks again
             updates = (await getUserUpdates()).slice(2);
@@ -876,7 +914,7 @@ describe('/update-team', () => {
 
             // But override the lock time to pretend 2* the lock duration has passed:
             const ownerUpdate = updates[1].body.app_metadata;
-            updateOwnerData({
+            await updateOwnerData({
                 ...ownerUpdate,
                 locked_licenses: (ownerUpdate.locked_licenses as number[]).map(timestamp =>
                     timestamp - LICENSE_LOCK_DURATION_MS * 2

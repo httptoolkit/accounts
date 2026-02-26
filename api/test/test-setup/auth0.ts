@@ -70,6 +70,7 @@ export function givenAuth0Token(authToken: string, userId: string, email?: strin
 export async function withAuth0UserUpdateNetworkFailures() {
     return auth0Server
         .forPatch(/\/api\/v2\/users\/[^\/]+/)
+        .always()
         .thenCloseConnection();
 }
 

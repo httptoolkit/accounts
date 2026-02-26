@@ -361,30 +361,12 @@ describe('/get-billing-data', () => {
             } as TeamOwnerMetadata);
             await givenAuthToken(authToken, billingUserId);
 
-            await auth0Server.forGet('/api/v2/users')
-                .withQuery({ q: `app_metadata.subscription_owner_id:${billingUserId}` })
-                .thenJson(200, [ // N.b: out of order - API order should match team_member_ids
-                    {
-                        user_id: team[1].id,
-                        email: team[1].email,
-                        app_metadata: { subscription_owner_id: billingUserId }
-                    },
-                    {
-                        user_id: team[0].id,
-                        email: team[0].email,
-                        app_metadata: { subscription_owner_id: billingUserId }
-                    },
-                    {
-                        user_id: team[2].id,
-                        email: team[2].email,
-                        app_metadata: { subscription_owner_id: billingUserId }
-                    },
-                    {
-                        user_id: team[3].id,
-                        email: team[3].email,
-                        app_metadata: { }
-                    }
-                ]);
+            // Team members need to be in the DB (getUsersBySubscriptionOwner queries DB):
+            for (const member of team) {
+                await givenUser(member.id, member.email, {
+                    subscription_owner_id: billingUserId
+                });
+            }
 
             const { paddleUserId } = await givenPaddleSubscription(subId);
             const transactionDate = new Date();

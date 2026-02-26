@@ -6,11 +6,11 @@ import { DestroyableServer } from 'destroyable-server';
 import { expect } from 'chai';
 
 import {
+    delay,
     startAPI,
     privateKey,
     givenUser,
     givenNoUsers,
-    delay
 } from './test-setup/setup.ts';
 import { auth0Server } from './test-setup/auth0.ts';
 import { testDB } from './test-setup/database.ts';
@@ -96,6 +96,9 @@ describe('Paddle webhooks', () => {
 
             const expectedExpiry = nextRenewal.add(1, 'days').valueOf();
 
+            // Auth0 writes are fire-and-forget, give them a moment:
+            await delay(50);
+
             // Confirm the write to Auth0:
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
@@ -162,6 +165,9 @@ describe('Paddle webhooks', () => {
             });
 
             const expectedExpiry = nextRenewal.add(1, 'days').valueOf();
+
+            // Auth0 writes are fire-and-forget, give them a moment:
+            await delay(50);
 
             // Confirm the writes to Auth0:
             const createRequests = await userCreate.getSeenRequests();
@@ -250,6 +256,9 @@ describe('Paddle webhooks', () => {
                 next_bill_date: nextRenewal.format('YYYY-MM-DD'),
                 quantity: '1'
             });
+
+            // Auth0 writes are fire-and-forget, give them a moment:
+            await delay(50);
 
             const ownerUpdateRequests = await ownerUpdate.getSeenRequests();
             expect(ownerUpdateRequests.length).to.equal(1);
@@ -361,6 +370,9 @@ describe('Paddle webhooks', () => {
 
             const expectedExpiry = nextRenewal.add(1, 'days').valueOf();
 
+            // Auth0 writes are fire-and-forget, give them a moment:
+            await delay(50);
+
             // Confirm the write to Auth0:
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
@@ -423,6 +435,7 @@ describe('Paddle webhooks', () => {
                 cancellation_effective_date: cancellationDate.format('YYYY-MM-DD')
             });
 
+            await delay(50);
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
@@ -481,6 +494,7 @@ describe('Paddle webhooks', () => {
                 next_retry_date: finalDate.format('YYYY-MM-DD')
             });
 
+            await delay(50);
             let updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(2);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
@@ -528,6 +542,7 @@ describe('Paddle webhooks', () => {
                 cancellation_effective_date: finalDate.format('YYYY-MM-DD')
             });
 
+            await delay(50);
             updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(4);
             expect(await updateRequests[2].body.getJson()).to.deep.equal({
@@ -579,6 +594,9 @@ describe('Paddle webhooks', () => {
             });
 
             const expectedExpiry = nextRenewal.add(1, 'days').valueOf();
+
+            // Auth0 writes are fire-and-forget, give them a moment:
+            await delay(50);
 
             // Confirm the write to Auth0:
             const updateRequests = await userUpdate.getSeenRequests();
@@ -650,6 +668,9 @@ describe('Paddle webhooks', () => {
             });
 
             const expectedExpiry = nextRenewal.add(1, 'days').valueOf();
+
+            // Auth0 writes are fire-and-forget, give them a moment:
+            await delay(50);
 
             // Confirm the writes to Auth0:
             const createRequests = await userCreate.getSeenRequests();
@@ -723,6 +744,7 @@ describe('Paddle webhooks', () => {
                 next_bill_date: nextRenewal.format('YYYY-MM-DD'),
             });
 
+            await delay(50);
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
@@ -769,6 +791,7 @@ describe('Paddle webhooks', () => {
                 next_bill_date: nextRenewal.format('YYYY-MM-DD'),
             });
 
+            await delay(50);
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
@@ -805,6 +828,7 @@ describe('Paddle webhooks', () => {
                 email: userEmail
             });
 
+            await delay(50);
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({

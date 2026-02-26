@@ -7,6 +7,7 @@ import { DestroyableServer } from 'destroyable-server';
 import { expect } from 'chai';
 
 import {
+    delay,
     startAPI,
     givenUser,
     givenNoUsers,
@@ -158,6 +159,7 @@ describe('PayPro webhooks', () => {
                 CUSTOMER_EMAIL: userEmail
             });
 
+            await delay(50);
             const createRequests = await userCreate.getSeenRequests();
             expect(createRequests.length).to.equal(1);
             expect(await createRequests[0].body.getJson()).to.deep.equal({
@@ -208,6 +210,7 @@ describe('PayPro webhooks', () => {
                 CUSTOMER_EMAIL: userEmail
             });
 
+            await delay(50);
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
@@ -250,6 +253,7 @@ describe('PayPro webhooks', () => {
                 CUSTOMER_EMAIL: userEmail
             });
 
+            await delay(50);
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
@@ -291,6 +295,7 @@ describe('PayPro webhooks', () => {
                 CUSTOMER_EMAIL: userEmail
             });
 
+            await delay(50);
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
@@ -332,6 +337,7 @@ describe('PayPro webhooks', () => {
                 CUSTOMER_EMAIL: userEmail
             });
 
+            await delay(50);
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
@@ -373,6 +379,7 @@ describe('PayPro webhooks', () => {
                 CUSTOMER_EMAIL: userEmail
             });
 
+            await delay(50);
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
@@ -497,6 +504,7 @@ describe('PayPro webhooks', () => {
                 CUSTOMER_EMAIL: userEmail
             });
 
+            await delay(50);
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
             const metadataUpdate = (await updateRequests[0].body.getJson() as any).app_metadata;
