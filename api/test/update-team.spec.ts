@@ -235,6 +235,15 @@ describe('/update-team', () => {
                     }
                 }
             ]);
+
+            // Confirm the writes to the DB:
+            const dbUsers = await testDB.query(`SELECT * FROM users ORDER BY auth0_user_id`);
+            const dbOwner = dbUsers.rows.find((u: any) => u.auth0_user_id === ownerId);
+            const dbNewUser = dbUsers.rows.find((u: any) => u.auth0_user_id === newUsers[0].id);
+
+            expect(dbOwner.app_metadata.team_member_ids).to.deep.include(newUsers[0].id);
+            expect(dbNewUser.app_metadata.subscription_owner_id).to.equal(ownerId);
+            expect(dbNewUser.app_metadata.joined_team_at).to.be.within(Date.now() - 1000, Date.now());
         });
 
         it("allows adding an existing user by email", async () => {
@@ -287,6 +296,15 @@ describe('/update-team', () => {
                     }
                 }
             });
+
+            // Confirm the writes to the DB:
+            const dbUsers = await testDB.query(`SELECT * FROM users ORDER BY auth0_user_id`);
+            const dbOwner = dbUsers.rows.find((u: any) => u.auth0_user_id === ownerId);
+            const dbExisting = dbUsers.rows.find((u: any) => u.auth0_user_id === existingUserId);
+
+            expect(dbOwner.app_metadata.team_member_ids).to.deep.include(existingUserId);
+            expect(dbExisting.app_metadata.subscription_owner_id).to.equal(ownerId);
+            expect(dbExisting.app_metadata.joined_team_at).to.be.within(Date.now() - 1000, Date.now());
         });
 
         it("allows adding and removing many team members all in one go", async () => {
@@ -583,6 +601,14 @@ describe('/update-team', () => {
                     }
                 }
             });
+
+            // Confirm the writes to the DB:
+            const dbOwner = (await testDB.query(
+                `SELECT * FROM users WHERE auth0_user_id = $1`, [ownerId]
+            )).rows[0];
+            expect(dbOwner.app_metadata.team_member_ids).to.deep.equal([team[0].id, ownerId]);
+            expect(dbOwner.app_metadata.subscription_owner_id).to.equal(ownerId);
+            expect(dbOwner.app_metadata.joined_team_at).to.be.within(Date.now() - 1000, Date.now());
         });
 
         it("does allow adding team members who recently cancelled", async () => {
@@ -591,7 +617,7 @@ describe('/update-team', () => {
                 undefined // 1 empty space
             ] as const;
 
-            const { ownerAuthToken } = await givenTeam(team);
+            const { ownerId, ownerAuthToken } = await givenTeam(team);
 
             const existingUserId = 'existing-user';
             const existingUserEmail = 'existing@example.com';
@@ -614,6 +640,17 @@ describe('/update-team', () => {
             expect(response.status).to.equal(200);
             await delay(50);
             expect((await getUserUpdates()).length).to.equal(2);
+
+            // Confirm the writes to the DB:
+            const dbOwner = (await testDB.query(
+                `SELECT * FROM users WHERE auth0_user_id = $1`, [ownerId]
+            )).rows[0];
+            const dbExisting = (await testDB.query(
+                `SELECT * FROM users WHERE auth0_user_id = $1`, [existingUserId]
+            )).rows[0];
+
+            expect(dbOwner.app_metadata.team_member_ids).to.include(existingUserId);
+            expect(dbExisting.app_metadata.subscription_owner_id).to.be.a('string');
         });
 
         it("does not allow adding team members who are already in another team", async () => {
@@ -734,6 +771,18 @@ describe('/update-team', () => {
                     }
                 }
             ]);
+
+            // Confirm the writes to the DB:
+            const dbOwner = (await testDB.query(
+                `SELECT * FROM users WHERE auth0_user_id = $1`, [ownerId]
+            )).rows[0];
+            const dbMember = (await testDB.query(
+                `SELECT * FROM users WHERE auth0_user_id = $1`, [team[0].id]
+            )).rows[0];
+
+            expect(dbOwner.app_metadata.team_member_ids).to.deep.equal([]);
+            expect(dbOwner.app_metadata.locked_licenses).to.deep.equal([memberJoinedAt]);
+            expect(dbMember.app_metadata.subscription_owner_id).to.equal(undefined);
         });
 
         it("does not allow rapid license reassignment", async () => {
@@ -769,15 +818,17 @@ describe('/update-team', () => {
             // Auth0 writes are fire-and-forget, give them a moment:
             await delay(50);
 
-            // Update mocks with the updates this triggers:
+            // Update mocks with the updates this triggers (order is non-deterministic):
             let updates = await getUserUpdates();
-            memberData = applyAuth0MetadataUpdate(memberData, updates[0].body.app_metadata);
+            let memberUpdate = updates.find(u => u.url === `/api/v2/users/${memberId}`)!;
+            let ownerUpdate = updates.find(u => u.url !== `/api/v2/users/${memberId}`)!;
+            memberData = applyAuth0MetadataUpdate(memberData, memberUpdate.body.app_metadata);
             updateTeamMembers([{
                 id: memberId,
                 email: memberEmail,
                 joinedAt: memberData.joined_team_at
             }]);
-            await updateOwnerData(updates[1].body.app_metadata);
+            await updateOwnerData(ownerUpdate.body.app_metadata);
 
             // Remove the user again:
             const response2 = await updateTeam(apiServer, ownerAuthToken, {
@@ -787,11 +838,13 @@ describe('/update-team', () => {
 
             await delay(50);
 
-            // Update mocks again
+            // Update mocks again (order is non-deterministic):
             updates = (await getUserUpdates()).slice(2);
-            memberData = applyAuth0MetadataUpdate(memberData, updates[0].body.app_metadata);
+            memberUpdate = updates.find(u => u.url === `/api/v2/users/${memberId}`)!;
+            ownerUpdate = updates.find(u => u.url !== `/api/v2/users/${memberId}`)!;
+            memberData = applyAuth0MetadataUpdate(memberData, memberUpdate.body.app_metadata);
             updateTeamMembers([]);
-            await updateOwnerData(updates[1].body.app_metadata);
+            await updateOwnerData(ownerUpdate.body.app_metadata);
 
             // Try to re-add the user, nope:
             const response3 = await updateTeam(apiServer, ownerAuthToken, {
@@ -833,15 +886,17 @@ describe('/update-team', () => {
             // Auth0 writes are fire-and-forget, give them a moment:
             await delay(50);
 
-            // Update mocks with the updates this triggers:
+            // Update mocks with the updates this triggers (order is non-deterministic):
             const updates = await getUserUpdates();
-            memberData = applyAuth0MetadataUpdate(memberData, updates[0].body.app_metadata);
+            const memberUpdate = updates.find(u => u.url === `/api/v2/users/${memberId}`)!;
+            const ownerUpdate = updates.find(u => u.url !== `/api/v2/users/${memberId}`)!;
+            memberData = applyAuth0MetadataUpdate(memberData, memberUpdate.body.app_metadata);
             updateTeamMembers([{
                 id: memberId,
                 email: memberEmail,
                 joinedAt: memberData.joined_team_at
             }]);
-            await updateOwnerData(updates[1].body.app_metadata);
+            await updateOwnerData(ownerUpdate.body.app_metadata);
 
             const replacementMemberId = "2nd-member";
             const replacementMemberEmail = "2nd@example.com";
@@ -862,6 +917,7 @@ describe('/update-team', () => {
             ] as const;
 
             const {
+                ownerId,
                 ownerAuthToken,
                 updateOwnerData,
                 updateTeamMembers
@@ -889,15 +945,17 @@ describe('/update-team', () => {
             // Auth0 writes are fire-and-forget, give them a moment:
             await delay(50);
 
-            // Update mocks with the updates this triggers:
+            // Update mocks with the updates this triggers (order is non-deterministic):
             let updates = await getUserUpdates();
-            memberData = applyAuth0MetadataUpdate(memberData, updates[0].body.app_metadata);
+            let memberUpdate = updates.find(u => u.url === `/api/v2/users/${memberId}`)!;
+            let ownerUpdateEntry = updates.find(u => u.url !== `/api/v2/users/${memberId}`)!;
+            memberData = applyAuth0MetadataUpdate(memberData, memberUpdate.body.app_metadata);
             updateTeamMembers([{
                 id: memberId,
                 email: memberEmail,
                 joinedAt: memberData.joined_team_at
             }]);
-            await updateOwnerData(updates[1].body.app_metadata);
+            await updateOwnerData(ownerUpdateEntry.body.app_metadata);
 
             // Remove the user again:
             const response2 = await updateTeam(apiServer, ownerAuthToken, {
@@ -907,13 +965,15 @@ describe('/update-team', () => {
 
             await delay(50);
 
-            // Update mocks again
+            // Update mocks again (order is non-deterministic):
             updates = (await getUserUpdates()).slice(2);
-            memberData = applyAuth0MetadataUpdate(memberData, updates[0].body.app_metadata);
+            memberUpdate = updates.find(u => u.url === `/api/v2/users/${memberId}`)!;
+            ownerUpdateEntry = updates.find(u => u.url !== `/api/v2/users/${memberId}`)!;
+            memberData = applyAuth0MetadataUpdate(memberData, memberUpdate.body.app_metadata);
             updateTeamMembers([]);
 
             // But override the lock time to pretend 2* the lock duration has passed:
-            const ownerUpdate = updates[1].body.app_metadata;
+            const ownerUpdate = ownerUpdateEntry.body.app_metadata;
             await updateOwnerData({
                 ...ownerUpdate,
                 locked_licenses: (ownerUpdate.locked_licenses as number[]).map(timestamp =>
@@ -926,6 +986,18 @@ describe('/update-team', () => {
                 emailsToAdd: [memberEmail]
             });
             expect(response3.status).to.equal(200); // <-- Now OK, since the lock has expired
+
+            // Confirm the writes to the DB:
+            const dbOwner = (await testDB.query(
+                `SELECT * FROM users WHERE auth0_user_id = $1`, [ownerId]
+            )).rows[0];
+            const dbMember = (await testDB.query(
+                `SELECT * FROM users WHERE auth0_user_id = $1`, [memberId]
+            )).rows[0];
+
+            expect(dbOwner.app_metadata.team_member_ids).to.include(memberId);
+            expect(dbOwner.app_metadata.locked_licenses).to.be.an('array');
+            expect(dbMember.app_metadata.subscription_owner_id).to.be.a('string');
         });
     });
 });

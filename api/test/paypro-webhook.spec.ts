@@ -16,6 +16,7 @@ import {
 } from './test-setup/setup.ts';
 import { profitwellApiServer } from './test-setup/profitwell.ts';
 import { auth0Server } from './test-setup/auth0.ts';
+import { testDB } from './test-setup/database.ts';
 
 import {
     PayProOrderDateFormat,
@@ -182,6 +183,23 @@ describe('PayPro webhooks', () => {
                     last_receipt_url: "https://store.payproglobal.com/Invoice?Id=MY_UUID"
                 }
             });
+
+            // Confirm the write to the DB:
+            const dbUsers = await testDB.query(`SELECT * FROM users`);
+            expect(dbUsers.rows.length).to.equal(1);
+            expect(dbUsers.rows[0]).to.deep.include({
+                email: userEmail,
+                auth0_user_id: userId,
+                app_metadata: {
+                    subscription_status: 'active',
+                    payment_provider: 'paypro',
+                    subscription_id: '456',
+                    subscription_sku: 'pro-monthly',
+                    subscription_quantity: 1,
+                    subscription_expiry: nextRenewal.valueOf(),
+                    last_receipt_url: "https://store.payproglobal.com/Invoice?Id=MY_UUID"
+                }
+            });
         });
 
         it('successfully handle new subscriptions for an existing user', async () => {
@@ -214,6 +232,23 @@ describe('PayPro webhooks', () => {
             const updateRequests = await userUpdate.getSeenRequests();
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
+                app_metadata: {
+                    subscription_status: 'active',
+                    payment_provider: 'paypro',
+                    subscription_id: '456',
+                    subscription_sku: 'pro-monthly',
+                    subscription_quantity: 1,
+                    subscription_expiry: nextRenewal.valueOf(),
+                    last_receipt_url: "https://store.payproglobal.com/Invoice?Id=MY_UUID"
+                }
+            });
+
+            // Confirm the write to the DB:
+            const dbUsers = await testDB.query(`SELECT * FROM users`);
+            expect(dbUsers.rows.length).to.equal(1);
+            expect(dbUsers.rows[0]).to.deep.include({
+                email: userEmail,
+                auth0_user_id: userId,
                 app_metadata: {
                     subscription_status: 'active',
                     payment_provider: 'paypro',
@@ -266,6 +301,22 @@ describe('PayPro webhooks', () => {
                     subscription_expiry: nextRenewal.valueOf()
                 }
             });
+
+            // Confirm the write to the DB:
+            const dbUsers = await testDB.query(`SELECT * FROM users`);
+            expect(dbUsers.rows.length).to.equal(1);
+            expect(dbUsers.rows[0]).to.deep.include({
+                email: userEmail,
+                auth0_user_id: userId,
+                app_metadata: {
+                    subscription_status: 'active',
+                    payment_provider: 'paypro',
+                    subscription_id: '456',
+                    subscription_sku: 'pro-annual',
+                    subscription_quantity: 1,
+                    subscription_expiry: nextRenewal.valueOf()
+                }
+            });
         });
 
         it('should cancel terminated subscriptions', async () => {
@@ -307,6 +358,22 @@ describe('PayPro webhooks', () => {
                     subscription_quantity: 1
                     // Expiry is left unmodified - it should be the existing renewal date.
                 }
+            });
+
+            // Confirm the write to the DB:
+            const dbUsers = await testDB.query(`SELECT * FROM users`);
+            expect(dbUsers.rows.length).to.equal(1);
+            expect(dbUsers.rows[0]).to.deep.include({
+                email: userEmail,
+                auth0_user_id: userId
+            });
+            expect(dbUsers.rows[0].app_metadata).to.deep.include({
+                subscription_status: 'deleted',
+                payment_provider: 'paypro',
+                subscription_id: '456',
+                subscription_sku: 'pro-annual',
+                subscription_quantity: 1,
+                subscription_expiry: nextRenewal.clone().subtract(30, 'days').valueOf()
             });
         });
 
@@ -350,6 +417,22 @@ describe('PayPro webhooks', () => {
                     // Expiry is left unmodified - it should be the existing renewal date.
                 }
             });
+
+            // Confirm the write to the DB:
+            const dbUsers = await testDB.query(`SELECT * FROM users`);
+            expect(dbUsers.rows.length).to.equal(1);
+            expect(dbUsers.rows[0]).to.deep.include({
+                email: userEmail,
+                auth0_user_id: userId
+            });
+            expect(dbUsers.rows[0].app_metadata).to.deep.include({
+                subscription_status: 'deleted',
+                payment_provider: 'paypro',
+                subscription_id: '456',
+                subscription_sku: 'pro-annual',
+                subscription_quantity: 1,
+                subscription_expiry: nextRenewal.clone().subtract(30, 'days').valueOf()
+            });
         });
 
         it('should handle users whose renewal payments fail', async () => {
@@ -390,6 +473,22 @@ describe('PayPro webhooks', () => {
                     subscription_sku: 'pro-annual',
                     subscription_quantity: 1,
                     subscription_expiry: nextRenewal.valueOf() // Expiry is next charge date
+                }
+            });
+
+            // Confirm the write to the DB:
+            const dbUsers = await testDB.query(`SELECT * FROM users`);
+            expect(dbUsers.rows.length).to.equal(1);
+            expect(dbUsers.rows[0]).to.deep.include({
+                email: userEmail,
+                auth0_user_id: userId,
+                app_metadata: {
+                    subscription_status: 'past_due',
+                    payment_provider: 'paypro',
+                    subscription_id: '456',
+                    subscription_sku: 'pro-annual',
+                    subscription_quantity: 1,
+                    subscription_expiry: nextRenewal.valueOf()
                 }
             });
         });
@@ -513,6 +612,18 @@ describe('PayPro webhooks', () => {
                 banned: true
             });
             expect(metadataUpdate.subscription_expiry).to.be.greaterThan(0);
+
+            // Confirm the write to the DB:
+            const dbUsers = await testDB.query(`SELECT * FROM users`);
+            expect(dbUsers.rows.length).to.equal(1);
+            expect(dbUsers.rows[0]).to.deep.include({
+                email: userEmail,
+                auth0_user_id: userId
+            });
+            const dbMetadata = dbUsers.rows[0].app_metadata;
+            expect(dbMetadata.banned).to.equal(true);
+            expect(dbMetadata.subscription_status).to.equal('deleted');
+            expect(dbMetadata.subscription_expiry).to.be.greaterThan(0);
         });
 
     });
