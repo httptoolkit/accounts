@@ -42,7 +42,7 @@
   },
   "dependencies": {
     "@css-inline/css-inline": "^0.19.1",
-    "@httptoolkit/accounts": "^2.3.0",
+    "@httptoolkit/accounts": "^3.0.1",
     "@httptoolkit/util": "^0.1.5",
     "@sentry/node": "^8.55.0",
     "auth0": "^4.3.1",
