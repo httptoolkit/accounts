@@ -1,4 +1,3 @@
-import * as _ from 'lodash';
 import { delay, doWhile } from '@httptoolkit/util';
 import { SKU, SubscriptionPricing } from './types';
 
@@ -44,9 +43,9 @@ async function loadPlanPrices() {
     const productPrices = data.response.products as Array<SubscriptionPricing>;
 
     productPrices.forEach((productPrice) => {
-        const plan = _.find(SubscriptionPlans,
-            { paddleId: productPrice.product_id }
-        ) as SubscriptionPlan | undefined;
+        const plan = Object.values(SubscriptionPlans).find(
+            plan => plan.paddleId === productPrice.product_id
+        );
 
         if (!plan) return;
 
@@ -77,7 +76,7 @@ export async function loadPlanPricesUntilSuccess() {
         ]).then(() => delay(1000)), // Limit the frequency
 
         // While: if any subs didn't successfully get data, try again:
-        () => _.some(SubscriptionPlans, (plan) => !plan.prices),
+        () => Object.values(SubscriptionPlans).some((plan) => !plan.prices),
     );
 
     return SubscriptionPlans;
@@ -87,7 +86,7 @@ function formatPrice(currency: string, price: number) {
     return Number(price).toLocaleString(undefined, {
         style: "currency",
         currency: currency,
-        minimumFractionDigits: _.round(price) === price ? 0 : 2,
+        minimumFractionDigits: Math.round(price) === price ? 0 : 2,
         maximumFractionDigits: 2
     })
 }
@@ -95,4 +94,6 @@ function formatPrice(currency: string, price: number) {
 export const getPlanByCode = (sku: SKU) => SubscriptionPlans[sku];
 
 export const getSKUForPaddleId = (paddleId: number | undefined) =>
-    _.findKey(SubscriptionPlans, { paddleId: paddleId }) as SKU | undefined;
+    (Object.keys(SubscriptionPlans) as SKU[]).find(sku =>
+        SubscriptionPlans[sku].paddleId === paddleId
+    );

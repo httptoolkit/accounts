@@ -1,4 +1,3 @@
-import * as _ from 'lodash';
 import { Mutex } from 'async-mutex';
 import { asErrorLike, CustomError } from '@httptoolkit/util';
 
@@ -450,6 +449,13 @@ async function parseBillingData(billingData: UserBillingData | null): Promise<Bi
     };
 }
 
+// Checks all fields except the listed optional ones are non-null/undefined
+function hasAllRequiredFields(obj: Record<string, unknown>, optionalFields: string[]) {
+    return Object.entries(obj)
+        .filter(([key]) => !optionalFields.includes(key))
+        .every(([_, v]) => v != null);
+}
+
 function parseSubscriptionData(rawData: SubscriptionData) {
     const sku = rawData.subscription_sku
         ?? getSKUForPaddleId(rawData.subscription_plan_id);
@@ -472,7 +478,7 @@ function parseSubscriptionData(rawData: SubscriptionData) {
         canManageSubscription: !!rawData.can_manage_subscription
     };
 
-    if (_.some(subscription) && !subscription.plan) {
+    if (Object.values(subscription).some(Boolean) && !subscription.plan) {
         // No plan means no recognized plan, i.e. an unknown id. This should never happen,
         // but error reports suggest it's happened at least once.
         console.warn('Invalid raw subscription data', rawData)
@@ -485,10 +491,7 @@ function parseSubscriptionData(rawData: SubscriptionData) {
         'cancelSubscriptionUrl'
     ];
 
-    const isCompleteSubscriptionData = _.every(
-        _.omit(subscription, ...optionalFields),
-        v => !_.isNil(v) // Not just truthy: canManageSubscription can be false on valid sub
-    );
+    const isCompleteSubscriptionData = hasAllRequiredFields(subscription, optionalFields);
 
     // Use undefined rather than {} or partial data when there's any missing required sub fields
     return isCompleteSubscriptionData
