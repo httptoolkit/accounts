@@ -8,7 +8,6 @@ import {
     startAPI,
     freshAuthToken,
     givenTeam,
-    delay,
     givenAuthToken,
     givenUser
 } from './test-setup/setup.ts';
@@ -97,25 +96,13 @@ describe('/update-team-size', () => {
                 email: `member${i}@example.com`
             }));
 
-            const { updateOwnerData, ownerAuthToken } = await givenTeam(team);
+            const { ownerAuthToken } = await givenTeam(team);
 
             const paddleUpdateEndpoint = await paddleServer.forPost('/api/2.0/subscription/users/update')
                 .thenJson(200, { success: true });
 
             const newQuantity = 10;
-            const teamUpdatePromise = updateTeamSize(apiServer, ownerAuthToken, newQuantity);
-
-            // Wait until the backend sends an update to Paddle:
-            while (true) {
-                await delay(1);
-                const paddleUpdates = await paddleUpdateEndpoint.getSeenRequests();
-                if (paddleUpdates.length >= 1) break;
-            }
-
-            // Simulate the user being updated by an async webhook:
-            await updateOwnerData({ subscription_quantity: newQuantity });
-
-            const response = await teamUpdatePromise;
+            const response = await updateTeamSize(apiServer, ownerAuthToken, newQuantity);
             expect(response.status).to.equal(200);
 
             const paddleUpdates = await paddleUpdateEndpoint.getSeenRequests();
@@ -144,25 +131,13 @@ describe('/update-team-size', () => {
             }));
             team.push(undefined);
 
-            const { updateOwnerData, ownerAuthToken } = await givenTeam(team);
+            const { ownerAuthToken } = await givenTeam(team);
 
             const paddleUpdateEndpoint = await paddleServer.forPost('/api/2.0/subscription/users/update')
                 .thenJson(200, { success: true });
 
             const newQuantity = 4;
-            const teamUpdatePromise = updateTeamSize(apiServer, ownerAuthToken, newQuantity);
-
-            // Wait until the backend sends an update to Paddle:
-            while (true) {
-                await delay(1);
-                const paddleUpdates = await paddleUpdateEndpoint.getSeenRequests();
-                if (paddleUpdates.length >= 1) break;
-            }
-
-            // Simulate the user being updated by an async webhook:
-            await updateOwnerData({ subscription_quantity: newQuantity });
-
-            const response = await teamUpdatePromise;
+            const response = await updateTeamSize(apiServer, ownerAuthToken, newQuantity);
             expect(response.status).to.equal(200);
 
             const paddleUpdates = await paddleUpdateEndpoint.getSeenRequests();

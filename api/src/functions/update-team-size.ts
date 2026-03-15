@@ -1,6 +1,5 @@
 import log from 'loglevel';
 
-import { delay } from '@httptoolkit/util';
 import { initSentry, catchErrors, reportError, StatusError } from '../errors.ts';
 initSentry();
 
@@ -89,24 +88,10 @@ export const handler = catchErrors(async (event) => {
             });
         } catch (e: any) {
             await reportError(e);
-
             return { statusCode: 500, headers, body: `Subscription update failed: ${e.message || e}` };
         }
 
-        // Wait up to 30 seconds for the payment & webhook to arrive:
-        const startTime = Date.now();
-        while (Date.now() - startTime < 30_000) {
-            const userData = await getUserById(ownerId);
-            const ownerData = userData.app_metadata as TeamOwnerMetadata;
-            if (ownerData.subscription_quantity === newTeamSize) {
-                return { statusCode: 200, headers, body: 'success' };
-            }
-
-            await delay(500);
-        }
-
-        await reportError(`Payment completed for team size update but no update applied for team ${ownerId}`);
-        return { statusCode: 500, headers, body: 'No subscription update received from Paddle before timeout' };
+        return { statusCode: 200, headers, body: 'success' };
     } catch (e: any) {
         await reportError(e);
 
