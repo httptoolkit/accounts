@@ -98,6 +98,7 @@ describe('/update-team', () => {
             const subExpiry = Date.now();
 
             await givenUser(userId, userEmail, {
+                payment_provider: 'paddle',
                 subscription_expiry: subExpiry,
                 subscription_id: '2',
                 subscription_plan_id: 550380,
@@ -509,6 +510,7 @@ describe('/update-team', () => {
             const existingUserEmail = 'existing@example.com';
 
             await givenUser(existingUserId, existingUserEmail, {
+                payment_provider: 'paddle',
                 paddle_user_id: '123',
                 subscription_id: '234',
                 subscription_quantity: 1,
@@ -545,6 +547,7 @@ describe('/update-team', () => {
             const existingUserEmail = 'existing@example.com';
 
             await givenUser(existingUserId, existingUserEmail, {
+                payment_provider: 'paddle',
                 paddle_user_id: '123',
                 subscription_id: '234',
                 subscription_quantity: 1,
@@ -623,6 +626,7 @@ describe('/update-team', () => {
             const existingUserEmail = 'existing@example.com';
 
             await givenUser(existingUserId, existingUserEmail, {
+                payment_provider: 'paddle',
                 paddle_user_id: '123',
                 subscription_id: '234',
                 subscription_quantity: 1,

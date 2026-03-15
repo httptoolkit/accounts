@@ -132,8 +132,7 @@ const SUBSCRIPTION_PROPERTIES = [
     'locked_licenses',
     'subscription_owner_id',
     'joined_team_at',
-    'can_manage_subscription',
-    'can_update_team_size'
+    'can_manage_subscription'
 ] as const;
 
 // The subscription properties extracted from team owners and delegated to members:
@@ -217,15 +216,6 @@ async function buildUserAppData(rawMetadata: RawMetadata) {
     // PayPro users need to go to their control panel to update billing details:
     if (userMetadata.can_manage_subscription && (rawMetadata as PayingUserMetadata).payment_provider === 'paypro') {
         userMetadata.update_url = 'https://cc.payproglobal.com/Customer/Account/Login';
-    }
-
-    // Only Paddle team subscriptions support self-service team size updates:
-    if (
-        userMetadata.can_manage_subscription &&
-        isTeamSubscription(sku) &&
-        (rawMetadata as PayingUserMetadata).payment_provider === 'paddle'
-    ) {
-        (userMetadata as any).can_update_team_size = true;
     }
 
     // Annoyingly due to an old implementation issue in the UI

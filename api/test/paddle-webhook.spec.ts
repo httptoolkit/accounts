@@ -221,6 +221,7 @@ describe('Paddle webhooks', () => {
             const memberEmail = 'member@example.com';
 
             await givenUser(ownerId, ownerEmail, {
+                payment_provider: 'paddle',
                 subscription_sku: 'team-annual',
                 team_member_ids: [
                     'other-member-id',
@@ -323,6 +324,7 @@ describe('Paddle webhooks', () => {
             const memberEmail = 'member@example.com';
 
             await givenUser(ownerId, ownerEmail, {
+                payment_provider: 'paddle',
                 subscription_sku: 'team-annual',
                 team_member_ids: [
                     'other-member-id',
@@ -444,6 +446,7 @@ describe('Paddle webhooks', () => {
             const cancellationDate = moment('2030-01-01');
 
             await givenUser(userId, userEmail, {
+                payment_provider: 'paddle',
                 subscription_status: 'active',
                 paddle_user_id: 123,
                 subscription_id: '456',
@@ -506,6 +509,7 @@ describe('Paddle webhooks', () => {
             const finalDate = moment('2020-01-07');
 
             await givenUser(userId, userEmail, {
+                payment_provider: 'paddle',
                 subscription_status: 'active',
                 paddle_user_id: '123',
                 subscription_id: '456',

@@ -115,6 +115,7 @@ describe('/get-billing-data', () => {
             const subExpiry = Date.now();
 
             await givenUser(userId, userEmail, {
+                payment_provider: 'paddle',
                 subscription_expiry: subExpiry,
                 subscription_id: subId,
                 subscription_sku: 'pro-monthly',
@@ -306,6 +307,7 @@ describe('/get-billing-data', () => {
 
             await givenUser(billingUserId, billingUserEmail, {
                 team_member_ids: ['123', '456', teamUserId],
+                payment_provider: 'paddle',
                 subscription_expiry: subExpiry,
                 subscription_id: subId,
                 subscription_quantity: 3,
@@ -354,6 +356,7 @@ describe('/get-billing-data', () => {
                     new Date(2000, 0, 0).getTime(), // Expired lock
                     new Date(2050, 0, 0).getTime() // Locked for ~30 years
                 ],
+                payment_provider: 'paddle',
                 subscription_expiry: subExpiry,
                 subscription_id: subId,
                 subscription_quantity: 2, // <-- 2 allowed, but only 1 really due to locked license
@@ -442,6 +445,7 @@ describe('/get-billing-data', () => {
                 subscription_owner_id: billingUserId, // Points to their own id
                 feature_flags: ['a flag'],
                 team_member_ids: [billingUserId], // Includes their own id
+                payment_provider: 'paddle',
                 subscription_expiry: subExpiry,
                 subscription_id: subId,
                 subscription_quantity: 1,
@@ -531,6 +535,7 @@ describe('/get-billing-data', () => {
             await givenUser(billingUserId, billingUserEmail, {
                 team_member_ids: ['123', '456', teamUserId],
                 subscription_quantity: 2, // <-- 2 allowed, but we're 3rd in the ids above
+                payment_provider: 'paddle',
                 subscription_expiry: subExpiry,
                 subscription_id: subId,
                 subscription_sku: 'team-monthly',
@@ -576,6 +581,7 @@ describe('/get-billing-data', () => {
                 team_member_ids: ['123', '456', teamUserId],
                 locked_licenses: [new Date(2050, 0, 0).getTime()], // Locked for ~30 years
                 subscription_quantity: 3, // <-- 3 allowed, would be OK except for the locked license
+                payment_provider: 'paddle',
                 subscription_expiry: subExpiry,
                 subscription_id: '2',
                 subscription_sku: 'team-monthly',
@@ -619,6 +625,7 @@ describe('/get-billing-data', () => {
 
             await givenUser(billingUserId, billingUserEmail, {
                 team_member_ids: [], // <-- doesn't include this user
+                payment_provider: 'paddle',
                 subscription_expiry: subExpiry,
                 subscription_id: '2',
                 subscription_sku: 'team-monthly',

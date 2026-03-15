@@ -76,6 +76,7 @@ describe('/update-team-size', () => {
             const subExpiry = Date.now();
 
             await givenUser(userId, userEmail, {
+                payment_provider: 'paddle',
                 subscription_expiry: subExpiry,
                 subscription_id: '2',
                 subscription_plan_id: 550380,

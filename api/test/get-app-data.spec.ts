@@ -172,6 +172,7 @@ describe('/get-app-data', () => {
 
             await givenUser(userId, userEmail, {
                 subscription_expiry: subExpiry,
+                payment_provider: 'paddle',
                 subscription_id: '2',
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
@@ -208,6 +209,7 @@ describe('/get-app-data', () => {
             await givenUser(userId, userEmail, {
                 feature_flags: ['test_flag'],
                 subscription_expiry: subExpiry,
+                payment_provider: 'paddle',
                 subscription_id: '2',
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
@@ -245,6 +247,7 @@ describe('/get-app-data', () => {
             await givenUser(userId, userEmail, {
                 feature_flags: ['test_flag'],
                 subscription_expiry: subExpiry,
+                payment_provider: 'paddle',
                 subscription_id: '2',
                 subscription_sku: 'pro-monthly',
                 subscription_plan_id: 550380,
@@ -282,6 +285,7 @@ describe('/get-app-data', () => {
             await givenUser(billingUserId, billingUserEmail, {
                 team_member_ids: ['123', '456', teamUserId],
                 subscription_expiry: subExpiry,
+                payment_provider: 'paddle',
                 subscription_id: '2',
                 subscription_quantity: 3,
                 subscription_sku: 'team-monthly',
@@ -319,6 +323,7 @@ describe('/get-app-data', () => {
                 feature_flags: ['a flag'],
                 team_member_ids: ['123', '456'],
                 subscription_expiry: subExpiry,
+                payment_provider: 'paddle',
                 subscription_id: '2',
                 subscription_quantity: 2,
                 subscription_sku: 'team-monthly',
@@ -364,6 +369,7 @@ describe('/get-app-data', () => {
                 feature_flags: ['a flag'],
                 team_member_ids: [billingUserId], // Includes their own id
                 subscription_expiry: subExpiry,
+                payment_provider: 'paddle',
                 subscription_id: '2',
                 subscription_quantity: 2,
                 subscription_sku: 'team-monthly',
@@ -392,7 +398,6 @@ describe('/get-app-data', () => {
                 subscription_quantity: 2,
                 subscription_id: -1,
                 can_manage_subscription: true,
-                can_update_team_size: true,
 
                 team_subscription: {
                     team_member_ids: [billingUserId],
@@ -424,6 +429,7 @@ describe('/get-app-data', () => {
             await givenUser(billingUserId, billingUserEmail, {
                 team_member_ids: ['123', '456', teamUserId],
                 subscription_quantity: 2, // <-- 2 allowed, but we're 3rd in the ids above
+                payment_provider: 'paddle',
                 subscription_expiry: subExpiry,
                 subscription_id: '2',
                 subscription_sku: 'team-monthly',
@@ -461,6 +467,7 @@ describe('/get-app-data', () => {
                 team_member_ids: ['123', '456', teamUserId],
                 locked_licenses: [new Date(2050, 0, 0).getTime()], // Locked for ~30 years
                 subscription_quantity: 3, // <-- 3 allowed, OK except for the locked license
+                payment_provider: 'paddle',
                 subscription_expiry: subExpiry,
                 subscription_id: '2',
                 subscription_sku: 'team-monthly',
@@ -496,6 +503,7 @@ describe('/get-app-data', () => {
 
             await givenUser(billingUserId, billingUserEmail, {
                 team_member_ids: [], // <-- doesn't include this user
+                payment_provider: 'paddle',
                 subscription_expiry: subExpiry,
                 subscription_id: '2',
                 subscription_sku: 'team-monthly',

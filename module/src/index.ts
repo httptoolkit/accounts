@@ -31,5 +31,6 @@ export {
     Transaction,
     TeamMember,
     getBillingData,
-    updateTeamMembers
+    updateTeamMembers,
+    updateTeamSize
 } from './auth';

@@ -202,6 +202,7 @@ interface Subscription {
     cancelSubscriptionUrl?: string;
     lastReceiptUrl?: string;
     canManageSubscription: boolean;
+    canUpdateTeamSize: boolean;
 };
 
 interface BaseAccountData {
@@ -475,7 +476,8 @@ function parseSubscriptionData(rawData: SubscriptionData) {
         updateBillingDetailsUrl: rawData.update_url,
         cancelSubscriptionUrl: rawData.cancel_url,
         lastReceiptUrl: rawData.last_receipt_url,
-        canManageSubscription: !!rawData.can_manage_subscription
+        canManageSubscription: !!rawData.can_manage_subscription,
+        canUpdateTeamSize: !!rawData.can_update_team_size
     };
 
     if (Object.values(subscription).some(Boolean) && !subscription.plan) {
@@ -557,6 +559,26 @@ export async function updateTeamMembers(
         const responseBody = await appDataResponse.text();
         console.log(`Received ${appDataResponse.status} updating team members: ${responseBody}`);
         throw new Error(responseBody || `Failed to update team members`);
+    }
+}
+
+export async function updateTeamSize(newTeamSize: number): Promise<void> {
+    const token = await getToken();
+    if (!token) throw new Error("Can't update team size without an auth token");
+
+    const response = await fetch(`${ACCOUNTS_API_BASE}/update-team-size`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ newTeamSize })
+    });
+
+    if (!response.ok) {
+        const responseBody = await response.text();
+        console.log(`Received ${response.status} updating team size: ${responseBody}`);
+        throw new Error(responseBody || 'Failed to update team size');
     }
 }
 

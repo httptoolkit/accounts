@@ -100,6 +100,10 @@ export interface SubscriptionData {
     // This isn't a security mechanism - it's more like an indicative check for UX to decide
     // whether cancel/update buttons should show. Real check happens in API endpoints.
     can_manage_subscription?: boolean;
+
+    // Only true for team subscriptions where the payment provider supports
+    // self-service team size updates (currently Paddle only).
+    can_update_team_size?: boolean;
 }
 
 // Transaction data, as returned within API billing responses
