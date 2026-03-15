@@ -99,7 +99,8 @@ describe('/get-billing-data', () => {
                 user_id: userId,
                 email: userEmail,
                 transactions: [],
-                can_manage_subscription: false
+                can_manage_subscription: false,
+                can_update_team_size: false
             });
         });
     });
@@ -157,7 +158,8 @@ describe('/get-billing-data', () => {
                     receipt_url: "receipt.example",
                     status: "completed"
                 }],
-                can_manage_subscription: true
+                can_manage_subscription: true,
+                can_update_team_size: false
             });
         });
 
@@ -216,7 +218,8 @@ describe('/get-billing-data', () => {
                     receipt_url: "receipt.example",
                     status: "completed"
                 }],
-                can_manage_subscription: true
+                can_manage_subscription: true,
+                can_update_team_size: false
             });
         });
 
@@ -281,6 +284,7 @@ describe('/get-billing-data', () => {
                     status: "completed"
                 } as TransactionData],
                 can_manage_subscription: true,
+                can_update_team_size: false,
                 update_url: 'https://cc.payproglobal.com/Customer/Account/Login'
             });
         });
@@ -325,7 +329,8 @@ describe('/get-billing-data', () => {
                     name: billingUserEmail
                 },
                 transactions: [],
-                can_manage_subscription: false
+                can_manage_subscription: false,
+                can_update_team_size: false
             });
         });
 
@@ -402,6 +407,7 @@ describe('/get-billing-data', () => {
                 cancel_url: 'cu',
                 update_url: 'uu',
                 can_manage_subscription: true,
+                can_update_team_size: true,
 
                 transactions: [{
                     amount: "1.00",
@@ -489,6 +495,7 @@ describe('/get-billing-data', () => {
                 cancel_url: 'cu',
                 update_url: 'uu',
                 can_manage_subscription: true,
+                can_update_team_size: true,
 
                 transactions: [{
                     amount: "1.00",
@@ -543,6 +550,7 @@ describe('/get-billing-data', () => {
                 email: teamUserEmail,
                 transactions: [],
                 can_manage_subscription: false,
+                can_update_team_size: false,
                 team_owner: {
                     id: billingUserId,
                     name: billingUserEmail,
@@ -587,6 +595,7 @@ describe('/get-billing-data', () => {
                 email: teamUserEmail,
                 transactions: [],
                 can_manage_subscription: false,
+                can_update_team_size: false,
                 team_owner: {
                     id: billingUserId,
                     name: billingUserEmail,
@@ -629,6 +638,7 @@ describe('/get-billing-data', () => {
                 email: teamUserEmail,
                 transactions: [],
                 can_manage_subscription: false,
+                can_update_team_size: false,
                 team_owner: {
                     id: billingUserId,
                     name: billingUserEmail,

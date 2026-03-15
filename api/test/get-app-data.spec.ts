@@ -392,6 +392,7 @@ describe('/get-app-data', () => {
                 subscription_quantity: 2,
                 subscription_id: -1,
                 can_manage_subscription: true,
+                can_update_team_size: true,
 
                 team_subscription: {
                     team_member_ids: [billingUserId],

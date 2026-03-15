@@ -132,7 +132,8 @@ const SUBSCRIPTION_PROPERTIES = [
     'locked_licenses',
     'subscription_owner_id',
     'joined_team_at',
-    'can_manage_subscription'
+    'can_manage_subscription',
+    'can_update_team_size'
 ] as const;
 
 // The subscription properties extracted from team owners and delegated to members:
@@ -218,6 +219,15 @@ async function buildUserAppData(rawMetadata: RawMetadata) {
         userMetadata.update_url = 'https://cc.payproglobal.com/Customer/Account/Login';
     }
 
+    // Only Paddle team subscriptions support self-service team size updates:
+    if (
+        userMetadata.can_manage_subscription &&
+        isTeamSubscription(sku) &&
+        (rawMetadata as PayingUserMetadata).payment_provider === 'paddle'
+    ) {
+        (userMetadata as any).can_update_team_size = true;
+    }
+
     // Annoyingly due to an old implementation issue in the UI
     // (https://github.com/httptoolkit/httptoolkit-ui/commit/acb42aa9e4c05659beae2039854598c982083ffe)
     // we need to return some subscription_id in all paid cases, even though it's never used.
@@ -254,7 +264,7 @@ function countLockedLicenses(userMetadata: TeamOwnerMetadata) {
 
 async function buildUserBillingData(
     rawMetadata: RawMetadata & Partial<PayingUserMetadata>
-): Promise<UserBillingData> {
+) {
     const userId = rawMetadata.user_id;
 
     // Load transactions, team members and team owner in parallel:
@@ -282,6 +292,12 @@ async function buildUserBillingData(
         rawMetadata.update_url = 'https://cc.payproglobal.com/Customer/Account/Login';
     }
 
+    // Only Paddle team subscriptions support self-service team size updates:
+    const sku = getSku(rawMetadata);
+    const can_update_team_size = can_manage_subscription &&
+        isTeamSubscription(sku) &&
+        rawMetadata.payment_provider === 'paddle';
+
     return {
         ..._.cloneDeep(_.omit(rawMetadata, [
             // Filter to just billing related non-duplicated data
@@ -292,6 +308,7 @@ async function buildUserBillingData(
             ...INTERNAL_FIELDS
         ])),
         can_manage_subscription,
+        can_update_team_size,
         user_id: rawMetadata.user_id!,
         email: rawMetadata.email!,
         transactions,
