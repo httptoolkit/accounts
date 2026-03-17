@@ -52,8 +52,8 @@ export async function setRevenueTraits(email: string, traits: Traits, retries = 
             return;
         } else if (response.status === 400 && responseBody?.includes('hit trait limit')) {
             // Too many traits (max 100 => most likely not a top 100 country). Annoying but
-            // an unavoidable limitation of Profitwell, so we report but consider as OK for now.
-            reportError(`Unable to log ${trait}=${category} for ${email} due to trait limit`);
+            // an unavoidable limitation of Profitwell, so we just ignore it.
+            console.log(`Unable to log ${trait}=${category} for ${email} due to trait limit`);
             return;
         } else if (!response.ok) {
             log.warn(`${response.status} Profitwell traits response: ${responseBody}`);
