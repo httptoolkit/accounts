@@ -51,7 +51,7 @@
     "handlebars": "^4.7.8",
     "ipaddr.js": "^2.1.0",
     "jsonwebtoken": "^9.0.2",
-    "kysely": "^0.28.9",
+    "kysely": "^0.28.12",
     "lodash": "^4.17.23",
     "loglevel": "^1.9.1",
     "moment": "^2.29.4",
