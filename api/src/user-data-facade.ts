@@ -75,13 +75,14 @@ export async function createUser(email: string, appMetadata: AppMetadata = {}) {
     return { user_id: auth0Creation.user_id, email, app_metadata: appMetadata } as User;
 }
 
-function createDbUser(auth0Id: string, email: string, appMetadata: AppMetadata = {}) {
-    return db.insertInto('users')
+async function createDbUser(auth0Id: string, email: string, appMetadata: AppMetadata = {}): Promise<void> {
+    await db.insertInto('users')
         .values({
             auth0_user_id: auth0Id,
             email,
             app_metadata: appMetadata
         })
+        .onConflict((oc) => oc.doNothing())
         .execute();
 }
 
