@@ -162,6 +162,7 @@ export function catchErrors(handler: ApiHandler): ApiHandler {
                     specificFailureStatus ?? 500
                 } due to: ${formatErrorMessage(e)}`, {
                     eventContext: event,
+                    extraMetadata: e.metadata,
                     cause: e
                 }),
 

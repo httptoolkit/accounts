@@ -73,8 +73,18 @@ export const handler = catchErrors(async (event) => {
         };
     }
 
-    await sendContactFormEmail(name, email, message);
-    log.info('Sent contract form email from ' + email);
+    try {
+        await sendContactFormEmail(name, email, message);
+    } catch (e: any) {
+        // Attach metadata, as context for error logging later
+        e.metadata = {
+            name,
+            email,
+            message
+        };
+        throw e;
+    }
+    log.info('Sent contact form email from ' + email);
 
     return {
         statusCode: 302,
