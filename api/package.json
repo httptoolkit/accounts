@@ -57,7 +57,7 @@
     "moment": "^2.29.4",
     "node-cache": "^5.1.2",
     "node-forge": "^1.4.0",
-    "nodemailer": "^8.0.4",
+    "nodemailer": "^8.0.5",
     "pg": "^8.16.3",
     "php-serialize": "^2.1.0",
     "posthog-node": "^4.0.1",
