@@ -1,0 +1,118 @@
+import log from 'loglevel';
+
+import { initSentry, catchErrors, StatusError } from '../errors.ts';
+initSentry();
+
+import { getCorsResponseHeaders } from '../cors.ts';
+import {
+    getAuth0UserIdFromToken,
+    getUserById,
+    updateUserMetadata,
+    PayingUserMetadata
+} from '../user-data-facade.ts';
+import { getPaddleIdForSku } from '../paddle.ts';
+import { isAcademic, findSchoolNames } from '../swot.ts';
+
+const BearerRegex = /^Bearer (\S+)$/;
+
+const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+const TWO_MONTHS_MS = 60 * 24 * 60 * 60 * 1000;
+
+/*
+This endpoint expects requests to be sent with a Bearer authorization,
+containing a valid access token for the Auth0 app.
+
+If the token is valid, the user's email is checked against the SWOT academic
+email database. If it's a recognized academic email, the user is granted a
+free Pro subscription for one year (renewable within 2 months of expiry).
+If the email is not academic, a 403 is returned with a structured error body
+so the frontend can show a fallback contact form.
+*/
+export const handler = catchErrors(async (event) => {
+    let headers = getCorsResponseHeaders(event);
+
+    if (event.httpMethod === 'OPTIONS') {
+        return { statusCode: 200, headers, body: '' };
+    } else if (event.httpMethod !== 'POST') {
+        return { statusCode: 405, headers, body: '' };
+    }
+
+    const { authorization } = event.headers;
+
+    const tokenMatch = BearerRegex.exec(authorization);
+    if (!tokenMatch) return { statusCode: 401, headers, body: '' };
+    const accessToken = tokenMatch[1];
+
+    const userId = await getAuth0UserIdFromToken(accessToken);
+    const user = await getUserById(userId);
+
+    if (!user.email) {
+        throw new StatusError(400, 'No email address associated with this account');
+    }
+
+    const email = user.email;
+
+    if (!isAcademic(email)) {
+        log.info(`Student account rejected for non-academic email: ${email}`);
+        return {
+            statusCode: 403,
+            headers,
+            body: JSON.stringify({
+                error: 'not_academic',
+                message: `The email address ${email} is not recognized as an academic email address. ` +
+                    'If you believe this is incorrect, please contact support.'
+            })
+        };
+    }
+
+    const existingMeta = user.app_metadata as Partial<PayingUserMetadata>;
+    const existingExpiry = existingMeta.subscription_expiry;
+    const hasActiveStudentSub =
+        existingMeta.subscription_status === 'active' &&
+        existingMeta.payment_provider === 'manual' &&
+        existingMeta.subscription_sku === 'pro-annual' &&
+        existingExpiry &&
+        existingExpiry > Date.now();
+
+    if (hasActiveStudentSub && existingExpiry > Date.now() + TWO_MONTHS_MS) {
+        return {
+            statusCode: 409,
+            headers,
+            body: JSON.stringify({
+                error: 'already_active',
+                message: 'You already have an active student subscription. ' +
+                    'You can renew when less than 2 months remain.',
+                expiry: existingMeta.subscription_expiry
+            })
+        };
+    }
+
+    const schoolNames = findSchoolNames(email);
+    const expiry = Date.now() + ONE_YEAR_MS;
+
+    await updateUserMetadata(userId, {
+        subscription_status: 'active',
+        payment_provider: 'manual',
+        subscription_sku: 'pro-annual',
+        subscription_plan_id: getPaddleIdForSku('pro-annual'),
+        subscription_quantity: 1,
+        subscription_expiry: expiry,
+        update_url: '',
+        cancel_url: ''
+    });
+
+    log.info(`Student account granted for ${email}` +
+        (schoolNames.length > 0 ? ` (${schoolNames[0]})` : '') +
+        `, expires ${new Date(expiry).toISOString()}`
+    );
+
+    return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+            success: true,
+            school: schoolNames.length > 0 ? schoolNames[0] : undefined,
+            expiry
+        })
+    };
+});
