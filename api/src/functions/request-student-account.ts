@@ -8,10 +8,11 @@ import {
     getAuth0UserIdFromToken,
     getUserById,
     updateUserMetadata,
-    PayingUserMetadata
+    TrialUserMetadata
 } from '../user-data-facade.ts';
 import { getPaddleIdForSku } from '../paddle.ts';
-import { isAcademic, findSchoolNames } from '../swot.ts';
+import { isAcademic } from 'educhk';
+
 
 const BearerRegex = /^Bearer (\S+)$/;
 
@@ -22,9 +23,9 @@ const TWO_MONTHS_MS = 60 * 24 * 60 * 60 * 1000;
 This endpoint expects requests to be sent with a Bearer authorization,
 containing a valid access token for the Auth0 app.
 
-If the token is valid, the user's email is checked against the SWOT academic
-email database. If it's a recognized academic email, the user is granted a
-free Pro subscription for one year (renewable within 2 months of expiry).
+If the token is valid, the user's email domain is checked with educhk.
+If it's a recognized academic email, the user is granted a free Pro trial
+for one year (renewable within 2 months of expiry).
 If the email is not academic, a 403 is returned with a structured error body
 so the frontend can show a fallback contact form.
 */
@@ -52,7 +53,8 @@ export const handler = catchErrors(async (event) => {
 
     const email = user.email;
 
-    if (!isAcademic(email)) {
+    const emailDomain = email.split('@')[1]?.toLowerCase();
+    if (!emailDomain || !isAcademic(emailDomain)) {
         log.info(`Student account rejected for non-academic email: ${email}`);
         return {
             statusCode: 403,
@@ -65,11 +67,11 @@ export const handler = catchErrors(async (event) => {
         };
     }
 
-    const existingMeta = user.app_metadata as Partial<PayingUserMetadata>;
+    const existingMeta = user.app_metadata as Partial<TrialUserMetadata> & { payment_provider?: string };
     const existingExpiry = existingMeta.subscription_expiry;
     const hasActiveStudentSub =
-        existingMeta.subscription_status === 'active' &&
-        existingMeta.payment_provider === 'manual' &&
+        existingMeta.subscription_status === 'trialing' &&
+        existingMeta.payment_provider === 'student-account' &&
         existingMeta.subscription_sku === 'pro-annual' &&
         existingExpiry &&
         existingExpiry > Date.now();
@@ -87,22 +89,20 @@ export const handler = catchErrors(async (event) => {
         };
     }
 
-    const schoolNames = findSchoolNames(email);
+    const school = emailDomain;
     const expiry = Date.now() + ONE_YEAR_MS;
 
     await updateUserMetadata(userId, {
-        subscription_status: 'active',
-        payment_provider: 'manual',
+        subscription_status: 'trialing',
+        payment_provider: 'student-account',
         subscription_sku: 'pro-annual',
         subscription_plan_id: getPaddleIdForSku('pro-annual'),
         subscription_quantity: 1,
-        subscription_expiry: expiry,
-        update_url: '',
-        cancel_url: ''
+        subscription_expiry: expiry
     });
 
     log.info(`Student account granted for ${email}` +
-        (schoolNames.length > 0 ? ` (${schoolNames[0]})` : '') +
+        (school ? ` (${school})` : '') +
         `, expires ${new Date(expiry).toISOString()}`
     );
 
@@ -111,7 +111,7 @@ export const handler = catchErrors(async (event) => {
         headers,
         body: JSON.stringify({
             success: true,
-            school: schoolNames.length > 0 ? schoolNames[0] : undefined,
+            school,
             expiry
         })
     };

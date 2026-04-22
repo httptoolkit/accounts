@@ -46,6 +46,7 @@
     "@httptoolkit/util": "^0.1.5",
     "@sentry/node": "^8.55.0",
     "auth0": "^4.3.1",
+    "educhk": "2026.4.22",
     "express": "^4.22.1",
     "express-rate-limit": "^7.4.1",
     "handlebars": "^4.7.9",

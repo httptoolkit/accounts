@@ -268,7 +268,8 @@ async function buildUserBillingData(
     let can_manage_subscription = false;
     if (
         (rawMetadata.subscription_status === 'active' || rawMetadata.subscription_status === 'past_due') &&
-        rawMetadata.payment_provider !== 'manual'
+        rawMetadata.payment_provider !== 'manual' &&
+        rawMetadata.payment_provider !== 'student-account'
     ) {
         can_manage_subscription = owner
             // If your sub has an owner, you can only manage the subscription if that's you:
@@ -334,7 +335,7 @@ async function getTransactions(rawMetadata: RawMetadata) {
     } else if (billingMetadata.payment_provider === 'paypro') {
         transactionsCacheKey = `paypro-${rawMetadata.email}`;
         transactionsRequest = lookupPayProOrders(rawMetadata.email);
-    } else if (billingMetadata.payment_provider === 'manual') {
+    } else if (billingMetadata.payment_provider === 'manual' || billingMetadata.payment_provider === 'student-account') {
         transactionsRequest = Promise.resolve([]); // No transactions for manual subscriptions
         transactionsCacheKey = `manual-${rawMetadata.email}`;
     } else {
