@@ -12,6 +12,7 @@ import { reportError } from './errors.ts';
 
 import { initializeDbConnection, testDbConnection, closeDatabase } from './db/database.ts';
 import { runMigrations } from './db/migrator.ts';
+import { startTokenCleanup } from './db/token-cleanup.ts';
 import { testEmailConnection } from './email/mailer.ts';
 
 const app = express();
@@ -168,6 +169,7 @@ apiRouter.get('/health', async (req, res) => {
 export async function startApiServer() {
     const db = await initializeDbConnection();
     await runMigrations(db);
+    startTokenCleanup();
 
     const server = app.listen(process.env.PORT ?? 4000, () => {
         log.info(`Server (version ${process.env.VERSION}) listening on port ${(server.address() as any).port}`);
