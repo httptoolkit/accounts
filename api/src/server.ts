@@ -74,7 +74,8 @@ apiRouter.options('*', (req, res) => {
         '/update-team',
         '/update-team-size',
         '/cancel-subscription',
-        '/log-abuse-report'
+        '/log-abuse-report',
+        '/request-student-account'
     ].includes(req.path)) {
         // Account APIs are limited to our own hosts:
         const headers = getCorsResponseHeaders(event);
@@ -132,6 +133,8 @@ apiRouter.post('/contact-form', lambdaWrapper('contact-form'));
 apiRouter.post('/update-team', lambdaWrapper('update-team'));
 apiRouter.post('/update-team-size', lambdaWrapper('update-team-size'));
 apiRouter.post('/cancel-subscription', lambdaWrapper('cancel-subscription'));
+
+apiRouter.post('/request-student-account', lambdaWrapper('request-student-account'));
 apiRouter.post('/log-abuse-report', (req, res) => {
     reportError(`Abuse report`, {
         extraMetadata: {

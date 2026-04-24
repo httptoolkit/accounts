@@ -57,7 +57,7 @@ export const handler = catchErrors(async (event) => {
             throw new StatusError(403, "Your account does not have a Team subscription");
         } else if (ownerData.subscription_status !== 'active' || ownerData.subscription_expiry < Date.now()) {
             throw new StatusError(403, "Your account does not have an active subscription");
-        } else if (ownerData.payment_provider === 'manual') {
+        } else if (ownerData.payment_provider === 'manual' || ownerData.payment_provider === 'student-account') {
             throw new StatusError(400, "Cannot update manually managed subscription. Please contact billing@httptoolkit.tech");
         } else if (ownerData.payment_provider !== 'paddle') {
             throw new StatusError(500, "Cannot update non-Paddle team subscription");

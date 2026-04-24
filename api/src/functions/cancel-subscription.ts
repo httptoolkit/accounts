@@ -54,6 +54,8 @@ export const handler = catchErrors(async (event) => {
         await PayPro.cancelSubscription(userData.subscription_id);
     } else if (userData.payment_provider === 'manual') {
         throw new StatusError(400, "To cancel this manually managed subscription please contact billing@httptoolkit.com");
+    } else if (userData.payment_provider === 'student-account') {
+        throw new StatusError(400, "Student subscriptions cannot be cancelled manually, and will expire automatically after 1 year.");
     } else {
         throw new UnreachableCheck(userData.payment_provider);
     }
