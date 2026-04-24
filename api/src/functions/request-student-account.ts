@@ -69,14 +69,14 @@ export const handler = catchErrors(async (event) => {
 
     const existingMeta = user.app_metadata as Partial<TrialUserMetadata> & { payment_provider?: string };
     const existingExpiry = existingMeta.subscription_expiry;
+
     const hasActiveStudentSub =
         existingMeta.subscription_status === 'trialing' &&
         existingMeta.payment_provider === 'student-account' &&
-        existingMeta.subscription_sku === 'pro-annual' &&
         existingExpiry &&
-        existingExpiry > Date.now();
+        existingExpiry > Date.now() + TWO_MONTHS_MS;
 
-    if (hasActiveStudentSub && existingExpiry > Date.now() + TWO_MONTHS_MS) {
+    if (hasActiveStudentSub) {
         return {
             statusCode: 409,
             headers,
@@ -84,6 +84,17 @@ export const handler = catchErrors(async (event) => {
                 error: 'already_active',
                 message: 'You already have an active student subscription. ' +
                     'You can renew when less than 2 months remain.',
+                expiry: existingMeta.subscription_expiry
+            })
+        };
+    } else if (existingMeta.subscription_status === 'active') {
+        return {
+            statusCode: 409,
+            headers,
+            body: JSON.stringify({
+                error: 'paid_account',
+                message: 'You have an active paid subscription. ' +
+                    'Please cancel your existing subscription first, and try again.',
                 expiry: existingMeta.subscription_expiry
             })
         };

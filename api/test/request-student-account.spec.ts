@@ -83,4 +83,61 @@ describe('Request student account API', () => {
 
         expect(dbUser.rows[0].app_metadata).to.deep.equal({});
     });
+
+    it('rejects existing student accounts', async () => {
+        const authToken = freshAuthToken();
+        const userId = 'paying-student-user';
+        const userEmail = 'paying-student@stanford.edu';
+
+        const initialData = {
+            payment_provider: 'student-account',
+            subscription_status: 'trialing',
+            subscription_expiry: Date.now() + 1000 * 60 * 60 * 24 * 365, // 1 year in future
+            subscription_sku: 'pro-annual'
+        }
+
+        await givenUser(userId, userEmail, initialData);
+        await givenAuthToken(authToken, userId);
+
+        const response = await requestStudentAccount(apiServer, authToken);
+        expect(response.status).to.equal(409);
+
+        const body = await response.json();
+        expect(body.error).to.equal('already_active');
+        expect(body.message).to.equal('You already have an active student subscription. You can renew when less than 2 months remain.');
+
+        const dbUser = await testDB.query(
+            'SELECT app_metadata FROM users WHERE auth0_user_id = $1',
+            [userId]
+        );
+
+        expect(dbUser.rows[0].app_metadata).to.deep.equal(initialData);
+    });
+
+    it('rejects existing paying users', async () => {
+        const authToken = freshAuthToken();
+        const userId = 'paying-student-user';
+        const userEmail = 'paying-student@stanford.edu';
+
+        const initialData = {
+            payment_provider: 'paddle',
+            subscription_status: 'active'
+        }
+        await givenUser(userId, userEmail, initialData);
+        await givenAuthToken(authToken, userId);
+
+        const response = await requestStudentAccount(apiServer, authToken);
+        expect(response.status).to.equal(409);
+
+        const body = await response.json();
+        expect(body.error).to.equal('paid_account');
+        expect(body.message).to.equal('You have an active paid subscription. Please cancel your existing subscription first, and try again.');
+
+        const dbUser = await testDB.query(
+            'SELECT app_metadata FROM users WHERE auth0_user_id = $1',
+            [userId]
+        );
+
+        expect(dbUser.rows[0].app_metadata).to.deep.equal(initialData);
+    });
 });
