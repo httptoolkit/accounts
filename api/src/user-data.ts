@@ -12,10 +12,8 @@ import type {
 import { delay, UnreachableCheck } from '@httptoolkit/util';
 
 import {
-    getPaddleIdForSku,
     getPaddleUserIdFromSubscription,
-    lookupPaddleUserTransactions,
-    getSkuForPaddleId
+    lookupPaddleUserTransactions
 } from './paddle.ts';
 import {
     LICENSE_LOCK_DURATION_MS,
@@ -78,16 +76,6 @@ async function loadRawUserData(userId: string): Promise<RawMetadata> {
 }
 
 function migrateOldUserData(data: RawMetadata): RawMetadata {
-    if ('subscription_plan_id' in data && !data.subscription_sku) {
-        data.subscription_sku = getSkuForPaddleId(data.subscription_plan_id);
-    }
-
-    // Just temporarily (remove after May 2023) we return a synthetic subscription_plan_id
-    // even if not present, as a quick hack to avoid breaking old UI implementations:
-    if ('subscription_sku' in data && !data.subscription_plan_id) {
-        data.subscription_plan_id = getPaddleIdForSku(data.subscription_sku ?? 'pro-monthly');
-    }
-
     // All subscription & paddle ids should be strings now
     if ('subscription_id' in data && _.isNumber(data.subscription_id)) {
         data.subscription_id = data.subscription_id.toString();
@@ -121,7 +109,6 @@ const SUBSCRIPTION_PROPERTIES = [
     'subscription_status',
     'subscription_id',
     'subscription_sku',
-    'subscription_plan_id',
     'subscription_expiry',
     'subscription_quantity',
     'last_receipt_url',
@@ -139,7 +126,6 @@ const SUBSCRIPTION_PROPERTIES = [
 const EXTRACTED_TEAM_SUBSCRIPTION_PROPERTIES = [
     'subscription_status',
     'subscription_sku',
-    'subscription_plan_id',
     'subscription_expiry',
     'subscription_quantity',
     'last_receipt_url',
@@ -152,8 +138,7 @@ const DELEGATED_TEAM_SUBSCRIPTION_PROPERTIES = [
     'subscription_status',
     'subscription_expiry',
     'subscription_quantity',
-    'subscription_sku',
-    'subscription_plan_id'
+    'subscription_sku'
 ] as const;
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;

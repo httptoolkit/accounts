@@ -49,7 +49,6 @@ function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<Payin
             paddle_user_id: hookData.user_id,
             subscription_id: hookData.subscription_id,
             subscription_sku: getSkuForPaddleId(planId),
-            subscription_plan_id: planId,
             subscription_quantity: parseInt(quantity, 10),
             subscription_expiry: endDate,
             update_url: hookData.update_url,
@@ -70,7 +69,6 @@ function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<Payin
             paddle_user_id: hookData.user_id,
             subscription_id: hookData.subscription_id,
             subscription_sku: getSkuForPaddleId(planId),
-            subscription_plan_id: planId,
             subscription_expiry: endDate,
             update_url: hookData.update_url,
             cancel_url: hookData.cancel_url
@@ -89,7 +87,6 @@ function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<Payin
             paddle_user_id: hookData.user_id,
             subscription_id: hookData.subscription_id,
             subscription_sku: getSkuForPaddleId(planId),
-            subscription_plan_id: planId,
             subscription_expiry: endDate,
             subscription_quantity: parseInt(hookData.quantity, 10),
             last_receipt_url: hookData.receipt_url,
@@ -111,7 +108,6 @@ function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<Payin
             paddle_user_id: hookData.user_id,
             subscription_id: hookData.subscription_id,
             subscription_sku: getSkuForPaddleId(planId),
-            subscription_plan_id: planId,
             subscription_expiry: endDate,
             update_url: hookData.update_url,
             cancel_url: hookData.cancel_url,
@@ -151,9 +147,7 @@ export const handler = catchErrors(async (event) => {
         } else {
             throw new Error(`Webhook received for unknown subscription type: ${
                 userData.subscription_sku
-            }/${
-                userData.subscription_plan_id
-            }`);
+            } (plan ${paddleData.subscription_plan_id})`);
         }
     } else if (paddleData.alert_name === 'payment_dispute_created') {
         // If we receive a payment dispute, that means either the user has stolen somebody else's credit card,

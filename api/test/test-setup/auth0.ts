@@ -150,7 +150,7 @@ export async function givenAuth0Team(
         subscription_expiry: subExpiry,
         subscription_id: '2',
         subscription_quantity: teamMembersAndSpaces.length,
-        subscription_plan_id: 550789,
+        subscription_sku: 'team-monthly',
         subscription_status: "active",
         last_receipt_url: 'lru',
         cancel_url: 'cu',

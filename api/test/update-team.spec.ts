@@ -101,7 +101,6 @@ describe('/update-team', () => {
                 payment_provider: 'paddle',
                 subscription_expiry: subExpiry,
                 subscription_id: '2',
-                subscription_plan_id: 550380,
                 subscription_status: "active"
             });
             await givenAuthToken(authToken, userId);
@@ -514,7 +513,6 @@ describe('/update-team', () => {
                 paddle_user_id: '123',
                 subscription_id: '234',
                 subscription_quantity: 1,
-                subscription_plan_id: 550380,
                 update_url: 'uu',
                 cancel_url: 'cu',
                 subscription_status: 'active',
@@ -551,7 +549,6 @@ describe('/update-team', () => {
                 paddle_user_id: '123',
                 subscription_id: '234',
                 subscription_quantity: 1,
-                subscription_plan_id: 550380,
                 update_url: 'uu',
                 cancel_url: 'cu',
                 subscription_status: 'active',
@@ -630,7 +627,6 @@ describe('/update-team', () => {
                 paddle_user_id: '123',
                 subscription_id: '234',
                 subscription_quantity: 1,
-                subscription_plan_id: 550380,
                 update_url: 'uu',
                 cancel_url: 'cu',
                 subscription_status: 'deleted', // <-- Recently unsubscribed

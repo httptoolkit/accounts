@@ -125,7 +125,6 @@ interface BaseMetadata {
 
 export interface TrialUserMetadata extends BaseMetadata {
     subscription_status: SubscriptionStatus;
-    subscription_plan_id: number; // Paddle-specific plan id
     subscription_sku: SKU; // Generic subscription type id
     subscription_expiry: number;
 }

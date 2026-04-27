@@ -10,7 +10,6 @@ import {
     updateUserMetadata,
     TrialUserMetadata
 } from '../user-data-facade.ts';
-import { getPaddleIdForSku } from '../paddle.ts';
 import { isAcademic } from 'educhk';
 
 
@@ -107,7 +106,6 @@ export const handler = catchErrors(async (event) => {
         subscription_status: 'trialing',
         payment_provider: 'student-account',
         subscription_sku: 'pro-annual',
-        subscription_plan_id: getPaddleIdForSku('pro-annual'),
         subscription_quantity: 1,
         subscription_expiry: expiry
     });

@@ -1,7 +1,6 @@
 import { SKU, PricedSKU, Interval } from '@httptoolkit/accounts';
 
 import { AppMetadata, TrialUserMetadata } from './user-data-facade.ts';
-import { getSkuForPaddleId } from './paddle.ts';
 
 export const ProductDetails = {
     'pro-monthly': {
@@ -49,7 +48,5 @@ export const getSkuInterval = (sku: string): Interval => {
 
 export const getSku = (metadata: AppMetadata | undefined): SKU | undefined => {
     if (!metadata) return undefined;
-    const subMetadata = metadata as TrialUserMetadata;
-    return subMetadata.subscription_sku
-        ?? getSkuForPaddleId(subMetadata.subscription_plan_id);
+    return (metadata as TrialUserMetadata).subscription_sku;
 }

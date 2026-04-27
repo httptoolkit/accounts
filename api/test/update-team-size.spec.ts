@@ -79,7 +79,7 @@ describe('/update-team-size', () => {
                 payment_provider: 'paddle',
                 subscription_expiry: subExpiry,
                 subscription_id: '2',
-                subscription_plan_id: 550380,
+                subscription_sku: 'pro-monthly',
                 subscription_status: "active"
             });
             await givenAuthToken(authToken, userId);
