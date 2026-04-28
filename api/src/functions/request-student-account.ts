@@ -11,6 +11,7 @@ import {
     TrialUserMetadata
 } from '../user-data-facade.ts';
 import { isAcademic } from 'educhk';
+import { generateSessionId, trackEvent } from '../metrics.ts';
 
 
 const BearerRegex = /^Bearer (\S+)$/;
@@ -53,8 +54,15 @@ export const handler = catchErrors(async (event) => {
     const email = user.email;
 
     const emailDomain = email.split('@')[1]?.toLowerCase();
+
+    // We track requests - but not specific users, just domains
+    const sessionId = generateSessionId();
+    trackEvent(sessionId, 'Student', 'request', { emailDomain });
+
     if (!emailDomain || !isAcademic(emailDomain)) {
         log.info(`Student account rejected for non-academic email: ${email}`);
+
+        trackEvent(sessionId, 'Student', 'non-academic', { emailDomain });
         return {
             statusCode: 403,
             headers,
@@ -76,6 +84,7 @@ export const handler = catchErrors(async (event) => {
         existingExpiry > Date.now() + TWO_MONTHS_MS;
 
     if (hasActiveStudentSub) {
+        trackEvent(sessionId, 'Student', 'already-active', { emailDomain });
         return {
             statusCode: 409,
             headers,
@@ -87,6 +96,7 @@ export const handler = catchErrors(async (event) => {
             })
         };
     } else if (existingMeta.subscription_status === 'active') {
+        trackEvent(sessionId, 'Student', 'paid-account', { emailDomain });
         return {
             statusCode: 409,
             headers,
@@ -114,6 +124,8 @@ export const handler = catchErrors(async (event) => {
         (school ? ` (${school})` : '') +
         `, expires ${new Date(expiry).toISOString()}`
     );
+
+    trackEvent(sessionId, 'Student', 'granted', { emailDomain });
 
     return {
         statusCode: 200,
