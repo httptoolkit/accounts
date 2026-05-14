@@ -10,8 +10,9 @@
     "build:module": "cd module && npm run build",
     "build:api": "cd api && npm run build",
     "build:ui": "cd ui && npm run build",
-    "test": "npm run build && npm run test:api",
-    "test:api": "cd api && npm run test"
+    "test": "npm run build && npm run test:api && npm run test:module",
+    "test:api": "cd api && npm run test",
+    "test:module": "cd module && npm run test"
   },
   "repository": {
     "type": "git",

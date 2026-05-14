@@ -11,6 +11,7 @@ import {
 import { Interval, SKU, SubscriptionData, TierCode, UserAppData, UserBillingData } from "./types";
 import { ACCOUNTS_API_BASE } from './util';
 import { getSKUForPaddleId } from './plans';
+import { storage } from './storage';
 
 // We read account data from the API, which includes the users
 // subscription data, signed into a JWT that we can validate
@@ -31,52 +32,56 @@ const userDataPublicKey = globalThis?.crypto?.subtle
     : Promise.reject(new Error('WebCrypto not available in your browser. Auth is only possible in secure contexts (HTTPS).'));
 
 
-const tokenMutex = new Mutex();
-let tokens:
-    | { refreshToken?: string; accessToken: string; accessTokenExpiry: number; /* time in ms */ }
-    | null // Initialized but not logged in
-    | undefined; // Not initialized
+interface TokenSet {
+    refreshToken?: string;
+    accessToken: string;
+    accessTokenExpiry: number; // ms since epoch
+}
 
-if (typeof localStorage !== 'undefined') { // Skip this in SSR or other non-persistent envs
-    // Synchronously load & parse the latest token value we have, if any
+const tokenMutex = new Mutex();
+
+function readTokens(): TokenSet | null {
+    const raw = storage.getItem('tokens');
+    if (!raw) return null;
     try {
-        // ! because actually parse(null) -> null, so it's ok
-        tokens = JSON.parse(localStorage.getItem('tokens')!);
+        const parsed = JSON.parse(raw);
+        return parsed || null;
     } catch (e) {
-        tokens = null;
-        console.log('Invalid token', localStorage.getItem('tokens'), e);
+        console.log('Invalid token', raw, e);
+        return null;
     }
 }
 
-function setTokens(newTokens: typeof tokens) {
-    return tokenMutex.runExclusive(() => {
-        tokens = newTokens;
-        localStorage.setItem('tokens', JSON.stringify(newTokens));
-    });
+function writeTokens(newTokens: TokenSet | null): void {
+    if (newTokens === null) storage.removeItem('tokens');
+    else storage.setItem('tokens', JSON.stringify(newTokens));
+}
+
+function setTokens(newTokens: TokenSet | null) {
+    return tokenMutex.runExclusive(() => writeTokens(newTokens));
 }
 
 function getToken() {
     return tokenMutex.runExclusive<string | undefined>(() => {
+        const tokens = readTokens();
         if (!tokens) return;
 
-        const timeUntilExpiry = tokens.accessTokenExpiry.valueOf() - Date.now();
+        const timeUntilExpiry = tokens.accessTokenExpiry - Date.now();
 
-        // If the token is expired or close (10 mins), refresh it
-        let refreshPromise = timeUntilExpiry < 1000 * 60 * 10 && tokens.refreshToken
+        // If the token is expired or close (10 mins), refresh it.
+        const refreshPromise = timeUntilExpiry < 1000 * 60 * 10 && tokens.refreshToken
             ? refreshToken(tokens.refreshToken)
             : null;
 
         if (timeUntilExpiry > 1000 * 5) {
-            // If the token is good for now, use it, even if we've
-            // also triggered a refresh in the background
+            // Token still valid for now - use it even if a refresh is in flight.
             return tokens.accessToken;
         } else if (refreshPromise) {
-            // If the token isn't usable, wait for the refresh
-            return refreshPromise!;
+            // Token is unusable - wait for the refresh.
+            return refreshPromise;
         } else {
-            // Access token invalid, no refresh token - log out, and return undefined
-            // as if we were never logged in at all.
-            logOut();
+            // Expired with no refresh token: clear state and report logged out.
+            writeTokens(null);
         }
     });
 };
@@ -146,24 +151,20 @@ export function logOut() {
     setTokens(null);
 }
 
-// Must be run inside a tokenMutex. Not exported since you don't need to use it directly.
-// It's used automatically when retrieving the latest user data.
+// Must be run inside the tokenMutex. Not exported.
 async function refreshToken(refreshToken: string) {
     try {
         const response = await fetch(`${ACCOUNTS_API_BASE}/auth/refresh-token`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-                refreshToken
-            })
+            body: JSON.stringify({ refreshToken })
         });
 
         if (!response.ok) {
             if (response.status === 403) {
-                // Auth explicitly rejected - log out immediately so any queued or
+                // Auth explicitly rejected - clear tokens so any queued or
                 // subsequent token/data requests see no tokens and bail out too.
-                tokens = null;
-                localStorage.setItem('tokens', JSON.stringify(null));
+                writeTokens(null);
                 throw new AuthRejectedError();
             } else {
                 throw new Error(`Unexpected ${response.status} response when refreshing token`);
@@ -175,9 +176,13 @@ async function refreshToken(refreshToken: string) {
             expiresAt: number
         };
 
-        tokens!.accessToken = result.accessToken;
-        tokens!.accessTokenExpiry = result.expiresAt;
-        localStorage.setItem('tokens', JSON.stringify(tokens));
+        const current = readTokens();
+        if (!current) throw new Error('Tokens were cleared during refresh');
+        writeTokens({
+            ...current,
+            accessToken: result.accessToken,
+            accessTokenExpiry: result.expiresAt
+        });
         return result.accessToken;
     } catch (e) {
         if (e instanceof AuthRejectedError) throw e;
@@ -278,7 +283,7 @@ const anonBillingAccount = (): BillingAccount => ({ transactions: [], banned: fa
  */
 export function getLastUserData(): User {
     try {
-        const rawJwt = localStorage.getItem('last_jwt');
+        const rawJwt = storage.getItem('last_jwt');
         const jwtData = getUnverifiedJwtPayload<UserAppData>(rawJwt);
 
         if (jwtData) {
@@ -288,7 +293,7 @@ export function getLastUserData(): User {
 
             // Async we do actually validate sigs etc, we just don't wait for it.
             getVerifiedJwtPayload(rawJwt, 'app').catch((e) => {
-                localStorage.removeItem('last_jwt');
+                storage.removeItem('last_jwt');
                 console.log('Last JWT no longer valid - now cleared', e);
             });
         }
@@ -313,7 +318,7 @@ export async function getLatestUserData(): Promise<User> {
         const userRawJwt = await requestUserData('app');
         const jwtData = await getVerifiedJwtPayload(userRawJwt, 'app');
         const userData = parseUserData(jwtData);
-        localStorage.setItem('last_jwt', userRawJwt);
+        storage.setItem('last_jwt', userRawJwt);
         return userData;
     } catch (e) {
         // If auth was explicitly rejected, the user has been logged out
@@ -321,7 +326,7 @@ export async function getLatestUserData(): Promise<User> {
 
         try {
             // Unlike getLastUserData, this does synchronously fully validate the data
-            const lastUserData = localStorage.getItem('last_jwt');
+            const lastUserData = storage.getItem('last_jwt');
             const jwtData = await getVerifiedJwtPayload(lastUserData, 'app');
             const userData = parseUserData(jwtData);
             return userData;
@@ -529,11 +534,12 @@ async function requestUserData(
 
         if (appDataResponse.status === 401) {
             return tokenMutex.runExclusive(() => {
+                const tokens = readTokens();
                 // We allow a single refresh+retry. If it's passed, we fail.
                 if (options.isRetry || !tokens?.refreshToken) throw new AuthRejectedError();
 
-                // If this is a first failure, let's assume it's a blip with our access token,
-                // so a refresh is worth a shot (worst case, it'll at least confirm we're unauthed).
+                // First failure may just be a blip with the access token, so
+                // a refresh is worth a shot (worst case, it confirms we're unauthed).
                 return refreshToken(tokens.refreshToken)
             }).then(() =>
                 requestUserData(type, { isRetry: true })

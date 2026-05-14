@@ -5,7 +5,9 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p ."
+    "build": "tsc -p .",
+    "generate-test-fixtures": "tsx test/fixtures/generate.ts",
+    "test": "tsx node_modules/mocha/bin/mocha.js"
   },
   "repository": {
     "type": "git",
@@ -14,7 +16,15 @@
   "author": "",
   "license": "AGPL-3.0-or-later",
   "devDependencies": {
+    "@types/chai": "^4.3.0",
     "@types/dedent": "^0.7.0",
+    "@types/mocha": "^10.0.0",
+    "@types/sinon": "^17.0.0",
+    "chai": "^5.3.3",
+    "mocha": "^10.2.0",
+    "mockttp": "^3.15.0",
+    "sinon": "^17.0.0",
+    "tsx": "^4.7.0",
     "typescript": "^5.9.2"
   },
   "dependencies": {

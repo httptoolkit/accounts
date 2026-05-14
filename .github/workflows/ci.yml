@@ -15,8 +15,9 @@ jobs:
           node-version: 24
 
       - run: npm install
-      # Just check the code compiles
       - run: npm run build
+      - run: npx playwright install chromium
+      - run: npm test
 
   build-api:
     name: Build & test API
