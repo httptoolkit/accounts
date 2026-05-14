@@ -160,6 +160,10 @@ async function refreshToken(refreshToken: string) {
 
         if (!response.ok) {
             if (response.status === 403) {
+                // Auth explicitly rejected - log out immediately so any queued or
+                // subsequent token/data requests see no tokens and bail out too.
+                tokens = null;
+                localStorage.setItem('tokens', JSON.stringify(null));
                 throw new AuthRejectedError();
             } else {
                 throw new Error(`Unexpected ${response.status} response when refreshing token`);
@@ -312,6 +316,9 @@ export async function getLatestUserData(): Promise<User> {
         localStorage.setItem('last_jwt', userRawJwt);
         return userData;
     } catch (e) {
+        // If auth was explicitly rejected, the user has been logged out
+        if (e instanceof AuthRejectedError) return anonUser();
+
         try {
             // Unlike getLastUserData, this does synchronously fully validate the data
             const lastUserData = localStorage.getItem('last_jwt');
