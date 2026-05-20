@@ -28,7 +28,7 @@
     "typescript-styled-plugin": "^0.15.0",
     "webpack": "^5.105.0",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^5.2.1"
+    "webpack-dev-server": "^5.2.4"
   },
   "dependencies": {
     "@fontsource/dm-mono": "^5.0.21",
