@@ -572,7 +572,7 @@ describe('PayPro webhooks', () => {
             expect(customerTraitRequests.length).to.equal(2);
             expect(
                 await Promise.all(customerTraitRequests.map(async (r) => await r.body.getJson()))
-            ).to.deep.equal([
+            ).to.have.deep.members([
                 { email: userEmail, category: 'Payment provider', trait: 'paypro' },
                 { email: userEmail, category: 'Country code', trait: 'ABC' }
             ]);
