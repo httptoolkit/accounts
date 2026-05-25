@@ -235,6 +235,13 @@ beforeEach(async () => {
                 kid: 'test-key'
             }]
         });
+
+    // Unmocked auth0 updates will retry and make tests flaky & racey, so we need
+    // a default fallback response.
+    await auth0Server
+        .forPatch(/\/api\/v2\/users\/[^\/]+/)
+        .asPriority(RulePriority.FALLBACK)
+        .thenJson(200, {});
 });
 
 afterEach(async () => {
