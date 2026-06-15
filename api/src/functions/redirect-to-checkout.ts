@@ -26,7 +26,15 @@ const PAYPRO_COUNTRIES = [
     'EGY',
     'YEM',
     'MLI',
-    'VEN'
+    'VEN',
+    'CAF',
+    'HTI',
+    'IRQ',
+    'LBY',
+    'MMR',
+    'NIC',
+    'SOM',
+    'SSD'
 ];
 
 export const handler = catchErrors(async (event) => {
