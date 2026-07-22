@@ -142,10 +142,10 @@ describe('/get-prices', () => {
         }));
 
         expect(products).to.deep.equal([
-            { sku: 'pro-monthly', price: 14, currency: 'USD' },
-            { sku: 'pro-annual', price: 120, currency: 'USD' },
-            { sku: 'team-monthly', price: 22, currency: 'USD' },
-            { sku: 'team-annual', price: 204, currency: 'USD' }
+            { sku: 'pro-monthly', price: 15, currency: 'USD' },
+            { sku: 'pro-annual', price: 132, currency: 'USD' },
+            { sku: 'team-monthly', price: 24, currency: 'USD' },
+            { sku: 'team-annual', price: 216, currency: 'USD' }
         ]);
     });
 

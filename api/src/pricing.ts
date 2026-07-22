@@ -22,10 +22,10 @@ export const PRICING: { [key: string]: Prices } = {
 
     'country:ARE': {
         currency: 'AED',
-        'pro-monthly': 25,
-        'pro-annual': 216,
-        'team-monthly': 36,
-        'team-annual': 324
+        'pro-monthly': 32,
+        'pro-annual': 288,
+        'team-monthly': 48,
+        'team-annual': 432
     },
 
     'country:AUS': {
@@ -54,10 +54,10 @@ export const PRICING: { [key: string]: Prices } = {
 
     'country:CHE': {
         currency: 'CHF',
-        'pro-monthly': 8,
-        'pro-annual': 72,
-        'team-monthly': 12,
-        'team-annual': 108
+        'pro-monthly': 12,
+        'pro-annual': 108,
+        'team-monthly': 18,
+        'team-annual': 156
     },
 
     'country:CHN': {
@@ -70,7 +70,7 @@ export const PRICING: { [key: string]: Prices } = {
 
     'country:CZE': {
         currency: 'CZK',
-        'pro-monthly': 200,
+        'pro-monthly': 192,
         'pro-annual': 1752,
         'team-monthly': 300,
         'team-annual': 2700
@@ -118,10 +118,10 @@ export const PRICING: { [key: string]: Prices } = {
 
     'country:ISR': {
         currency: 'ILS',
-        'pro-monthly': 48,
-        'pro-annual': 408,
-        'team-monthly': 72,
-        'team-annual': 624
+        'pro-monthly': 35,
+        'pro-annual': 300,
+        'team-monthly': 52,
+        'team-annual': 444
     },
 
     'country:JPN': {
@@ -135,9 +135,9 @@ export const PRICING: { [key: string]: Prices } = {
     'country:KOR': {
         currency: 'KRW',
         'pro-monthly': 9000,
-        'pro-annual': 84000,
+        'pro-annual': 72000,
         'team-monthly': 14000,
-        'team-annual': 132000
+        'team-annual': 108000
     },
 
     'country:MEX': {
@@ -146,6 +146,14 @@ export const PRICING: { [key: string]: Prices } = {
         'pro-annual': 720,
         'team-monthly': 128,
         'team-annual': 1032
+    },
+
+    'country:NZL': {
+        currency: 'NZD',
+        'pro-monthly': 16,
+        'pro-annual': 144,
+        'team-monthly': 26,
+        'team-annual': 228
     },
 
     'country:RUS': {
@@ -158,15 +166,15 @@ export const PRICING: { [key: string]: Prices } = {
 
     'country:SGP': {
         currency: 'SGD',
-        'pro-monthly': 10,
-        'pro-annual': 84,
-        'team-monthly': 14,
-        'team-annual': 132
+        'pro-monthly': 11,
+        'pro-annual': 96,
+        'team-monthly': 16,
+        'team-annual': 144
     },
 
     'country:SWE': {
         currency: 'SEK',
-        'pro-monthly': 92,
+        'pro-monthly': 88,
         'pro-annual': 780,
         'team-monthly': 138,
         'team-annual': 1224
@@ -198,10 +206,10 @@ export const PRICING: { [key: string]: Prices } = {
 
     'country:USA': {
         currency: 'USD',
-        'pro-monthly': 14,
-        'pro-annual': 120,
-        'team-monthly': 22,
-        'team-annual': 204
+        'pro-monthly': 15,
+        'pro-annual': 132,
+        'team-monthly': 24,
+        'team-annual': 216
     },
 
     // Regional pricing, for countries without specific prices. Although these use generic currencies,
