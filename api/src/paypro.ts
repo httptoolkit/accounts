@@ -145,8 +145,6 @@ export async function createCheckout(options: {
 }) {
     const checkoutParams = new URLSearchParams();
 
-    checkoutParams.set('currency', options.currency);
-
     if (options.discountCode) throw new Error('Discount codes are not supported by PayPro checkouts');
 
     if (options.email) checkoutParams.set('billing-email', options.email);
@@ -155,15 +153,14 @@ export async function createCheckout(options: {
     if (options.passthrough) checkoutParams.set('x-passthrough', options.passthrough);
     if (options.returnUrl) checkoutParams.set('x-return-url', options.returnUrl);
 
-    // Product dynamic checkout params are encoded as URL params, but then encrypted
-    // with a key, so that you can't just arbitrarily set them as you like. We use
-    // this primarily so that we can directly control the pricing:
-    const productParams = new URLSearchParams();
+    // We charge in the given currency only if PayPro understands it - otherwise we
+    // charge the equivalent price in USD instead.
+    let currency: string;
+    let price: number;
 
-    // We include the currency only if PayPro understands it - otherwise
-    // we drop it and send it converted as USD instead.
     if (PAYPRO_CURRENCIES.includes(options.currency)) {
-        productParams.set(`price[${options.currency}][Amount]`, options.price.toString());
+        currency = options.currency;
+        price = options.price;
     } else {
         // We do report this though - it shouldn't happen normally, but we don't fail
         // hard here so we can support special cases later on (e.g. fallback from other
@@ -179,8 +176,17 @@ export async function createCheckout(options: {
             } with no USD rate available`
         );
 
-        productParams.set(`price[USD][Amount]`, usdRate.toString());
+        currency = 'USD';
+        price = options.price / usdRate;
     }
+
+    checkoutParams.set('currency', currency);
+
+    // Product dynamic checkout params are encoded as URL params, but then encrypted
+    // with a key, so that you can't just arbitrarily set them as you like. We use
+    // this primarily so that we can directly control the pricing:
+    const productParams = new URLSearchParams();
+    productParams.set(`price[${currency}][Amount]`, price.toString());
 
     const productId = SKU_TO_PAYPRO_ID[options.sku].toString();
 
