@@ -305,7 +305,7 @@ export async function lookupPaddleUserTransactions(
 }
 
 // Taken from https://www.paddle.com/help/start/intro-to-paddle/what-currencies-do-you-support
-const PADDLE_CURRENCIES = [
+export const PADDLE_CURRENCIES = [
     "ARS",
     "AUD",
     "BRL",

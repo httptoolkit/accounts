@@ -28,7 +28,7 @@ const SKU_TO_PAYPRO_ID = {
 };
 
 // Taken from https://developers.payproglobal.com/docs/checkout-pages/url-parameters/#list-of-currencies-with-codes:
-const PAYPRO_CURRENCIES = [
+export const PAYPRO_CURRENCIES = [
     "AFN",
     "DZD",
     "AED",
