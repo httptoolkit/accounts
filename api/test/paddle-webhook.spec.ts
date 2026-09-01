@@ -899,6 +899,48 @@ describe('Paddle webhooks', () => {
             });
         });
 
+        it('caps locks to the licenses nobody holds when the subscription shrinks', async () => {
+            const userId = "abc";
+            const userEmail = 'user@example.com';
+
+            // Two members, and three live locks from recent removals, on a subscription
+            // that's now renewing at 3 licenses after a downgrade:
+            const oldest = new Date(2050, 0, 1).getTime();
+            const middle = new Date(2050, 0, 2).getTime();
+            const newest = new Date(2050, 0, 3).getTime();
+
+            await givenUser(userId, userEmail, {
+                team_member_ids: ['memberA', 'memberB'],
+                subscription_quantity: 5,
+                locked_licenses: [oldest, middle, newest]
+            });
+
+            const userUpdate = await auth0Server
+                .forPatch('/api/v2/users/' + userId)
+                .thenJson(200, {});
+
+            await triggerWebhook(apiServer, {
+                alert_name: 'subscription_payment_succeeded',
+                status: 'active',
+                email: userEmail,
+                user_id: '123',
+                subscription_id: '456',
+                quantity: '3', // Downgraded from 5
+                subscription_plan_id: '550789', // Team-monthly
+                next_bill_date: moment('2030-01-01').format('YYYY-MM-DD'),
+            });
+
+            await delay(50);
+            const updateRequests = await userUpdate.getSeenRequests();
+            expect(updateRequests.length).to.equal(1);
+
+            const metadata = (await updateRequests[0].body.getJson() as any).app_metadata;
+
+            // 3 licenses for 2 users means one lock fits, so the two oldest drop
+            expect(metadata.subscription_quantity).to.equal(3);
+            expect(metadata.locked_licenses).to.deep.equal([newest]);
+        });
+
     });
 
     describe("for disputed payments", () => {

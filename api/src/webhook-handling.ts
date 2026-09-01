@@ -105,10 +105,27 @@ export async function updateTeamData(email: string, subscription: Partial<Paying
     }
 
     // Cleanup locked licenses: drop all locks that expired in the past
-    newMetadata.locked_licenses = ((currentMetadata as TeamOwnerMetadata).locked_licenses ?? [])
+    const liveLocks = ((currentMetadata as TeamOwnerMetadata).locked_licenses ?? [])
         .filter((lockStartTime) =>
             lockStartTime + LICENSE_LOCK_DURATION_MS > Date.now()
-        )
+        );
+
+    // We drop any locked licenses beyond the updated quantity:
+    const quantity = newMetadata.subscription_quantity
+        ?? (currentMetadata as TeamOwnerMetadata).subscription_quantity;
+    const assignedLicenses = (
+        newMetadata.team_member_ids
+        ?? (currentMetadata as TeamOwnerMetadata).team_member_ids
+        ?? []
+    ).length;
+
+    const lockableLicenses = Number.isInteger(quantity)
+        ? Math.max(0, quantity - assignedLicenses)
+        : liveLocks.length; // Do nothing if no quantity info available here
+
+    newMetadata.locked_licenses = liveLocks.slice(
+        Math.max(0, liveLocks.length - lockableLicenses)
+    );
 
     dropUndefinedValues(newMetadata);
 
