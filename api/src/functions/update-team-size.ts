@@ -15,6 +15,12 @@ import { updateSubscriptionQuantity } from '../paddle.ts';
 const BearerRegex = /^Bearer (\S+)$/;
 
 /**
+ * An upper bound on self-service changes, to avoid enormous accidental/automated charges.
+ * Accounts above this can be upgraded manually.
+ */
+const MAX_TEAM_SIZE = 500;
+
+/**
 This endpoint expects requests to be sent with a Bearer authorization,
 containing a valid access token for the Auth0 app.
 
@@ -61,30 +67,44 @@ export const handler = catchErrors(async (event) => {
             throw new StatusError(400, "Cannot update manually managed subscription. Please contact billing@httptoolkit.tech");
         } else if (ownerData.payment_provider !== 'paddle') {
             throw new StatusError(500, "Cannot update non-Paddle team subscription");
-        } else if (!ownerData.team_member_ids) {
-            ownerData.team_member_ids = [];
+        }
+
+        const currentQuantity = ownerData.subscription_quantity;
+        if (!Number.isInteger(currentQuantity) || currentQuantity < 1) {
+            throw new StatusError(500, "Subscription has no valid license count");
         }
 
         const { newTeamSize } = JSON.parse(event.body!);
         if (newTeamSize == undefined) throw new StatusError(400, "No subscription quantity specified");
+        if (typeof newTeamSize !== 'number' || !Number.isInteger(newTeamSize)) {
+            throw new StatusError(400, `Subscription quantity must be a whole number (was ${newTeamSize})`);
+        }
         if (newTeamSize < 1) throw new StatusError(400, "Cannot reduce subscription below 1 license");
-        if (newTeamSize === ownerData.subscription_quantity) {
+        if (newTeamSize > MAX_TEAM_SIZE) {
+            throw new StatusError(400,
+                `Cannot expand subscription beyond ${MAX_TEAM_SIZE} licenses. Please contact billing@httptoolkit.tech`
+            );
+        }
+        if (newTeamSize === currentQuantity) {
             throw new StatusError(400, "Cannot update subscription to the same number of licenses");
         }
 
-        const currentTeamSize = ownerData.team_member_ids.length;
-        if (newTeamSize < currentTeamSize) {
+        // N.b. locked licenses do not affect the downgrade limit:
+        const assignedLicenses = (ownerData.team_member_ids ?? []).length;
+        if (newTeamSize < assignedLicenses) {
             throw new StatusError(409, "Cannot downgrade subscription below the number of assigned licenses");
         }
 
-        log.info(`For team ${ownerId}: update quantity to ${newTeamSize}`);
+        log.info(`For team ${ownerId}: update quantity from ${currentQuantity} to ${newTeamSize}`);
+
+        const isUpgrade = newTeamSize > currentQuantity;
 
         try {
             await updateSubscriptionQuantity(ownerData.subscription_id, newTeamSize, {
                 // Upgrades are pro-rated and billed immediately. Downgrades are deferred
                 // until the next billing cycle.
-                prorate: newTeamSize > currentTeamSize,
-                billImmediately: newTeamSize > currentTeamSize
+                prorate: isUpgrade,
+                billImmediately: isUpgrade
             });
         } catch (e: any) {
             await reportError(e);

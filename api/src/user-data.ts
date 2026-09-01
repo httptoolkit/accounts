@@ -268,9 +268,11 @@ async function buildUserBillingData(
         rawMetadata.update_url = 'https://cc.payproglobal.com/Customer/Account/Login';
     }
 
-    // Only Paddle team subscriptions support self-service team size updates:
+    // Only Paddle team subscriptions support self-service team size updates, and only
+    // while they're active (can't charge past-due accounts until they're fixed).
     const sku = getSku(rawMetadata);
     const can_update_team_size = can_manage_subscription &&
+        rawMetadata.subscription_status === 'active' &&
         isTeamSubscription(sku) &&
         rawMetadata.payment_provider === 'paddle';
 

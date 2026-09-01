@@ -157,6 +157,88 @@ describe('/update-team-size', () => {
             }]);
         });
 
+        it("defers a decrease that's still above the assigned license count", async () => {
+            // Four members, but ten licenses paid for:
+            const team: Array<
+                | { id: string, email: string}
+                | undefined
+            > = _.range(4).map((i) => ({
+                id: i.toString(),
+                email: `member${i}@example.com`
+            }));
+            while (team.length < 10) team.push(undefined);
+
+            const { ownerAuthToken } = await givenTeam(team);
+
+            const paddleUpdateEndpoint = await paddleServer.forPost('/api/2.0/subscription/users/update')
+                .thenJson(200, { success: true });
+
+            // Above the 4 assigned licenses, but well below the 10 being paid for, so
+            // this is a downgrade and must not bill anything immediately:
+            const newQuantity = 6;
+            const response = await updateTeamSize(apiServer, ownerAuthToken, newQuantity);
+            expect(response.status).to.equal(200);
+
+            const paddleUpdates = await paddleUpdateEndpoint.getSeenRequests();
+            const paddleUpdatesData = await Promise.all(paddleUpdates.map(r => r.body.getFormData()));
+            expect(paddleUpdatesData).to.deep.equal([{
+                vendor_id: "undefined",
+                vendor_auth_code: "undefined",
+                subscription_id: "2",
+
+                quantity: newQuantity.toString(),
+
+                prorate: "false",
+                bill_immediately: "false"
+            }]);
+        });
+
+        it("allows decreasing below the number of locked licenses", async () => {
+            const { ownerAuthToken, updateOwnerData } = await givenTeam([
+                { id: '0', email: 'member0@example.com' },
+                undefined
+            ]);
+            await updateOwnerData({ locked_licenses: [Date.now()] });
+
+            const paddleUpdateEndpoint = await paddleServer.forPost('/api/2.0/subscription/users/update')
+                .thenJson(200, { success: true });
+
+            const response = await updateTeamSize(apiServer, ownerAuthToken, 1);
+            expect(response.status).to.equal(200);
+
+            const paddleUpdates = await paddleUpdateEndpoint.getSeenRequests();
+            const paddleUpdatesData = await Promise.all(paddleUpdates.map(r => r.body.getFormData()));
+            expect(paddleUpdatesData).to.deep.equal([{
+                vendor_id: "undefined",
+                vendor_auth_code: "undefined",
+                subscription_id: "2",
+
+                quantity: "1",
+
+                prorate: "false",
+                bill_immediately: "false"
+            }]);
+        });
+
+        it("refuses non-integer and oversized quantities", async () => {
+            const team = _.range(4).map((i) => ({
+                id: i.toString(),
+                email: `member${i}@example.com`
+            }));
+
+            const { ownerAuthToken } = await givenTeam(team);
+
+            const paddleUpdateEndpoint = await paddleServer.forPost('/api/2.0/subscription/users/update')
+                .thenJson(200, { success: true });
+
+            for (const invalidSize of [4.5, 100_000]) {
+                const response = await updateTeamSize(apiServer, ownerAuthToken, invalidSize);
+                expect(response.status).to.equal(400);
+            }
+
+            expect((await paddleUpdateEndpoint.getSeenRequests()).length).to.equal(0);
+        });
+
         it("refuses to decrease the team size below the currently assigned licenses", async () => {
             const team: Array<
                 | { id: string, email: string}
