@@ -1,6 +1,9 @@
+#!./node_modules/.bin/tsx
+
 import prompts from 'prompts';
 
-import { getUsersByEmail } from '../api/src/user-data-facade';
+import { getUsersByEmail, PayingUserMetadata } from '../api/src/user-data-facade';
+import { closeDatabase, initializeDbConnection } from '../api/src/db/database';
 
 const {
     PADDLE_ID,
@@ -9,17 +12,22 @@ const {
 
 const email = process.argv[2];
 const price = +process.argv[3];
-const currency = process.argv[4];
+const currency = (process.argv[4] ?? '').toUpperCase();
 
 (async () => {
-    if (isNaN(price)) {
-        throw new Error(`Price must be a number, was ${price}`);
+    if (!email) {
+        throw new Error('Usage: update-subscription-price.ts <email> <price-per-unit> <currency>');
     }
 
-    if (!currency || currency.length !== 3) {
+    if (isNaN(price) || price <= 0) {
+        throw new Error(`Price must be a positive number, was ${process.argv[3]}`);
+    }
+
+    if (!/^[A-Z]{3}$/.test(currency)) {
         throw new Error('Currency must be a 3-letter code, e.g. EUR');
     }
 
+    const db = await initializeDbConnection();
     const users = await getUsersByEmail(email);
 
     if (users.length !== 1) {
@@ -27,17 +35,18 @@ const currency = process.argv[4];
     }
 
     const user = users[0];
+    const metadata = user.app_metadata as PayingUserMetadata | undefined;
 
     if (
-        !user.app_metadata ||
-        user.app_metadata.subscription_status !== 'active' ||
-        user.app_metadata.subscription_expiry < Date.now()
+        !metadata ||
+        metadata.subscription_status !== 'active' ||
+        metadata.subscription_expiry < Date.now()
     ) {
-        throw new Error(`User has no active subscription. Data is: ${user.app_metadata}`);
+        throw new Error(`User has no active subscription. Data is: ${JSON.stringify(user.app_metadata)}`);
     }
 
-    const subscriptionId = user.app_metadata.subscription_id;
-    const existingQuantity = user.app_metadata.subscription_quantity;
+    const subscriptionId = metadata.subscription_id;
+    const existingQuantity = metadata.subscription_quantity;
 
     const { result } = await prompts({
         name: 'result',
@@ -62,8 +71,8 @@ const currency = process.argv[4];
         body: new URLSearchParams({
             vendor_id: PADDLE_ID!,
             vendor_auth_code: PADDLE_KEY!,
-            subscription_id: subscriptionId,
-            quantity: existingQuantity ?? 1,
+            subscription_id: subscriptionId.toString(),
+            quantity: (existingQuantity ?? 1).toString(),
             recurring_price: price.toString(),
             currency: currency,
             prorate: 'false'
@@ -74,7 +83,20 @@ const currency = process.argv[4];
         console.error(`Unexpected ${response.status} response`);
         console.log(await response.text());
         process.exit(1);
-    } else {
-        console.log(await response.text());
     }
+
+    // Paddle Classic reports failures as a 200 with success: false, so the status
+    // alone doesn't tell us whether this worked:
+    const data = await response.json() as
+        | { success: true, response: unknown }
+        | { success: false, error: { code: number, message: string } };
+
+    if (!data.success) {
+        console.error(`Paddle rejected the update: ${data.error.message} (code ${data.error.code})`);
+        process.exit(1);
+    }
+
+    console.log(data.response);
+
+    await closeDatabase(db);
 })();
