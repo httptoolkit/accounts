@@ -117,6 +117,8 @@ apiRouter.post('/paddle-webhook', lambdaWrapper('paddle-webhook'));
 apiRouter.post('/paypro-webhook', lambdaWrapper('paypro-webhook'));
 
 apiRouter.get('/redirect-to-checkout', lambdaWrapper('redirect-to-checkout'));
+// PayPro may send users here with either method, so we accept both:
+apiRouter.get('/redirect-paypro-to-thank-you', lambdaWrapper('redirect-paypro-to-thank-you'));
 apiRouter.post('/redirect-paypro-to-thank-you', lambdaWrapper('redirect-paypro-to-thank-you'));
 
 const sendCodeRateLimiter = rateLimit(RATE_LIMIT_PARAMS);
