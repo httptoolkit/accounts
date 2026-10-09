@@ -11,7 +11,7 @@ export function generateKeyPair() {
         privateKeyEncoding: {
             type: "pkcs1",
             format: 'pem'
-        } as any,
+        },
         publicKeyEncoding: {
             type: "spki",
             format: 'pem'
