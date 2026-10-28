@@ -26,6 +26,10 @@ export function assertUpdatableTeamSubscription(ownerData: TeamOwnerMetadata) {
         throw new StatusError(400, "Cannot update manually managed subscription. Please contact billing@httptoolkit.com");
     } else if (ownerData.payment_provider !== 'paddle') {
         throw new StatusError(500, "Cannot automatically update non-Paddle team subscription. Please contact billing@httptoolkit.com");
+    } else if (ownerData.subscription_coupon) {
+        throw new StatusError(400,
+            "Can't automatically update accounts with an active discount. Please contact billing@httptoolkit.com"
+        );
     } else if (
         !Number.isInteger(ownerData.subscription_quantity) ||
         ownerData.subscription_quantity < 1

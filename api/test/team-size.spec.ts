@@ -70,6 +70,15 @@ describe('Team size changes', () => {
             ), 500);
         });
 
+        it("rejects a subscription paid with a coupon, which Paddle would drop", () => {
+            expectStatus(() => assertUpdatableTeamSubscription(
+                givenTeam({ subscription_coupon: 'DISCOUNT10' })
+            ), 400);
+            expect(assertUpdatableTeamSubscription(
+                givenTeam({ subscription_coupon: false })
+            )).to.equal('team-annual');
+        });
+
     });
 
     describe('limits', () => {

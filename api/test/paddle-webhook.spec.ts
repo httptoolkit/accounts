@@ -988,6 +988,41 @@ describe('Paddle webhooks', () => {
             expect(await storedQuantity()).to.equal(6);
         });
 
+        it('tracks the coupon used by the latest payment', async () => {
+            const userId = "abc";
+            const userEmail = 'user@example.com';
+            await givenUser(userId, userEmail, {
+                team_member_ids: [],
+                subscription_quantity: 5,
+                subscription_sku: 'team-annual',
+                subscription_status: 'active',
+                payment_provider: 'paddle'
+            });
+
+            const storedCoupon = async () => (await testDB.query(
+                `SELECT app_metadata FROM users WHERE auth0_user_id = $1`, [userId]
+            )).rows[0].app_metadata.subscription_coupon;
+
+            const payment = {
+                alert_name: 'subscription_payment_succeeded' as const,
+                status: 'active' as const,
+                email: userEmail,
+                user_id: '123',
+                subscription_id: '456',
+                subscription_plan_id: '550788', // Team-annual
+                next_bill_date: '2030-01-01',
+                quantity: '5'
+            };
+
+            await triggerWebhook(apiServer, { ...payment, coupon: 'DISCOUNT10' });
+            await delay(50);
+            expect(await storedCoupon()).to.equal('DISCOUNT10');
+
+            await triggerWebhook(apiServer, { ...payment, coupon: '' });
+            await delay(50);
+            expect(await storedCoupon()).to.equal(false);
+        });
+
     });
 
     describe("for disputed payments", () => {

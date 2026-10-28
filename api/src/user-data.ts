@@ -100,7 +100,8 @@ const INTERNAL_FIELDS = [
     'subscription_id',
     'paddle_user_id',
     'locked_licenses',
-    'payment_provider'
+    'payment_provider',
+    'subscription_coupon'
 ] as const;
 
 // All subscription-related properties, which are hidden if the user's
@@ -269,12 +270,14 @@ async function buildUserBillingData(
     }
 
     // Only Paddle team subscriptions support self-service team size updates, and only
-    // while they're active (can't charge past-due accounts until they're fixed).
+    // while they're active (can't charge past-due accounts until they're fixed) and
+    // have no coupon (which Paddle would drop).
     const sku = getSku(rawMetadata);
     const can_update_team_size = can_manage_subscription &&
         rawMetadata.subscription_status === 'active' &&
         isTeamSubscription(sku) &&
-        rawMetadata.payment_provider === 'paddle';
+        rawMetadata.payment_provider === 'paddle' &&
+        !rawMetadata.subscription_coupon;
 
     return {
         ..._.cloneDeep(_.omit(rawMetadata, [

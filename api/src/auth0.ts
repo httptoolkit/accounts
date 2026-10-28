@@ -141,6 +141,9 @@ export interface PayingUserMetadata extends TrialUserMetadata {
 
     subscription_quantity: number,
     last_receipt_url?: string, // Set after first successful payment
+
+    // The coupon on the latest Paddle payment (false if none, unset until a payment is seen).
+    subscription_coupon?: string | false,
     update_url: string,
     cancel_url: string
 }

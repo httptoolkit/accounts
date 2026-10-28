@@ -89,6 +89,9 @@ function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<Payin
             subscription_sku: getSkuForPaddleId(planId),
             subscription_expiry: endDate,
             subscription_quantity: parseInt(hookData.quantity, 10),
+            subscription_coupon: hookData.coupon === undefined
+                ? undefined // Unknown, leave as-is
+                : hookData.coupon || false,
             last_receipt_url: hookData.receipt_url,
             update_url: hookData.update_url,
             cancel_url: hookData.cancel_url

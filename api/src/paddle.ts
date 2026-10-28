@@ -106,6 +106,7 @@ export interface PaymentSuccessHookData extends BaseWebhookData {
     sale_gross: string; // Total charged, including tax
     payment_tax: string; // Tax within the above
     unit_price: string; // Net price for one unit, for a full period
+    coupon: string; // Set on every payment that uses a coupon, empty otherwise
 }
 
 export interface PaymentRefundedHookData extends BaseWebhookData {

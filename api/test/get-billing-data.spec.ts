@@ -424,6 +424,37 @@ describe('/get-billing-data', () => {
             });
         });
 
+        it("doesn't offer team size changes to subscriptions with a coupon", async () => {
+            const authToken = freshAuthToken();
+            const billingUserId = "abc";
+            const subId = id();
+
+            await givenUser(billingUserId, 'billinguser@example.com', {
+                team_member_ids: [],
+                payment_provider: 'paddle',
+                subscription_expiry: Date.now() + 1000 * 60 * 60,
+                subscription_id: subId,
+                subscription_quantity: 2,
+                subscription_sku: 'team-monthly',
+                subscription_status: "active",
+                subscription_coupon: 'DISCOUNT10',
+                cancel_url: 'cu',
+                update_url: 'uu',
+            } as TeamOwnerMetadata);
+            await givenAuthToken(authToken, billingUserId);
+
+            const { paddleUserId } = await givenPaddleSubscription(subId);
+            await givenPaddleTransactions(paddleUserId, []);
+
+            const response = await getBillingData(apiServer, authToken);
+            expect(response.status).to.equal(200);
+
+            const data = getJwtData(await response.text());
+            expect(data.can_manage_subscription).to.equal(true);
+            expect(data.can_update_team_size).to.equal(false);
+            expect(data).not.to.have.property('subscription_coupon');
+        });
+
         it("returns subscription + member data for owners in their own team", async () => {
             const authToken = freshAuthToken();
             const billingUserId = "abc";

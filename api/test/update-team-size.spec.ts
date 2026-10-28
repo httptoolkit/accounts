@@ -299,6 +299,18 @@ describe('/update-team-size', () => {
             expect((await paddleUpdateEndpoint.getSeenRequests()).length).to.equal(0);
         });
 
+        it("refuses changes to subscriptions with a coupon, which Paddle would drop", async () => {
+            const { ownerAuthToken, updateOwnerData } = await givenPaddleTeam(givenMembersAndSpaces(4, 5));
+            await updateOwnerData({ subscription_coupon: 'DISCOUNT10' });
+
+            const paddleUpdateEndpoint = await paddleServer.forPost('/api/2.0/subscription/users/update')
+                .thenJson(200, { success: true });
+
+            const response = await updateTeamSize(apiServer, ownerAuthToken, 6);
+            expect(response.status).to.equal(400);
+            expect((await paddleUpdateEndpoint.getSeenRequests()).length).to.equal(0);
+        });
+
         it("refuses non-integer and oversized quantities", async () => {
             const team = _.range(4).map((i) => ({
                 id: i.toString(),
