@@ -3,22 +3,21 @@ import log from 'loglevel';
 import { initSentry, catchErrors, reportError, StatusError } from '../errors.ts';
 initSentry();
 
+import { getCorsResponseHeaders } from '../cors.ts';
 import {
     TeamOwnerMetadata,
     getAuth0UserIdFromToken,
     getUserById
 } from '../user-data-facade.ts';
-import { getCorsResponseHeaders } from '../cors.ts';
-import { getSku, isTeamSubscription } from '../products.ts';
-import { updateSubscriptionQuantity } from '../paddle.ts';
+import {
+    applyTeamSizeChange,
+    assertUpdatableTeamSubscription,
+    getRenewalQuantity,
+    planTeamSizeChange
+} from '../team-size.ts';
+import { getPaddleSubscription } from '../paddle.ts';
 
 const BearerRegex = /^Bearer (\S+)$/;
-
-/**
- * An upper bound on self-service changes, to avoid enormous accidental/automated charges.
- * Accounts above this can be upgraded manually.
- */
-const MAX_TEAM_SIZE = 500;
 
 /**
 This endpoint expects requests to be sent with a Bearer authorization,
@@ -55,57 +54,24 @@ export const handler = catchErrors(async (event) => {
 
     try {
         const ownerId = await getAuth0UserIdFromToken(accessToken);
-        const userData = await getUserById(ownerId);
-        const ownerData = userData.app_metadata as TeamOwnerMetadata;
-
-        const sku = getSku(ownerData);
-        if (!isTeamSubscription(sku)) {
-            throw new StatusError(403, "Your account does not have a Team subscription");
-        } else if (ownerData.subscription_status !== 'active' || ownerData.subscription_expiry < Date.now()) {
-            throw new StatusError(403, "Your account does not have an active subscription");
-        } else if (ownerData.payment_provider === 'manual' || ownerData.payment_provider === 'student-account') {
-            throw new StatusError(400, "Cannot update manually managed subscription. Please contact billing@httptoolkit.tech");
-        } else if (ownerData.payment_provider !== 'paddle') {
-            throw new StatusError(500, "Cannot update non-Paddle team subscription");
-        }
-
-        const currentQuantity = ownerData.subscription_quantity;
-        if (!Number.isInteger(currentQuantity) || currentQuantity < 1) {
-            throw new StatusError(500, "Subscription has no valid license count");
-        }
+        const ownerData = (await getUserById(ownerId)).app_metadata as TeamOwnerMetadata;
+        assertUpdatableTeamSubscription(ownerData);
 
         const { newTeamSize } = JSON.parse(event.body!);
         if (newTeamSize == undefined) throw new StatusError(400, "No subscription quantity specified");
-        if (typeof newTeamSize !== 'number' || !Number.isInteger(newTeamSize)) {
-            throw new StatusError(400, `Subscription quantity must be a whole number (was ${newTeamSize})`);
-        }
-        if (newTeamSize < 1) throw new StatusError(400, "Cannot reduce subscription below 1 license");
-        if (newTeamSize > MAX_TEAM_SIZE) {
-            throw new StatusError(400,
-                `Cannot expand subscription beyond ${MAX_TEAM_SIZE} licenses. Please contact billing@httptoolkit.tech`
-            );
-        }
-        if (newTeamSize === currentQuantity) {
-            throw new StatusError(400, "Cannot update subscription to the same number of licenses");
+        if (typeof newTeamSize !== 'number') {
+            throw new StatusError(400, `Subscription quantity must be a number (was ${newTeamSize})`);
         }
 
-        // N.b. locked licenses do not affect the downgrade limit:
-        const assignedLicenses = (ownerData.team_member_ids ?? []).length;
-        if (newTeamSize < assignedLicenses) {
-            throw new StatusError(409, "Cannot downgrade subscription below the number of assigned licenses");
-        }
+        const subscription = await getPaddleSubscription(ownerData.subscription_id);
+        const plan = planTeamSizeChange(ownerData, getRenewalQuantity(subscription), newTeamSize);
 
-        log.info(`For team ${ownerId}: update quantity from ${currentQuantity} to ${newTeamSize}`);
-
-        const isUpgrade = newTeamSize > currentQuantity;
+        log.info(`For team ${ownerId}: update quantity from ${plan.paidQuantity} (${
+            plan.renewalQuantity
+        } at renewal) to ${newTeamSize}`);
 
         try {
-            await updateSubscriptionQuantity(ownerData.subscription_id, newTeamSize, {
-                // Upgrades are pro-rated and billed immediately. Downgrades are deferred
-                // until the next billing cycle.
-                prorate: isUpgrade,
-                billImmediately: isUpgrade
-            });
+            await applyTeamSizeChange(ownerData.subscription_id, plan);
         } catch (e: any) {
             await reportError(e);
             return { statusCode: 500, headers, body: `Subscription update failed: ${e.message || e}` };

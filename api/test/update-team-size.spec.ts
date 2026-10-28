@@ -13,6 +13,7 @@ import {
 } from './test-setup/setup.ts';
 import {
     paddleServer,
+    givenPaddleSubscription,
     PADDLE_PORT,
 } from './test-setup/paddle.ts';
 import { auth0Server } from './test-setup/auth0.ts';
@@ -31,6 +32,30 @@ const updateTeamSize = (server: net.Server, authToken: string | undefined, newTe
         body: JSON.stringify({ newTeamSize })
     }
 );
+
+type TeamSlots = Array<{ id: string, email: string, joinedAt?: number } | undefined>;
+
+// A team, plus its Paddle subscription. Paddle's quantity is what the next renewal
+// bills, so a lower one there means a reduction is pending:
+const givenPaddleTeam = async (team: TeamSlots, renewalQuantity = team.length) => {
+    const result = await givenTeam(team);
+    await givenPaddleSubscription(2, { quantity: renewalQuantity });
+    return result;
+};
+
+const givenMembersAndSpaces = (members: number, licenses: number): TeamSlots => [
+    ..._.range(members).map((i) => ({ id: i.toString(), email: `member${i}@example.com` })),
+    ..._.range(licenses - members).map(() => undefined)
+];
+
+const paddleUpdate = (quantity: number, upgrade: boolean) => ({
+    vendor_id: "undefined",
+    vendor_auth_code: "undefined",
+    subscription_id: "2",
+    quantity: quantity.toString(),
+    prorate: upgrade.toString(),
+    bill_immediately: upgrade.toString()
+});
 
 describe('/update-team-size', () => {
 
@@ -97,7 +122,7 @@ describe('/update-team-size', () => {
                 email: `member${i}@example.com`
             }));
 
-            const { ownerAuthToken } = await givenTeam(team);
+            const { ownerAuthToken } = await givenPaddleTeam(team);
 
             const paddleUpdateEndpoint = await paddleServer.forPost('/api/2.0/subscription/users/update')
                 .thenJson(200, { success: true });
@@ -132,7 +157,7 @@ describe('/update-team-size', () => {
             }));
             team.push(undefined);
 
-            const { ownerAuthToken } = await givenTeam(team);
+            const { ownerAuthToken } = await givenPaddleTeam(team);
 
             const paddleUpdateEndpoint = await paddleServer.forPost('/api/2.0/subscription/users/update')
                 .thenJson(200, { success: true });
@@ -168,7 +193,7 @@ describe('/update-team-size', () => {
             }));
             while (team.length < 10) team.push(undefined);
 
-            const { ownerAuthToken } = await givenTeam(team);
+            const { ownerAuthToken } = await givenPaddleTeam(team);
 
             const paddleUpdateEndpoint = await paddleServer.forPost('/api/2.0/subscription/users/update')
                 .thenJson(200, { success: true });
@@ -194,7 +219,7 @@ describe('/update-team-size', () => {
         });
 
         it("allows decreasing below the number of locked licenses", async () => {
-            const { ownerAuthToken, updateOwnerData } = await givenTeam([
+            const { ownerAuthToken, updateOwnerData } = await givenPaddleTeam([
                 { id: '0', email: 'member0@example.com' },
                 undefined
             ]);
@@ -220,13 +245,67 @@ describe('/update-team-size', () => {
             }]);
         });
 
+        it("restores the paid quantity before an upgrade while a reduction is pending", async () => {
+            // 10 licenses paid for this period, but Paddle is set to renew at 6:
+            const { ownerAuthToken } = await givenPaddleTeam(givenMembersAndSpaces(4, 10), 6);
+
+            const paddleUpdateEndpoint = await paddleServer.forPost('/api/2.0/subscription/users/update')
+                .thenJson(200, { success: true });
+
+            const response = await updateTeamSize(apiServer, ownerAuthToken, 12);
+            expect(response.status).to.equal(200);
+
+            const paddleUpdates = await paddleUpdateEndpoint.getSeenRequests();
+            expect(await Promise.all(paddleUpdates.map(r => r.body.getFormData()))).to.deep.equal([
+                paddleUpdate(10, false), // Restore, uncharged
+                paddleUpdate(12, true) // Only the 2 new licenses are pro-rated
+            ]);
+        });
+
+        it("cancels a pending reduction without charging", async () => {
+            const { ownerAuthToken } = await givenPaddleTeam(givenMembersAndSpaces(4, 10), 6);
+
+            const paddleUpdateEndpoint = await paddleServer.forPost('/api/2.0/subscription/users/update')
+                .thenJson(200, { success: true });
+
+            const response = await updateTeamSize(apiServer, ownerAuthToken, 10);
+            expect(response.status).to.equal(200);
+
+            const paddleUpdates = await paddleUpdateEndpoint.getSeenRequests();
+            expect(await Promise.all(paddleUpdates.map(r => r.body.getFormData()))).to.deep.equal([
+                paddleUpdate(10, false)
+            ]);
+        });
+
+        it("refuses a size that's already scheduled for renewal", async () => {
+            const { ownerAuthToken } = await givenPaddleTeam(givenMembersAndSpaces(4, 10), 6);
+
+            const paddleUpdateEndpoint = await paddleServer.forPost('/api/2.0/subscription/users/update')
+                .thenJson(200, { success: true });
+
+            const response = await updateTeamSize(apiServer, ownerAuthToken, 6);
+            expect(response.status).to.equal(400);
+            expect((await paddleUpdateEndpoint.getSeenRequests()).length).to.equal(0);
+        });
+
+        it("refuses changes while an upgrade is still arriving from Paddle", async () => {
+            const { ownerAuthToken } = await givenPaddleTeam(givenMembersAndSpaces(4, 5), 7);
+
+            const paddleUpdateEndpoint = await paddleServer.forPost('/api/2.0/subscription/users/update')
+                .thenJson(200, { success: true });
+
+            const response = await updateTeamSize(apiServer, ownerAuthToken, 9);
+            expect(response.status).to.equal(409);
+            expect((await paddleUpdateEndpoint.getSeenRequests()).length).to.equal(0);
+        });
+
         it("refuses non-integer and oversized quantities", async () => {
             const team = _.range(4).map((i) => ({
                 id: i.toString(),
                 email: `member${i}@example.com`
             }));
 
-            const { ownerAuthToken } = await givenTeam(team);
+            const { ownerAuthToken } = await givenPaddleTeam(team);
 
             const paddleUpdateEndpoint = await paddleServer.forPost('/api/2.0/subscription/users/update')
                 .thenJson(200, { success: true });
@@ -249,7 +328,7 @@ describe('/update-team-size', () => {
             }));
             team.push(undefined);
 
-            const { ownerAuthToken } = await givenTeam(team);
+            const { ownerAuthToken } = await givenPaddleTeam(team);
 
             const paddleUpdateEndpoint = await paddleServer.forPost('/api/2.0/subscription/users/update')
                 .thenJson(200, { success: true });

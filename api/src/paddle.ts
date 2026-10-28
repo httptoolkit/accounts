@@ -239,9 +239,27 @@ export async function getPrices(productIds: string[], sourceIp: string): Promise
     return response.products;
 }
 
-export async function getPaddleUserIdFromSubscription(
+export interface PaddlePayment {
+    amount: number;
+    currency: string;
+    date: string; // YYYY-MM-DD
+}
+
+// The fields we use, for subscriptions from the List Users API (POST /2.0/subscription/users):
+export interface PaddleSubscription {
+    subscription_id: number;
+    user_id: number;
+    plan_id: number;
+    state: 'active' | 'past_due' | 'trialing' | 'paused' | 'deleted';
+
+    quantity?: number; // Only returned for quantity-enabled plans
+    last_payment?: PaddlePayment;
+    next_payment?: PaddlePayment;
+}
+
+export async function getPaddleSubscription(
     subscriptionId: number | string | undefined
-): Promise<number | undefined> {
+): Promise<PaddleSubscription | undefined> {
     if (!subscriptionId || subscriptionId.toString() === '-1') return undefined;
 
     const response = await makePaddleApiRequest(
@@ -260,9 +278,16 @@ export async function getPaddleUserIdFromSubscription(
     } else if (response.length > 1) {
         throw new Error(`Multiple users for subscription id ${subscriptionId}`);
     } else {
-        // Exactly one matching user:
-        return response[0].user_id as number;
+        // Exactly one matching subscription:
+        return response[0] as PaddleSubscription;
     }
+}
+
+export async function getPaddleUserIdFromSubscription(
+    subscriptionId: number | string | undefined
+): Promise<number | undefined> {
+    const subscription = await getPaddleSubscription(subscriptionId);
+    return subscription?.user_id;
 }
 
 export interface PaddleTransaction {

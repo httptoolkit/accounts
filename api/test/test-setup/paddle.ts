@@ -3,7 +3,7 @@ import { getLocal } from 'mockttp';
 
 import { id } from './utils.ts';
 
-import { PaddleTransaction } from '../../src/paddle.ts';
+import { PaddleSubscription, PaddleTransaction } from '../../src/paddle.ts';
 
 export const PADDLE_PORT = 9092;
 process.env.PADDLE_BASE_URL = `http://localhost:${PADDLE_PORT}`;
@@ -16,7 +16,10 @@ export const paddleServer = getLocal({
     }
 });
 
-export async function givenPaddleSubscription(subId: number) {
+export async function givenPaddleSubscription(
+    subId: number,
+    subscriptionData: Partial<PaddleSubscription> = {}
+) {
     const userId = id();
 
     await paddleServer
@@ -26,7 +29,7 @@ export async function givenPaddleSubscription(subId: number) {
         })
         .thenJson(200, {
             success: true,
-            response: [{ user_id: userId.toString() }]
+            response: [{ user_id: userId.toString(), ...subscriptionData }]
         });
 
     return { paddleUserId: userId };
