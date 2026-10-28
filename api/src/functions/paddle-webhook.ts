@@ -140,7 +140,9 @@ export const handler = catchErrors(async (event) => {
 
         if (isTeamSubscription(sku)) {
             log.info(`Updating Team user ${email} to ${JSON.stringify(userData)}`);
-            await updateTeamData(email, userData);
+            await updateTeamData(email, userData, {
+                deferQuantityDecrease: paddleData.alert_name === 'subscription_updated'
+            });
         } else if (isProSubscription(sku)) {
             log.info(`Updating Pro user ${email} to ${JSON.stringify(userData)}`);
             await updateProUserData(email, userData);

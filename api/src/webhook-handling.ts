@@ -94,10 +94,24 @@ export async function updateProUserData(email: string, subscriptionUpdate: Parti
 }
 
 
-export async function updateTeamData(email: string, subscription: Partial<PayingUserMetadata>) {
+export async function updateTeamData(
+    email: string,
+    subscription: Partial<PayingUserMetadata>,
+    options: { deferQuantityDecrease?: boolean } = {}
+) {
     const currentUserData = await getOrCreateUser(email);
     const currentMetadata = (currentUserData.app_metadata ?? {}) as AppMetadata;
     const newMetadata: Partial<TeamOwnerMetadata> = subscription;
+
+    // License reductions are paid for until the end of the current period, so they only
+    // apply when the next renewal payment arrives:
+    if (
+        options.deferQuantityDecrease &&
+        newMetadata.subscription_quantity !== undefined &&
+        newMetadata.subscription_quantity < (currentMetadata as TeamOwnerMetadata).subscription_quantity
+    ) {
+        delete newMetadata.subscription_quantity;
+    }
 
     if (!('team_member_ids' in currentMetadata)) {
         // If the user is not currently a team owner: give them an empty team

@@ -101,6 +101,11 @@ export interface PaymentSuccessHookData extends BaseWebhookData {
     next_bill_date: string; // YYYY-MM-DD
     receipt_url: string;
     quantity: string; // \d+
+
+    currency: string;
+    sale_gross: string; // Total charged, including tax
+    payment_tax: string; // Tax within the above
+    unit_price: string; // Net price for one unit, for a full period
 }
 
 export interface PaymentRefundedHookData extends BaseWebhookData {

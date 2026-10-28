@@ -941,6 +941,53 @@ describe('Paddle webhooks', () => {
             expect(metadata.locked_licenses).to.deep.equal([newest]);
         });
 
+        it('defers license reductions until the next renewal payment', async () => {
+            const userId = "abc";
+            const userEmail = 'user@example.com';
+            await givenUser(userId, userEmail, {
+                team_member_ids: ['memberA', 'memberB'],
+                subscription_quantity: 10,
+                subscription_sku: 'team-annual',
+                subscription_status: 'active',
+                payment_provider: 'paddle'
+            });
+
+            const storedQuantity = async () => (await testDB.query(
+                `SELECT app_metadata FROM users WHERE auth0_user_id = $1`, [userId]
+            )).rows[0].app_metadata.subscription_quantity;
+
+            const webhook = {
+                status: 'active' as const,
+                email: userEmail,
+                user_id: '123',
+                subscription_id: '456',
+                subscription_plan_id: '550788', // Team-annual
+                next_bill_date: '2030-01-01'
+            };
+
+            // Paddle reports the downgrade straight away, but it's already paid for:
+            await triggerWebhook(apiServer, {
+                ...webhook,
+                alert_name: 'subscription_updated',
+                new_quantity: '6'
+            });
+            await delay(50);
+            expect(await storedQuantity()).to.equal(10);
+
+            // It applies when the renewal is charged at the new quantity:
+            await triggerWebhook(apiServer, {
+                ...webhook,
+                alert_name: 'subscription_payment_succeeded',
+                quantity: '6',
+                currency: 'USD',
+                unit_price: '28.74',
+                sale_gross: '189.66',
+                payment_tax: '17.22'
+            });
+            await delay(50);
+            expect(await storedQuantity()).to.equal(6);
+        });
+
     });
 
     describe("for disputed payments", () => {
