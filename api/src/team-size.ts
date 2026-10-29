@@ -1,6 +1,6 @@
 import { StatusError } from './errors.ts';
 import { getSku, isTeamSubscription } from './products.ts';
-import { PaddleSubscription, updateSubscriptionQuantity } from './paddle.ts';
+import type { PaddleSubscription } from './paddle.ts';
 import type { TeamOwnerMetadata } from './user-data-facade.ts';
 
 /**
@@ -108,14 +108,4 @@ export function planTeamSizeChange(
             { quantity: newTeamSize, prorate: isUpgrade, billImmediately: isUpgrade }
         ]
     };
-}
-
-export async function applyTeamSizeChange(
-    subscriptionId: string | number,
-    plan: TeamSizeChangePlan
-) {
-    // Sequential, as a reset must land before the upgrade that's pro-rated against it:
-    for (const { quantity, ...options } of plan.paddleUpdates) {
-        await updateSubscriptionQuantity(subscriptionId, quantity, options);
-    }
 }

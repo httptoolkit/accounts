@@ -151,6 +151,8 @@ export interface PayingUserMetadata extends TrialUserMetadata {
 export interface TeamOwnerMetadata extends PayingUserMetadata {
     team_member_ids: string[];
     locked_licenses?: number[]; // Array of timestamps - the moment locked licenses were last assigned
+    // Set while we wait for Paddle to bill an upgrade we requested, so we can check its charge:
+    pending_upgrade?: { from: number, to: number, requested_at: number };
     subscription_owner_id?: string; // Owners can be members of their own team
 }
 

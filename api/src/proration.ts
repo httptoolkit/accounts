@@ -50,3 +50,73 @@ export function getBillingPeriod(
         isExact: !isMonthEnd
     };
 }
+
+// An upgrade we've requested from Paddle, which it bills immediately as a pro-rated charge:
+export interface RequestedUpgrade {
+    from: number;
+    to: number;
+    requestedAt: number;
+}
+
+export interface ProratedChargeCheck {
+    netAmount: number;
+    expectedAmount: number | undefined; // Undefined if we didn't request this change
+    daysRemaining: number;
+    daysInPeriod: number;
+    matchesExpectation: boolean;
+}
+
+// Charges within this of a full period are just normal renewals, not pro-rated changes:
+const FULL_PERIOD_TOLERANCE = 0.01;
+
+// Paddle charges whole minor units (e.g. pence), so we compare in those:
+const toMinorUnits = (amount: number, currency: string) => Math.round(amount * Math.pow(10,
+    new Intl.NumberFormat('en', { style: 'currency', currency }).resolvedOptions().maximumFractionDigits ?? 2
+));
+
+/**
+ * Checks a payment that isn't for a full period against the upgrade we requested. Paddle
+ * calculates these charges itself, but we quote them to customers beforehand, so any
+ * mismatch means our quotes don't match what customers are really charged.
+ *
+ * Returns undefined for ordinary renewals, which have nothing to check, and for periods
+ * whose start we can only estimate, where a mismatch wouldn't tell us anything.
+ */
+export function checkProratedCharge(payment: {
+    netAmount: number,
+    currency: string,
+    unitPrice: number,
+    quantity: number,
+    nextBillDate: string,
+    interval: Interval
+}, upgrade: RequestedUpgrade | undefined, now: number = Date.now()): ProratedChargeCheck | undefined {
+    const fullPeriodAmount = payment.unitPrice * payment.quantity;
+    if (!fullPeriodAmount) return undefined;
+
+    const chargedShare = payment.netAmount / fullPeriodAmount;
+    if (Math.abs(chargedShare - 1) <= FULL_PERIOD_TOLERANCE) return undefined;
+
+    // Paddle pro-rates from the day the change was made:
+    const { daysRemaining, daysInPeriod, isExact } = getBillingPeriod(
+        payment.nextBillDate,
+        payment.interval,
+        upgrade?.requestedAt ?? now
+    );
+    if (!isExact) return undefined;
+    if (!daysRemaining) return undefined; // Nothing to pro-rate
+
+    const expectedAmount = upgrade && upgrade.to === payment.quantity
+        ? payment.unitPrice * (upgrade.to - upgrade.from) * (daysRemaining / daysInPeriod)
+        : undefined;
+
+    return {
+        netAmount: payment.netAmount,
+        expectedAmount,
+        daysRemaining,
+        daysInPeriod,
+        // Deliberately strict - any difference at all means we've misunderstood Paddle's maths:
+        matchesExpectation: expectedAmount !== undefined &&
+            toMinorUnits(payment.netAmount, payment.currency) ===
+                toMinorUnits(expectedAmount, payment.currency)
+    };
+}

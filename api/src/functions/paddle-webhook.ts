@@ -3,19 +3,25 @@ initSentry();
 
 import _ from 'lodash';
 import moment from 'moment';
+import type { SKU } from '@httptoolkit/accounts';
 import * as querystring from 'querystring';
 import log from 'loglevel';
 
 import {
-    PayingUserMetadata
+    PayingUserMetadata,
+    TeamOwnerMetadata,
+    getOrCreateUser,
+    updateUserMetadata
 } from '../user-data-facade.ts';
 import {
     validatePaddleWebhook,
     PaddleWebhookData,
+    PaymentSuccessHookData,
     getSkuForPaddleId
 } from '../paddle.ts';
 import {
     getSku,
+    getSkuInterval,
     isProSubscription,
     isTeamSubscription
 } from '../products.ts';
@@ -27,6 +33,7 @@ import {
     parseCheckoutPassthrough
 } from '../webhook-handling.ts';
 import { setRevenueTraits } from '../accounting.ts';
+import { RequestedUpgrade, checkProratedCharge } from '../proration.ts';
 
 function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<PayingUserMetadata> {
     if (
@@ -121,6 +128,47 @@ function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<Payin
     return {};
 }
 
+/**
+ * Mid-term license additions are billed immediately as their own pro-rated payment. We
+ * don't calculate that charge - Paddle does - but we do show customers an estimate of it
+ * beforehand, so we check each one against the upgrade we requested.
+ */
+function checkPaymentAgainstUpgrade(
+    paddleData: PaymentSuccessHookData,
+    sku: SKU,
+    upgrade: RequestedUpgrade | undefined
+) {
+    // Discounted charges won't match the plain pro-rata rate:
+    if (paddleData.coupon) return;
+
+    const netAmount = parseFloat(paddleData.sale_gross) - parseFloat(paddleData.payment_tax);
+
+    const check = checkProratedCharge({
+        netAmount,
+        currency: paddleData.currency,
+        unitPrice: parseFloat(paddleData.unit_price),
+        quantity: parseInt(paddleData.quantity, 10),
+        nextBillDate: paddleData.next_bill_date,
+        interval: getSkuInterval(sku)
+    }, upgrade);
+
+    if (!check) return; // A normal full-period renewal
+
+    const summary = `${netAmount} ${paddleData.currency} on subscription ${
+        paddleData.subscription_id
+    } (expected ${check.expectedAmount ?? 'no charge'}, ${
+        check.daysRemaining
+    }/${check.daysInPeriod} days)`;
+
+    if (check.matchesExpectation) {
+        log.info(`Pro-rated charge as expected: ${summary}`);
+    } else {
+        reportError(`Pro-rated charge does not match our estimate: ${summary}`, {
+            extraMetadata: { check, upgrade }
+        });
+    }
+}
+
 export const handler = catchErrors(async (event) => {
     const paddleData = querystring.parse(event.body || '') as unknown as PaddleWebhookData;
     log.debug('Received Paddle webhook', JSON.stringify(paddleData));
@@ -142,10 +190,32 @@ export const handler = catchErrors(async (event) => {
         const sku = getSku(userData);
 
         if (isTeamSubscription(sku)) {
+            // Read before updating, as payment confirms (and so clears) any pending upgrade:
+            const owner = paddleData.alert_name === 'subscription_payment_succeeded'
+                ? await getOrCreateUser(email)
+                : undefined;
+            const pendingUpgrade = (owner?.app_metadata as TeamOwnerMetadata | undefined)?.pending_upgrade;
+
             log.info(`Updating Team user ${email} to ${JSON.stringify(userData)}`);
             await updateTeamData(email, userData, {
                 deferQuantityDecrease: paddleData.alert_name === 'subscription_updated'
             });
+
+            if (paddleData.alert_name === 'subscription_payment_succeeded') {
+                try {
+                    checkPaymentAgainstUpgrade(paddleData, sku!, pendingUpgrade && {
+                        from: pendingUpgrade.from,
+                        to: pendingUpgrade.to,
+                        requestedAt: pendingUpgrade.requested_at
+                    });
+                } catch (e) {
+                    reportError(e instanceof Error ? e : String(e));
+                }
+
+                if (pendingUpgrade) {
+                    await updateUserMetadata<TeamOwnerMetadata>(owner!.user_id, { pending_upgrade: null });
+                }
+            }
         } else if (isProSubscription(sku)) {
             log.info(`Updating Pro user ${email} to ${JSON.stringify(userData)}`);
             await updateProUserData(email, userData);

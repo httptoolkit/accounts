@@ -988,6 +988,42 @@ describe('Paddle webhooks', () => {
             expect(await storedQuantity()).to.equal(6);
         });
 
+        it('clears a pending upgrade once its payment arrives', async () => {
+            const userId = "abc";
+            const userEmail = 'user@example.com';
+            await givenUser(userId, userEmail, {
+                team_member_ids: [],
+                subscription_quantity: 9,
+                subscription_sku: 'team-annual',
+                subscription_status: 'active',
+                payment_provider: 'paddle',
+                pending_upgrade: { from: 7, to: 9, requested_at: Date.now() }
+            });
+
+            await triggerWebhook(apiServer, {
+                alert_name: 'subscription_payment_succeeded',
+                status: 'active',
+                email: userEmail,
+                user_id: '123',
+                subscription_id: '456',
+                subscription_plan_id: '550788', // Team-annual
+                next_bill_date: moment().add(100, 'days').format('YYYY-MM-DD'),
+                quantity: '9',
+                currency: 'USD',
+                unit_price: '28.74',
+                sale_gross: '17.32',
+                payment_tax: '1.57',
+                coupon: ''
+            });
+            await delay(50);
+
+            const metadata = (await testDB.query(
+                `SELECT app_metadata FROM users WHERE auth0_user_id = $1`, [userId]
+            )).rows[0].app_metadata;
+            expect(metadata.subscription_quantity).to.equal(9);
+            expect(metadata.pending_upgrade).to.equal(undefined);
+        });
+
         it('tracks the coupon used by the latest payment', async () => {
             const userId = "abc";
             const userEmail = 'user@example.com';

@@ -10,11 +10,11 @@ import {
     getUserById
 } from '../user-data-facade.ts';
 import {
-    applyTeamSizeChange,
     assertUpdatableTeamSubscription,
     getRenewalQuantity,
     planTeamSizeChange
 } from '../team-size.ts';
+import { applyTeamSizeChange } from '../team-size-updates.ts';
 import { getPaddleSubscription } from '../paddle.ts';
 
 const BearerRegex = /^Bearer (\S+)$/;
@@ -71,7 +71,7 @@ export const handler = catchErrors(async (event) => {
         } at renewal) to ${newTeamSize}`);
 
         try {
-            await applyTeamSizeChange(ownerData.subscription_id, plan);
+            await applyTeamSizeChange(ownerId, ownerData.subscription_id, plan);
         } catch (e: any) {
             await reportError(e);
             return { statusCode: 500, headers, body: `Subscription update failed: ${e.message || e}` };

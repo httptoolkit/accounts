@@ -101,7 +101,8 @@ const INTERNAL_FIELDS = [
     'paddle_user_id',
     'locked_licenses',
     'payment_provider',
-    'subscription_coupon'
+    'subscription_coupon',
+    'pending_upgrade'
 ] as const;
 
 // All subscription-related properties, which are hidden if the user's

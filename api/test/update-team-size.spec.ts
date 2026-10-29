@@ -17,6 +17,7 @@ import {
     PADDLE_PORT,
 } from './test-setup/paddle.ts';
 import { auth0Server } from './test-setup/auth0.ts';
+import { testDB } from './test-setup/database.ts';
 
 const updateTeamSize = (server: net.Server, authToken: string | undefined, newTeamSize: number) => fetch(
     `http://localhost:${(server.address() as net.AddressInfo).port}/api/update-team-size`,
@@ -47,6 +48,10 @@ const givenMembersAndSpaces = (members: number, licenses: number): TeamSlots => 
     ..._.range(members).map((i) => ({ id: i.toString(), email: `member${i}@example.com` })),
     ..._.range(licenses - members).map(() => undefined)
 ];
+
+const storedPendingUpgrade = async (userId: string) => (await testDB.query(
+    `SELECT app_metadata FROM users WHERE auth0_user_id = $1`, [userId]
+)).rows[0].app_metadata.pending_upgrade;
 
 const paddleUpdate = (quantity: number, upgrade: boolean) => ({
     vendor_id: "undefined",
@@ -260,6 +265,40 @@ describe('/update-team-size', () => {
                 paddleUpdate(10, false), // Restore, uncharged
                 paddleUpdate(12, true) // Only the 2 new licenses are pro-rated
             ]);
+        });
+
+        it("records requested upgrades, so their charges can be checked", async () => {
+            const { ownerId, ownerAuthToken } = await givenPaddleTeam(givenMembersAndSpaces(4, 5));
+            await paddleServer.forPost('/api/2.0/subscription/users/update')
+                .thenJson(200, { success: true });
+
+            const response = await updateTeamSize(apiServer, ownerAuthToken, 7);
+            expect(response.status).to.equal(200);
+
+            const pendingUpgrade = await storedPendingUpgrade(ownerId);
+            expect(pendingUpgrade.from).to.equal(5);
+            expect(pendingUpgrade.to).to.equal(7);
+            expect(pendingUpgrade.requested_at).to.be.closeTo(Date.now(), 5000);
+        });
+
+        it("doesn't record downgrades as pending upgrades", async () => {
+            const { ownerId, ownerAuthToken } = await givenPaddleTeam(givenMembersAndSpaces(4, 7));
+            await paddleServer.forPost('/api/2.0/subscription/users/update')
+                .thenJson(200, { success: true });
+
+            const response = await updateTeamSize(apiServer, ownerAuthToken, 5);
+            expect(response.status).to.equal(200);
+            expect(await storedPendingUpgrade(ownerId)).to.equal(undefined);
+        });
+
+        it("drops the pending upgrade if Paddle rejects it", async () => {
+            const { ownerId, ownerAuthToken } = await givenPaddleTeam(givenMembersAndSpaces(4, 5));
+            await paddleServer.forPost('/api/2.0/subscription/users/update')
+                .thenJson(200, { success: false, error: { code: 100, message: 'Rejected' } });
+
+            const response = await updateTeamSize(apiServer, ownerAuthToken, 7);
+            expect(response.status).to.equal(500);
+            expect(await storedPendingUpgrade(ownerId)).to.equal(undefined);
         });
 
         it("cancels a pending reduction without charging", async () => {
