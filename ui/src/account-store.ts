@@ -67,9 +67,9 @@ export class AccountStore {
             : undefined;
     }
 
-    *updateUser() {
+    *updateUser(options: { fresh?: boolean } = {}) {
         try {
-            this.user = yield getBillingData();
+            this.user = yield getBillingData(options);
         } catch (e: any) {
             console.log("Failed to load user data");
             reportError(e);
@@ -242,7 +242,7 @@ export class AccountStore {
 
         const setFocused = () => {
             focused = true;
-            this.updateUser();
+            this.updateUser({ fresh: true });
         };
 
         const setUnfocused = () => {
@@ -254,16 +254,16 @@ export class AccountStore {
 
         // Keep checking the user's subscription data at intervals, whilst other processes
         // (update from payment provider) complete elsewhere...
-        yield this.updateUser();
+        yield this.updateUser({ fresh: true });
         let ticksSinceCheck = 0;
         while (!completedCheck() && Date.now() < giveUpAt) {
             yield delay(1000);
             ticksSinceCheck += 1;
 
             if (focused || ticksSinceCheck > 10) {
-                // Every 10s while blurred or 500ms while focused, check the user data:
+                // Every 10s while blurred or every second while focused, check the user data:
                 ticksSinceCheck = 0;
-                yield this.updateUser();
+                yield this.updateUser({ fresh: true });
             }
         }
         window.removeEventListener('focus', setFocused);
