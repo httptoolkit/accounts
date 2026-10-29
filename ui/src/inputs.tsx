@@ -88,6 +88,44 @@ export const SecondaryButton = styled.button.attrs(() => ({
     }
 `;
 
+export const TextInput = styled.input`
+    font-size: ${p => p.theme.textInputFontSize};
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: solid 1px ${p => p.theme.inputBorder};
+
+    font-family: ${p => p.theme.fontFamily};
+
+    background-color: ${p => p.theme.inputBackground};
+    &:hover:not(:disabled) {
+        background-color: ${p => p.theme.inputHoverBackground};
+    }
+
+    &:focus {
+        outline-offset: -1px;
+    }
+
+    color: ${p => p.theme.inputColor};
+
+    &:disabled {
+        opacity: 0.6;
+    }
+
+    &::placeholder {
+        color: ${p => p.theme.inputPlaceholderColor};
+    }
+
+    &:invalid {
+        border-color: ${p => p.theme.warningColor};
+        background-color: ${p => p.theme.warningBackground};
+        color: ${p => p.theme.mainColor};
+
+        &:hover:not(:disabled) {
+            border-color: ${p => p.theme.mainColor};
+        }
+    }
+`;
+
 export const UnstyledButton = styled.button.attrs(() => ({
     // 'submit' is the default, which makes 'enter' behaviour super wacky:
     'type': 'button'

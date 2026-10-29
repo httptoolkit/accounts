@@ -8,13 +8,14 @@ import {
 import { getPlanByCode, SubscriptionPlans } from '@httptoolkit/accounts';
 
 import { styled, media } from './styles';
-import { Icon } from './icons';
+import { Icon, Spinner } from './icons';
 
 import { AccountStore } from './account-store';
 
 import { Button, ButtonLink } from './inputs';
 import { Transactions, PlaceholderTransactions } from './account-transactions';
 import { TeamMembers } from './account-team-members';
+import { TeamSize } from './account-team-size';
 
 const PageContainer = styled.main`
     position: relative;
@@ -90,10 +91,7 @@ const AccountControls = styled.div`
     }
 `;
 
-const AccountUpdateSpinner = styled(Icon).attrs(() => ({
-    icon: ['fac', 'spinner-arc'],
-    spin: true
-}))`
+const AccountUpdateSpinner = styled(Spinner)`
     margin: 0 0 0 10px;
 `;
 
@@ -108,6 +106,12 @@ export const AccountPage = observer((props: {
         updateTeamMembers,
         isAccountUpdateInProcess,
         canManageSubscription,
+        canUpdateTeamSize,
+        teamSizeQuote,
+        teamSizeQuoteError,
+        isLoadingTeamSizeQuote,
+        loadTeamSizeQuote,
+        updateTeamSize,
         cancelSubscription,
         logOut
     } = accountStore;
@@ -253,6 +257,19 @@ export const AccountPage = observer((props: {
 
         { sub && user.teamMembers && <AccountSection>
             <SectionHeading>Team</SectionHeading>
+
+            { canUpdateTeamSize &&
+                <TeamSize
+                    licenseCount={sub.quantity}
+                    assignedLicenses={user.teamMembers.length}
+                    quote={teamSizeQuote}
+                    quoteError={teamSizeQuoteError}
+                    isLoadingQuote={isLoadingTeamSizeQuote}
+                    loadQuote={loadTeamSizeQuote}
+                    updateTeamSize={updateTeamSize}
+                />
+            }
+
             <TeamMembers
                 licenseCount={sub.quantity}
                 lockedLicenses={user.lockedLicenseExpiries ?? []}
@@ -284,7 +301,7 @@ export const PlaceholderAccountPage = observer((props: {
 
     return <PageContainer>
         <PageHeading>
-            Your Account <Spinner />
+            Your Account <HeadingSpinner />
         </PageHeading>
 
         <LogOutButton onClick={logOut}>
@@ -292,7 +309,7 @@ export const PlaceholderAccountPage = observer((props: {
         </LogOutButton>
 
         <AccountSection>
-            <SectionHeading>Subscription <Spinner /></SectionHeading>
+            <SectionHeading>Subscription <HeadingSpinner /></SectionHeading>
 
             <ContentGrid>
                 <ContentLabel>Email</ContentLabel>
@@ -318,15 +335,13 @@ export const PlaceholderAccountPage = observer((props: {
         </AccountSection>
 
         <AccountSection>
-            <SectionHeading>Invoices <Spinner /></SectionHeading>
+            <SectionHeading>Invoices <HeadingSpinner /></SectionHeading>
             <PlaceholderTransactions />
         </AccountSection>
     </PageContainer>;
 });
 
-const Spinner = styled((p: { className?: string }) =>
-    <Icon icon={['fac', 'spinner-arc']} spin className={p.className} />
-)`
+const HeadingSpinner = styled(Spinner)`
     font-size: 0.9em;
     margin-left: 10px;
 `;

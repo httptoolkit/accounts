@@ -1,15 +1,18 @@
 import * as _ from 'lodash';
 import { makeObservable, observable, computed, flow, when } from 'mobx';
-import { delay } from "@httptoolkit/util";
+import { delay, asErrorLike } from "@httptoolkit/util";
 
 import { reportError } from './errors';
 
 import {
     getBillingData,
     updateTeamMembers,
+    updateTeamSize,
+    getTeamSizeQuote,
     cancelSubscription,
     logOut,
-    BillingAccount
+    BillingAccount,
+    TeamSizeQuote
 } from '@httptoolkit/accounts';
 
 export class AccountStore {
@@ -21,6 +24,9 @@ export class AccountStore {
             isLoggedIn: computed,
             isAccountUpdateInProcess: observable,
             userSubscription: computed,
+            teamSizeQuote: observable,
+            isLoadingTeamSizeQuote: observable,
+            teamSizeQuoteError: observable,
             updateUser: flow.bound
         });
 
@@ -93,6 +99,9 @@ export class AccountStore {
             yield updateTeamMembers(idsToRemove, emailsToAdd);
             yield delay(1000); // Wait to reduce race conditions during updates here
             yield this.updateUser(); // Reload the billing data after changes
+
+            // The minimum team size depends on who's assigned a license:
+            this.invalidateTeamSizeQuote();
         } catch (e) {
             // Undo our optimistic update:
             this.user!.teamMembers = originalTeamMembers;
@@ -126,15 +135,92 @@ export class AccountStore {
         return !!this.userSubscription?.canManageSubscription;
     }
 
+    get canUpdateTeamSize() {
+        return !!this.userSubscription?.canUpdateTeamSize;
+    }
+
+    // Pricing for team size changes. Loaded lazily, since it needs a (slow) payment
+    // provider lookup that's wasted on everybody who never opens the controls.
+    teamSizeQuote: TeamSizeQuote | undefined = undefined;
+    isLoadingTeamSizeQuote = false;
+    teamSizeQuoteError: string | undefined = undefined;
+
+    private teamSizeQuoteGeneration = 0;
+
+    invalidateTeamSizeQuote() {
+        this.teamSizeQuoteGeneration += 1;
+        this.teamSizeQuote = undefined;
+    }
+
+    loadTeamSizeQuote = flow(function * (this: AccountStore, options: { refresh?: boolean } = {}) {
+        // Quoting needs a slow payment provider lookup, so we keep the result until
+        // something invalidates it, rather than re-fetching each time the UI asks.
+        if (this.isLoadingTeamSizeQuote || (this.teamSizeQuote && !options.refresh)) return;
+
+        const generation = this.teamSizeQuoteGeneration;
+        this.isLoadingTeamSizeQuote = true;
+        this.teamSizeQuoteError = undefined;
+        try {
+            const quote: TeamSizeQuote = yield getTeamSizeQuote();
+            if (generation === this.teamSizeQuoteGeneration) this.teamSizeQuote = quote;
+        } catch (e) {
+            const error = asErrorLike(e);
+            console.log(error);
+            reportError(`Team size quote failed: ${error.message}`);
+            this.teamSizeQuoteError = error.message;
+        } finally {
+            this.isLoadingTeamSizeQuote = false;
+        }
+    }).bind(this);
+
+    updateTeamSize = flow(function * (this: AccountStore, newTeamSize: number) {
+        try {
+            this.isAccountUpdateInProcess = true;
+            const isUpgrade = newTeamSize > (this.user?.subscription?.quantity ?? 0);
+
+            yield updateTeamSize(newTeamSize);
+
+            if (isUpgrade) {
+                // Paddle bills & applies the extra licenses now, then tells us by
+                // webhook, so we poll until our own data catches up.
+                const confirmed = yield this.waitForUserUpdate(() =>
+                    this.user?.subscription?.quantity === newTeamSize
+                );
+
+                if (!confirmed) {
+                    // The update was accepted, we just never saw it land. Report it,
+                    // rather than silently showing the old count as if nothing happened.
+                    reportError(`Team size update to ${newTeamSize} was not confirmed in time`);
+                }
+            } else {
+                // Downgrades are deferred to the next billing cycle, so there's no
+                // change to wait for - just pick up whatever the API reports now.
+                yield this.updateUser();
+            }
+
+            this.invalidateTeamSizeQuote();
+        } catch (e) {
+            const error = asErrorLike(e);
+            console.log(error);
+            reportError(`Team size update failed: ${error.message}`);
+            alert(error.message);
+            throw e;
+        } finally {
+            this.isAccountUpdateInProcess = false;
+        }
+    }).bind(this);
+
     cancelSubscription = flow(function * (this: AccountStore) {
         try {
             this.isAccountUpdateInProcess = true;
             yield cancelSubscription();
-            yield this.waitForUserUpdate(() =>
+            const confirmed = yield this.waitForUserUpdate(() =>
                 !this.user?.subscription ||
                 this.user?.subscription.status === 'deleted'
             );
-            console.log('Subscription cancellation confirmed');
+
+            if (confirmed) console.log('Subscription cancellation confirmed');
+            else reportError('Subscription cancellation was not confirmed in time');
         } catch (e: any) {
             console.log(e);
             reportError(`Subscription cancellation failed: ${e.message || e}`);
@@ -148,6 +234,10 @@ export class AccountStore {
         this: AccountStore,
         completedCheck: () => boolean
     ) {
+        // Bounded, so that an upstream change we never hear about leaves a stale spinner
+        // rather than polling for the lifetime of the page:
+        const giveUpAt = Date.now() + POLL_TIMEOUT_MS;
+
         let focused = true;
 
         const setFocused = () => {
@@ -166,7 +256,7 @@ export class AccountStore {
         // (update from payment provider) complete elsewhere...
         yield this.updateUser();
         let ticksSinceCheck = 0;
-        while (!completedCheck()) {
+        while (!completedCheck() && Date.now() < giveUpAt) {
             yield delay(1000);
             ticksSinceCheck += 1;
 
@@ -178,9 +268,16 @@ export class AccountStore {
         }
         window.removeEventListener('focus', setFocused);
         window.removeEventListener('blur', setUnfocused);
+
+        // False means we gave up waiting, not that the change failed - callers decide
+        // how much to trust their own data at that point:
+        return completedCheck();
     }).bind(this);
 
 }
+
+// How long we'll poll for our own data to reflect a change made upstream:
+const POLL_TIMEOUT_MS = 1000 * 60;
 
 // Used as an id for team members who are added optimistically, while the request runs
 export const PLACEHOLDER_ID_PREFIX = "placeholder-member-id-";

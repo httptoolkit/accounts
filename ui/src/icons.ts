@@ -13,6 +13,8 @@ import {
 import { faTrashAlt } from '@fortawesome/free-regular-svg-icons/faTrashAlt';
 import { faExclamationTriangle } from '@fortawesome/free-solid-svg-icons/faExclamationTriangle';
 import { faPlus } from '@fortawesome/free-solid-svg-icons/faPlus';
+import { faMinus } from '@fortawesome/free-solid-svg-icons/faMinus';
+import { faUsers } from '@fortawesome/free-solid-svg-icons/faUsers';
 import { faUndo } from '@fortawesome/free-solid-svg-icons/faUndo';
 import { faSave } from '@fortawesome/free-solid-svg-icons/faSave';
 import { faCaretLeft } from '@fortawesome/free-solid-svg-icons/faCaretLeft';
@@ -36,6 +38,8 @@ library.add(
     faTrashAlt,
     faExclamationTriangle,
     faPlus,
+    faMinus,
+    faUsers,
     faUndo,
     faSave,
     faCaretLeft
@@ -60,4 +64,10 @@ export const WarningIcon = styled(Icon).attrs(() => ({
 }))`
     margin: 0 6px;
     color: ${p => p.theme.warningColor};
+`;
+export const Spinner = styled(Icon).attrs(() => ({
+    icon: ['fac', 'spinner-arc'],
+    spin: true
+}))`
+    margin: 1px 6px;
 `;
