@@ -1,3 +1,4 @@
+import { reportError } from './errors.ts';
 import { updateSubscriptionQuantity } from './paddle.ts';
 import { TeamOwnerMetadata, updateUserMetadata } from './user-data-facade.ts';
 import type { TeamSizeChangePlan } from './team-size.ts';
@@ -21,7 +22,11 @@ export async function applyTeamSizeChange(
         }
     } catch (e) {
         if (plan.isUpgrade) {
-            await updateUserMetadata<TeamOwnerMetadata>(ownerId, { pending_upgrade: null });
+            // Reported separately, so a cleanup failure can't hide the original error:
+            await updateUserMetadata<TeamOwnerMetadata>(ownerId, { pending_upgrade: null })
+                .catch((cleanupError: unknown) => reportError(
+                    cleanupError instanceof Error ? cleanupError : String(cleanupError)
+                ));
         }
         throw e;
     }

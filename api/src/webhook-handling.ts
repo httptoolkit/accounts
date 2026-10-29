@@ -105,11 +105,15 @@ export async function updateTeamData(
 
     // License reductions are paid for until the end of the current period, so they only
     // apply when the next renewal payment arrives:
+    const currentQuantity = (currentMetadata as TeamOwnerMetadata).subscription_quantity;
     if (
         options.deferQuantityDecrease &&
         newMetadata.subscription_quantity !== undefined &&
-        newMetadata.subscription_quantity < (currentMetadata as TeamOwnerMetadata).subscription_quantity
+        newMetadata.subscription_quantity < currentQuantity
     ) {
+        log.info(`Deferring license reduction for ${email} from ${currentQuantity} to ${
+            newMetadata.subscription_quantity
+        } until renewal`);
         delete newMetadata.subscription_quantity;
     }
 
