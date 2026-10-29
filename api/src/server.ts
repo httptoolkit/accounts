@@ -73,6 +73,7 @@ apiRouter.options('*', (req, res) => {
         '/contact-form',
         '/update-team',
         '/update-team-size',
+        '/get-team-size-quote',
         '/cancel-subscription',
         '/log-abuse-report',
         '/request-student-account'
@@ -112,6 +113,7 @@ const RATE_LIMIT_PARAMS = {
 apiRouter.get('/get-prices', lambdaWrapper('get-prices'));
 apiRouter.get('/get-app-data', lambdaWrapper('get-app-data'));
 apiRouter.get('/get-billing-data', lambdaWrapper('get-billing-data'));
+apiRouter.get('/get-team-size-quote', lambdaWrapper('get-team-size-quote'));
 
 apiRouter.post('/paddle-webhook', lambdaWrapper('paddle-webhook'));
 apiRouter.post('/paypro-webhook', lambdaWrapper('paypro-webhook'));

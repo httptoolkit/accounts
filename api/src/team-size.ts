@@ -51,6 +51,15 @@ export function getRenewalQuantity(subscription: PaddleSubscription | undefined)
     return quantity;
 }
 
+// If Paddle has more licenses than we do, an increase hasn't reached us by webhook yet, so
+// our data describes a different subscription. This window is brief - only until the
+// webhook is delivered (or retried successfully).
+export function assertNoPendingIncrease(ownerData: TeamOwnerMetadata, renewalQuantity: number) {
+    if (renewalQuantity > ownerData.subscription_quantity) {
+        throw new StatusError(409, "Your subscription is being updated, please try again shortly");
+    }
+}
+
 export interface TeamSizeChangePlan {
     paidQuantity: number;
     renewalQuantity: number;
@@ -65,11 +74,9 @@ export function planTeamSizeChange(
     newTeamSize: number
 ): TeamSizeChangePlan {
     const paidQuantity = ownerData.subscription_quantity;
+    assertNoPendingIncrease(ownerData, renewalQuantity);
 
-    if (renewalQuantity > paidQuantity) {
-        // This window is brief - only until the webhook is delivered (or retried successfully)
-        throw new StatusError(409, "Your subscription is being updated, please try again shortly");
-    } else if (!Number.isInteger(newTeamSize)) {
+    if (!Number.isInteger(newTeamSize)) {
         throw new StatusError(400, `Subscription quantity must be a whole number (was ${newTeamSize})`);
     } else if (newTeamSize < 1) {
         throw new StatusError(400, "Cannot reduce subscription below 1 license");

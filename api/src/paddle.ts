@@ -291,6 +291,34 @@ export async function getPaddleUserIdFromSubscription(
     return subscription?.user_id;
 }
 
+/**
+ * What this subscription bills, and when. The unit price is the next payment spread over
+ * the units it covers, so it's tax-inclusive: Paddle only exposes a net unit price on
+ * its payment webhooks, not here. Subscriptions can each carry their own negotiated
+ * price, so this always comes from the subscription, never from our public pricing.
+ */
+export function getSubscriptionPricing(subscription: PaddleSubscription) {
+    const { next_payment: nextPayment, quantity } = subscription;
+
+    if (
+        !nextPayment ||
+        !(nextPayment.amount > 0) ||
+        !nextPayment.currency ||
+        !nextPayment.date ||
+        quantity === undefined ||
+        !Number.isInteger(quantity) ||
+        quantity < 1
+    ) {
+        throw new StatusError(502, "Could not automatically verify subscription pricing");
+    }
+
+    return {
+        currency: nextPayment.currency,
+        unitPrice: nextPayment.amount / quantity,
+        nextBillDate: nextPayment.date
+    };
+}
+
 export interface PaddleTransaction {
     order_id: string; // Used as key
     receipt_url: string;
