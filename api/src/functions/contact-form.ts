@@ -43,7 +43,7 @@ export const handler = catchErrors(async (event) => {
 
     // We get some spam with random strings (SMSINiyNSHbJXPwUTmR). Single word messages
     // are not plausibly real/meaningful contact messages, so just treat them as spam.
-    const isRandomSpamMessage = message.length > 10 && message.length < 30 && !message.trim().includes(' ');
+    const isRandomSpamMessage = message.length > 10 && !message.trim().includes(' ');
 
     if (honeypot || isRandomSpamMessage) {
         // We can remove this later - just reporting each hit for now to check if it's working
