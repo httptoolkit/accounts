@@ -106,6 +106,44 @@ export interface SubscriptionData {
     can_update_team_size?: boolean;
 }
 
+// Team size quote data, as returned by the API for team owners who can
+// self-serve their own license count changes.
+export interface TeamSizeQuoteData {
+    currency: string;
+    unit_price: number; // Tax-inclusive cost of one license for a full billing period
+
+    current_quantity: number;
+    renewal_quantity: number; // Lower than current while a reduction is pending
+    min_quantity: number; // Lowest size that keeps every current member licensed
+    max_quantity: number; // Highest size that can be set without contacting support
+
+    interval: Interval;
+    next_bill_date: string; // YYYY-MM-DD
+    days_in_period: number;
+    days_remaining: number;
+}
+
+// The same data, parsed for use by callers:
+export interface TeamSizeQuote {
+    currency: string;
+    /**
+     * What one license costs for a whole billing period, including tax. Read from the
+     * subscription itself, so this reflects any price specific to this customer.
+     */
+    unitPrice: number;
+
+    currentQuantity: number;
+    renewalQuantity: number; // Lower than current while a reduction is pending
+    // The lowest size available without unlicensing a current team member:
+    minQuantity: number;
+    maxQuantity: number;
+
+    interval: Interval;
+    nextBillDate: string; // YYYY-MM-DD
+    daysInPeriod: number;
+    daysRemaining: number;
+}
+
 // Transaction data, as returned within API billing responses
 export interface TransactionData {
     order_id: string; // Used as key

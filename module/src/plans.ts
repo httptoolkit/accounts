@@ -1,5 +1,5 @@
 import { delay, doWhile } from '@httptoolkit/util';
-import { SKU, SubscriptionPricing } from './types';
+import { SKU, SubscriptionPricing, TeamSizeQuote } from './types';
 
 import { ACCOUNTS_API_BASE } from './util';
 
@@ -97,3 +97,21 @@ export const getSKUForPaddleId = (paddleId: number | undefined) =>
     (Object.keys(SubscriptionPlans) as SKU[]).find(sku =>
         SubscriptionPlans[sku].paddleId === paddleId
     );
+
+/**
+ * The cost of adding licenses partway through a billing period. Each added license is
+ * charged for the whole days left before the next bill, so this is zero for downgrades
+ * (which just reduce the next bill instead) and on the day of the next bill itself.
+ */
+export function getProratedUpgradeCost(quote: TeamSizeQuote, newTeamSize: number) {
+    const addedLicenses = Math.max(0, newTeamSize - quote.currentQuantity);
+    return quote.unitPrice * addedLicenses * (quote.daysRemaining / quote.daysInPeriod);
+}
+
+/**
+ * What the subscription will cost at each renewal once this change has applied. Both
+ * upgrades and downgrades land here from the next bill onwards.
+ */
+export function getRenewalCost(quote: TeamSizeQuote, newTeamSize: number) {
+    return quote.unitPrice * newTeamSize;
+}

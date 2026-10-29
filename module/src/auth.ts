@@ -8,7 +8,16 @@ import {
     JWTPayload
 } from 'jose';
 
-import { Interval, SKU, SubscriptionData, TierCode, UserAppData, UserBillingData } from "./types";
+import {
+    Interval,
+    SKU,
+    SubscriptionData,
+    TeamSizeQuote,
+    TeamSizeQuoteData,
+    TierCode,
+    UserAppData,
+    UserBillingData
+} from "./types";
 import { ACCOUNTS_API_BASE } from './util';
 import { getSKUForPaddleId } from './plans';
 import { storage } from './storage';
@@ -573,6 +582,42 @@ export async function updateTeamMembers(
         console.log(`Received ${appDataResponse.status} updating team members: ${responseBody}`);
         throw new Error(responseBody || `Failed to update team members`);
     }
+}
+
+/**
+ * Load the data required to quote the cost of changing this team's size. Only available
+ * to team owners whose subscription supports self-service updates (i.e. those with
+ * canUpdateTeamSize set on their subscription).
+ */
+export async function getTeamSizeQuote(): Promise<TeamSizeQuote> {
+    const token = await getToken();
+    if (!token) throw new Error("Can't quote team size without an auth token");
+
+    const response = await fetch(`${ACCOUNTS_API_BASE}/get-team-size-quote`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+        const responseBody = await response.text();
+        console.log(`Received ${response.status} quoting team size: ${responseBody}`);
+        throw new Error(responseBody || 'Failed to quote team size change');
+    }
+
+    const quote = await response.json() as TeamSizeQuoteData;
+
+    return {
+        currency: quote.currency,
+        unitPrice: quote.unit_price,
+        currentQuantity: quote.current_quantity,
+        renewalQuantity: quote.renewal_quantity,
+        minQuantity: quote.min_quantity,
+        maxQuantity: quote.max_quantity,
+        interval: quote.interval,
+        nextBillDate: quote.next_bill_date,
+        daysInPeriod: quote.days_in_period,
+        daysRemaining: quote.days_remaining
+    };
 }
 
 export async function updateTeamSize(newTeamSize: number): Promise<void> {

@@ -5,7 +5,9 @@ export {
     SubscriptionPlans,
     getSKUForPaddleId,
     getPlanByCode,
-    loadPlanPricesUntilSuccess
+    loadPlanPricesUntilSuccess,
+    getProratedUpgradeCost,
+    getRenewalCost
 } from './plans';
 
 export {
@@ -32,5 +34,6 @@ export {
     TeamMember,
     getBillingData,
     updateTeamMembers,
-    updateTeamSize
+    updateTeamSize,
+    getTeamSizeQuote
 } from './auth';
