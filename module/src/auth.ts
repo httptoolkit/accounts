@@ -346,8 +346,12 @@ export async function getLatestUserData(): Promise<User> {
     }
 }
 
-export async function getBillingData(): Promise<BillingAccount> {
-    const userRawJwt = await requestUserData('billing');
+/**
+ * Load the user's billing data. By default the API response may be briefly cached by
+ * the browser - pass `fresh: true` when polling for an upstream change to skip that.
+ */
+export async function getBillingData(options: { fresh?: boolean } = {}): Promise<BillingAccount> {
+    const userRawJwt = await requestUserData('billing', options);
     const jwtData = await getVerifiedJwtPayload(userRawJwt, 'billing');
     return parseBillingData(jwtData);
 }
@@ -524,7 +528,7 @@ function parseSubscriptionData(rawData: SubscriptionData) {
 
 async function requestUserData(
     type: 'app' | 'billing',
-    options: { isRetry?: boolean } = {}
+    options: { isRetry?: boolean, fresh?: boolean } = {}
 ): Promise<string> {
     const token = await getToken();
     if (!token) return '';
@@ -533,7 +537,8 @@ async function requestUserData(
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${token}`
-        }
+        },
+        cache: options.fresh ? 'no-store' : 'default'
     });
 
     if (!appDataResponse.ok) {
@@ -551,7 +556,7 @@ async function requestUserData(
                 // a refresh is worth a shot (worst case, it confirms we're unauthed).
                 return refreshToken(tokens.refreshToken)
             }).then(() =>
-                requestUserData(type, { isRetry: true })
+                requestUserData(type, { ...options, isRetry: true })
             );
         }
 
