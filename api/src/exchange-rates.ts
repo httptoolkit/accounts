@@ -17,14 +17,20 @@ const getExchangeRateSources = (currency: string) => [
         ratesField: 'conversion_rates'
     },
     {
-        // The original repo via the CDN
-        url: `https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/${currency.toLowerCase()}.json`,
+        // fawazahmed0/currency-api via jsDelivr (the old gh/...@1 URLs now 404):
+        url: `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/${currency.toLowerCase()}.json`,
         ratesField: currency.toLowerCase(),
         ratesTransform: (rates: any) => _.mapKeys(rates, (_v, k: string) => k.toUpperCase())
     },
     {
-        // Same thing via different CDN
-        url: `https://raw.githubusercontent.com/fawazahmed0/currency-api/1/latest/currencies/${currency.toLowerCase()}.json`,
+        // Same data via Cloudflare Pages, the mirror recommended by the upstream README:
+        url: `https://latest.currency-api.pages.dev/v1/currencies/${currency.toLowerCase()}.json`,
+        ratesField: currency.toLowerCase(),
+        ratesTransform: (rates: any) => _.mapKeys(rates, (_v, k: string) => k.toUpperCase())
+    },
+    {
+        // Independent source with the same JSON shape (ECB fiat rates, by allratestoday.com):
+        url: `https://allratestoday.com/api/compat/currency-api/latest/v1/currencies/${currency.toLowerCase()}.json`,
         ratesField: currency.toLowerCase(),
         ratesTransform: (rates: any) => _.mapKeys(rates, (_v, k: string) => k.toUpperCase())
     }
