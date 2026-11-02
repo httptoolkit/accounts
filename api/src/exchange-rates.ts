@@ -17,14 +17,14 @@ const getExchangeRateSources = (currency: string) => [
         ratesField: 'conversion_rates'
     },
     {
-        // The original repo via the CDN
-        url: `https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/${currency.toLowerCase()}.json`,
+        // fawazahmed0/exchange-api via jsDelivr
+        url: `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/${currency.toLowerCase()}.json`,
         ratesField: currency.toLowerCase(),
         ratesTransform: (rates: any) => _.mapKeys(rates, (_v, k: string) => k.toUpperCase())
     },
     {
-        // Same thing via different CDN
-        url: `https://raw.githubusercontent.com/fawazahmed0/currency-api/1/latest/currencies/${currency.toLowerCase()}.json`,
+        // Same data via the Cloudflare fallback recommended upstream
+        url: `https://latest.currency-api.pages.dev/v1/currencies/${currency.toLowerCase()}.json`,
         ratesField: currency.toLowerCase(),
         ratesTransform: (rates: any) => _.mapKeys(rates, (_v, k: string) => k.toUpperCase())
     }
