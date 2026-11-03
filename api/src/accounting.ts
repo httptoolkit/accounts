@@ -5,7 +5,7 @@ import { CustomError, delay } from '@httptoolkit/util';
 
 import { getPaddleIdForSku } from './paddle.ts';
 import { getSkuInterval } from './products.ts';
-import { reportError } from './errors.ts';
+import { formatErrorMessage } from './errors.ts';
 
 const PROFITWELL_PRIVATE_TOKEN = process.env.PROFITWELL_PRIVATE_TOKEN;
 const PROFITWELL_API_BASE_URL = process.env.PROFITWELL_API_BASE_URL
@@ -22,10 +22,61 @@ export class AccountingError extends CustomError {
     constructor(
         statusCode: number,
         message: string,
-        public readonly body: string
+        public readonly body: string,
+        public readonly retryAfterMs?: number
     ) {
         super(message, { statusCode });
     }
+}
+
+const isRetryableStatus = (status: number) => status === 429 || status >= 500;
+
+function getRetryAfterMs(response: Response): number | undefined {
+    const header = response.headers.get('retry-after');
+    if (!header) return undefined;
+
+    const seconds = Number(header);
+    if (!isNaN(seconds)) return seconds * 1000;
+
+    const date = Date.parse(header);
+    if (!isNaN(date)) return Math.max(date - Date.now(), 0);
+
+    return undefined;
+}
+
+// Exponentially increasing retries (maximum ~8 hours total), or longer if Profitwell asks:
+function getRetryDelayMs(retries: number, retryAfterMs?: number) {
+    const backoff = 1000 * (3 ** (DEFAULT_PROFITWELL_RETRIES - retries));
+    return Math.max(backoff, retryAfterMs ?? 0);
+}
+
+// Retries network errors, rate limits & server errors. Other failures are returned as-is.
+async function fetchWithRetries(
+    description: string,
+    url: string,
+    init: RequestInit,
+    retries = DEFAULT_PROFITWELL_RETRIES
+): Promise<Response> {
+    let retryAfterMs: number | undefined;
+
+    try {
+        const response = await fetch(url, init);
+        if (!isRetryableStatus(response.status) || retries <= 0) return response;
+
+        const body = await response.text().catch(() => '');
+        log.warn(`${response.status} Profitwell ${description} response: ${body}`);
+        retryAfterMs = getRetryAfterMs(response);
+    } catch (e) {
+        if (retries <= 0) throw e;
+        log.warn(`Profitwell ${description} request failed: ${formatErrorMessage(e)}`);
+    }
+
+    const sleepTime = getRetryDelayMs(retries, retryAfterMs);
+    log.info(`Sleeping for ${sleepTime} between ${description} retries`);
+    await delay(sleepTime, { unref: true });
+    log.debug(`Retrying ${description}...`);
+
+    return fetchWithRetries(description, url, init, retries - 1);
 }
 
 // Attempt to update the user to log subscription metadata (e.g. the provider used) so
@@ -57,7 +108,12 @@ export async function setRevenueTraits(email: string, traits: Traits, retries = 
             return;
         } else if (!response.ok) {
             log.warn(`${response.status} Profitwell traits response: ${responseBody}`);
-            throw new Error(`Failed to set Profitwell ${category}:${trait} on ${email} (${response.status})`);
+            throw new AccountingError(
+                response.status,
+                `Failed to set Profitwell ${category}:${trait} on ${email} (${response.status})`,
+                responseBody ?? '',
+                getRetryAfterMs(response)
+            );
         } else {
             // Trait set OK, all good.
             return;
@@ -67,8 +123,10 @@ export async function setRevenueTraits(email: string, traits: Traits, retries = 
         // where a parallel process (e.g. Paddle's Profitwell integration) or Profitwell's
         // own processing hasn't completed yet and so the customer isn't recognized.
         if (retries > 0) {
-            // Exponentially increasing retries (maximum ~24 hours total)
-            const sleepTime = 1000 * (3 ** (DEFAULT_PROFITWELL_RETRIES - retries));
+            const sleepTime = getRetryDelayMs(
+                retries,
+                e instanceof AccountingError ? e.retryAfterMs : undefined
+            );
 
             log.info(`Sleeping for ${sleepTime} between ${email} trait retries`);
             await delay(sleepTime, { unref: true });
@@ -93,8 +151,7 @@ export async function recordSubscription(
         price: number,
         effectiveDate: Date
     },
-    traits: Traits,
-    retries = DEFAULT_PROFITWELL_RETRIES
+    traits: Traits
 ) {
     const interval = getSkuInterval(subscription.sku);
     if (interval === 'perpetual') return; // We don't record these, they don't matter
@@ -103,7 +160,7 @@ export async function recordSubscription(
         : 'year';
 
     // Record the new subscription in Profitwell:
-    const response = await fetch(`${PROFITWELL_API_BASE_URL}/v2/subscriptions/`, {
+    const response = await fetchWithRetries(`${email} sub creation`, `${PROFITWELL_API_BASE_URL}/v2/subscriptions/`, {
         method: 'POST',
         headers: {
             'Authorization': PROFITWELL_PRIVATE_TOKEN!,
@@ -136,21 +193,8 @@ export async function recordSubscription(
                 email.replace(/\.([^.@])+$/, `.${new Date().getFullYear().toString().slice(2)}`),
                 // replace (for example) .com with .24 (36 char limit on emails!)
                 subscription,
-                traits,
-                retries
+                traits
             );
-        }
-
-        // Retry on 502s, as they're likely transient and we don't want to lose data
-        if (response.status === 502 && retries > 0) {
-            // Exponentially increasing retries (maximum ~24 hours total)
-            const sleepTime = 1000 * (3 ** (DEFAULT_PROFITWELL_RETRIES - retries));
-
-            log.info(`Sleeping for ${sleepTime} between ${email} sub creation event retries`);
-            await delay(sleepTime, { unref: true });
-            log.debug(`Retrying recording sub creation for ${email}...`);
-
-            return recordSubscription(email, subscription, traits, retries - 1);
         }
 
         throw new AccountingError(response.status, `Unexpected ${response.status} from Profitwell`, body);
@@ -161,11 +205,10 @@ export async function recordSubscription(
 
 export async function recordCancellation(
     subscriptionId: string,
-    effectiveDate: number,
-    retries = DEFAULT_PROFITWELL_RETRIES
+    effectiveDate: number
 ) {
     // Record the subscription cancellation in Profitwell:
-    const response = await fetch(`${PROFITWELL_API_BASE_URL}/v2/subscriptions/${
+    const response = await fetchWithRetries(`${subscriptionId} sub cancellation`, `${PROFITWELL_API_BASE_URL}/v2/subscriptions/${
         subscriptionId
     }?effective_date=${
         effectiveDate
@@ -180,18 +223,6 @@ export async function recordCancellation(
         const body = await response.text().catch(() => '');
         log.warn(`${response.status} Profitwell sub cancellation response:`);
         log.warn(body);
-
-        // Retry on 502s, as they're likely transient and we don't want to lose data
-        if (response.status === 502 && retries > 0) {
-            // Exponentially increasing retries (maximum ~24 hours total)
-            const sleepTime = 1000 * (3 ** (DEFAULT_PROFITWELL_RETRIES - retries));
-
-            log.info(`Sleeping for ${sleepTime} between ${subscriptionId} sub cancellation event retries`);
-            await delay(sleepTime, { unref: true });
-            log.debug(`Retrying recording sub cancellation for ${subscriptionId}...`);
-
-            return recordCancellation(subscriptionId, effectiveDate, retries - 1);
-        }
 
         throw new AccountingError(response.status, `Unexpected ${response.status} from Profitwell`, body);
     }

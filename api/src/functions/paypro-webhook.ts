@@ -102,7 +102,8 @@ export const handler = catchErrors(async (event) => {
             }`);
         }
 
-        try {
+        // Run accounting asynchronously - no need to block responding to PayPro on this.
+        (async () => {
             if (eventType === 'OrderCharged') {
                 const currency = eventData.ORDER_CURRENCY_CODE;
                 const price = parseFloat(eventData.ORDER_ITEM_TOTAL_AMOUNT);
@@ -131,12 +132,12 @@ export const handler = catchErrors(async (event) => {
                     (existingExpiry ?? Date.now()) / 1000
                 );
             }
-        } catch (e: any) {
+        })().catch((e) => {
             reportError(`Failed to record PayPro ${eventType}: ${e.message || e}`, {
                 cause: e,
                 extraMetadata: { email }
             });
-        }
+        });
     } else if (eventType === 'OrderChargedBack') {
         await updateProUserData(email, {
             subscription_status: 'deleted', // Redundant, since we should get a cancel webhook too

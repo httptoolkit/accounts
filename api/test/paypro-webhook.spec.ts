@@ -555,6 +555,8 @@ describe('PayPro webhooks', () => {
                 ORDER_CUSTOM_FIELDS: 'x-passthrough={"country":"ABC"}'
             });
 
+            await delay(50);
+
             const creationRequests = await profitwellSubscriptionCreation.getSeenRequests();
             expect(creationRequests.length).to.equal(1);
             expect(await creationRequests[0].body.getJson()).to.deep.equal({
@@ -583,6 +585,53 @@ describe('PayPro webhooks', () => {
             expect([...deletionParams.entries()]).to.deep.equal([
                 ['effective_date', (nextRenewal.valueOf() / 1000).toString()]
             ]);
+        });
+
+        it('should retry rate-limited Profitwell requests without blocking the webhook', async function () {
+            this.timeout(5000);
+
+            const userId = "abc";
+            const userEmail = 'profitwell-test-user@example.com';
+            await givenUser(userId, userEmail);
+
+            await auth0Server
+                .forPatch('/api/v2/users/' + userId)
+                .thenJson(200, {});
+
+            await profitwellApiServer
+                .forPost('/v2/subscriptions/')
+                .once()
+                .thenReply(429, 'Too many requests', { 'retry-after': '0' });
+            const profitwellSubscriptionCreation = await profitwellApiServer
+                .forPost('/v2/subscriptions/')
+                .thenReply(200);
+
+            const nextRenewal = moment.utc('2030-01-01');
+
+            await triggerWebhook(apiServer, {
+                IPN_TYPE_NAME: 'OrderCharged',
+                ORDER_ITEM_SKU: 'pro-monthly',
+                CUSTOMER_ID: '123',
+                SUBSCRIPTION_ID: '456',
+                SUBSCRIPTION_STATUS_NAME: 'Active',
+                SUBSCRIPTION_RENEWAL_TYPE: 'Auto',
+                SUBSCRIPTION_NEXT_CHARGE_DATE: formatRenewalDate(nextRenewal),
+                ORDER_PLACED_TIME_UTC: formatOrderDate(moment.utc('2020-01-01')),
+                INVOICE_LINK: "https://store.payproglobal.com/Invoice?Id=MY_UUID",
+                PRODUCT_QUANTITY: '1',
+                ORDER_CURRENCY_CODE: 'EUR',
+                ORDER_ITEM_TOTAL_AMOUNT: '10',
+                TEST_MODE: '0',
+                CUSTOMER_EMAIL: userEmail,
+                ORDER_CUSTOM_FIELDS: 'x-passthrough={"country":"ABC"}'
+            });
+
+            expect(await profitwellSubscriptionCreation.getSeenRequests()).to.have.length(0);
+
+            // First retry is after 1 second:
+            await delay(1500);
+
+            expect(await profitwellSubscriptionCreation.getSeenRequests()).to.have.length(1);
         });
 
     });
