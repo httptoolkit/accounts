@@ -37,7 +37,7 @@
     "destroyable-server": "^1.0.1",
     "kysely-ctl": "^0.19.0",
     "mocha": "^10.1.0",
-    "mockttp": "^3.6.2",
+    "mockttp": "^4.6.5",
     "typescript": "^5.9.3"
   },
   "dependencies": {
