@@ -408,7 +408,6 @@ describe('Paddle lifetime licenses', () => {
             });
 
             expect(response.status).to.equal(200);
-            expect(await response.text()).to.include('lifetime license is now active');
             expect(await getUserMetadata(userEmail)).to.deep.equal({});
         });
     });

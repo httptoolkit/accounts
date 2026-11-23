@@ -10,10 +10,7 @@ nothing to do here but respond.
 export const handler = catchErrors(async () => {
     return {
         statusCode: 200,
-        headers: { 'Content-Type': 'text/plain' },
-        body: [
-            'Your HTTP Toolkit Pro lifetime license is now active\\.',
-            'To get started, launch HTTP Toolkit, and click \'Get Pro\' then \'Log into existing account\'\\.'
-        ].join('\n\n')
+        headers: { 'Content-Type': 'text/none' },
+        body: ''
     };
 });
