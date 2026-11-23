@@ -10,7 +10,8 @@ import {
     freshAuthToken,
     givenTeam,
     givenAuthToken,
-    givenUser
+    givenUser,
+    uniqueUserId
 } from './test-setup/setup.ts';
 import {
     paddleServer,
@@ -66,8 +67,9 @@ describe('/get-team-size-quote', () => {
     describe("for free users", () => {
         it("returns 403", async () => {
             const authToken = freshAuthToken();
-            await givenUser("abc", 'user@example.com');
-            await givenAuthToken(authToken, "abc");
+            const userId = uniqueUserId();
+            await givenUser(userId, 'user@example.com');
+            await givenAuthToken(authToken, userId);
             await auth0Server.forGet('/api/v2/users').thenJson(200, []);
 
             const response = await getTeamSizeQuote(apiServer, authToken);
@@ -78,14 +80,15 @@ describe('/get-team-size-quote', () => {
     describe("for Pro users", () => {
         it("returns 403", async () => {
             const authToken = freshAuthToken();
-            await givenUser("abc", 'user@example.com', {
+            const userId = uniqueUserId();
+            await givenUser(userId, 'user@example.com', {
                 payment_provider: 'paddle',
                 subscription_expiry: Date.now() + 60_000,
                 subscription_id: '2',
                 subscription_sku: 'pro-monthly',
                 subscription_status: "active"
             });
-            await givenAuthToken(authToken, "abc");
+            await givenAuthToken(authToken, userId);
             await auth0Server.forGet('/api/v2/users').thenJson(200, []);
 
             const response = await getTeamSizeQuote(apiServer, authToken);
@@ -96,7 +99,7 @@ describe('/get-team-size-quote', () => {
     describe("for Team users", () => {
 
         const givenFourMemberTeam = (spaces = 0) => givenTeam([
-            ..._.range(4).map((i) => ({ id: i.toString(), email: `member${i}@example.com` })),
+            ..._.range(4).map((i) => ({ id: uniqueUserId('member'), email: `member${i}@example.com` })),
             ..._.range(spaces).map(() => undefined)
         ]);
 

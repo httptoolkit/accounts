@@ -4,14 +4,16 @@ import { expect } from 'chai';
 import jwt from 'jsonwebtoken';
 
 import { DestroyableServer } from 'destroyable-server';
-import { startAPI, privateKey, givenUser, givenAuthToken, givenRefreshToken } from './test-setup/setup.ts';
+import { startAPI, privateKey, givenUser, givenAuthToken, givenRefreshToken, uniqueUserId } from './test-setup/setup.ts';
 import { AUTH0_PORT, auth0Server, givenAuth0Token, givenNoAuth0User, watchAuth0UserCreation } from './test-setup/auth0.ts';
 import { testDB } from './test-setup/database.ts';
 import { getReceivedEmails, getEmail } from './test-setup/smtp.ts';
 
 
-const TOKEN_RESPONSE = {
-    "access_token": "at",
+const ACCESS_TOKEN = "at";
+
+const tokenResponse = (userId: string) => ({
+    "access_token": ACCESS_TOKEN,
     "refresh_token": "rt",
     "scope": "email offline_access",
     "expires_in": 86400,
@@ -23,12 +25,12 @@ const TOKEN_RESPONSE = {
             "exp": Date.now() + 86400,
             "iat": Date.now(),
             "email": "test-user@example.test",
-            "sub": "auth0|userid"
+            "sub": userId
         }),
         privateKey.toString(),
         { algorithm: 'RS256' }
     )
-};
+});
 
 describe("API auth endpoints", () => {
 
@@ -146,7 +148,9 @@ describe("API auth endpoints", () => {
     describe("/auth/login", () => {
 
         it("returns a 400 if you don't provide a body", async () => {
-            const tokenEndpoint = await auth0Server.forPost('/oauth/token').thenJson(200, TOKEN_RESPONSE);
+            const tokenEndpoint = await auth0Server.forPost('/oauth/token')
+                .withForm({ grant_type: 'http://auth0.com/oauth/grant-type/passwordless/otp' })
+                .thenJson(200, tokenResponse(uniqueUserId('auth0|user')));
 
             const response = await fetch(`${apiAddress}/api/auth/login`, {
                 method: 'POST'
@@ -189,7 +193,7 @@ describe("API auth endpoints", () => {
                     scope: 'email openid offline_access app_metadata',
                     grant_type: 'http://auth0.com/oauth/grant-type/passwordless/otp'
                 })
-                .thenJson(200, TOKEN_RESPONSE);
+                .thenJson(200, tokenResponse(uniqueUserId('auth0|user')));
 
             const response = await fetch(`${apiAddress}/api/auth/login`, {
                 method: 'POST',
@@ -258,7 +262,7 @@ describe("API auth endpoints", () => {
                     scope: 'email openid offline_access app_metadata',
                     grant_type: 'http://auth0.com/oauth/grant-type/passwordless/otp'
                 })
-                .thenJson(200, TOKEN_RESPONSE);
+                .thenJson(200, tokenResponse(uniqueUserId('auth0|user')));
 
             const response = await fetch(`${apiAddress}/api/auth/login`, {
                 method: 'POST',
@@ -377,7 +381,9 @@ describe("API auth endpoints", () => {
     describe("/auth/refresh-token", () => {
 
         it("returns a 400 if you don't provide a body", async () => {
-            const tokenEndpoint = await auth0Server.forPost('/oauth/token').thenJson(200, TOKEN_RESPONSE);
+            const tokenEndpoint = await auth0Server.forPost('/oauth/token')
+                .withForm({ grant_type: 'refresh_token' })
+                .thenJson(200, tokenResponse(uniqueUserId('auth0|user')));
 
             const response = await fetch(`${apiAddress}/api/auth/refresh-token`, {
                 method: 'POST'
@@ -401,8 +407,9 @@ describe("API auth endpoints", () => {
         });
 
         it("sends a request to Auth0 to refresh the token", async () => {
-            await givenUser('auth0|userid', 'test-user@example.test');
-            await givenAuth0Token(TOKEN_RESPONSE.access_token, 'auth0|userid', 'test-user@example.test');
+            const userId = uniqueUserId('auth0|user');
+            await givenUser(userId, 'test-user@example.test');
+            await givenAuth0Token(ACCESS_TOKEN, userId, 'test-user@example.test');
 
             const refreshToken = 'rt';
             const tokenEndpoint = await auth0Server.forPost('/oauth/token')
@@ -410,7 +417,7 @@ describe("API auth endpoints", () => {
                     refresh_token: refreshToken,
                     grant_type: 'refresh_token'
                 })
-                .thenJson(200, TOKEN_RESPONSE);
+                .thenJson(200, tokenResponse(userId));
 
             const response = await fetch(`${apiAddress}/api/auth/refresh-token`, {
                 method: 'POST',
@@ -428,7 +435,8 @@ describe("API auth endpoints", () => {
         });
 
         it("caches the token in the DB, if not seen before", async () => {
-            await givenUser('auth0|userid', 'test-user@example.test');
+            const userId = uniqueUserId('auth0|user');
+            await givenUser(userId, 'test-user@example.test');
 
             const refreshToken = 'rt';
             const tokenEndpoint = await auth0Server.forPost('/oauth/token')
@@ -436,9 +444,9 @@ describe("API auth endpoints", () => {
                     refresh_token: refreshToken,
                     grant_type: 'refresh_token'
                 })
-                .thenJson(200, TOKEN_RESPONSE);
+                .thenJson(200, tokenResponse(userId));
 
-            await givenAuthToken(TOKEN_RESPONSE.access_token, 'auth0|userid', 'test-user@example.test');
+            await givenAuthToken(ACCESS_TOKEN, userId, 'test-user@example.test');
 
             await testDB.query('DELETE FROM access_tokens');
             await testDB.query('DELETE FROM refresh_tokens');
@@ -474,7 +482,8 @@ describe("API auth endpoints", () => {
         });
 
         it("caches the user themselves and the token in the DB, if not seen before", async () => {
-            await givenUser('auth0|userid', 'test-user@example.test');
+            const userId = uniqueUserId('auth0|user');
+            await givenUser(userId, 'test-user@example.test');
 
             const refreshToken = 'rt';
             const tokenEndpoint = await auth0Server.forPost('/oauth/token')
@@ -482,9 +491,9 @@ describe("API auth endpoints", () => {
                     refresh_token: refreshToken,
                     grant_type: 'refresh_token'
                 })
-                .thenJson(200, TOKEN_RESPONSE);
+                .thenJson(200, tokenResponse(userId));
 
-            await givenAuthToken(TOKEN_RESPONSE.access_token, 'auth0|userid', 'test-user@example.test');
+            await givenAuthToken(ACCESS_TOKEN, userId, 'test-user@example.test');
 
             await testDB.query('DELETE FROM access_tokens');
             await testDB.query('DELETE FROM refresh_tokens');
@@ -508,7 +517,7 @@ describe("API auth endpoints", () => {
             const users = (await testDB.query('SELECT * FROM users')).rows;
             expect(users).to.have.length(1);
             const user = users[0];
-            expect(user.auth0_user_id).to.equal('auth0|userid');
+            expect(user.auth0_user_id).to.equal(userId);
             expect(user.email).to.equal('test-user@example.test');
 
             // The tokens issued by Auth0 should be cached in the DB:
@@ -524,9 +533,10 @@ describe("API auth endpoints", () => {
         });
 
         it("skips Auth0 entirely if the user is already in the DB", async () => {
+            const userId = uniqueUserId('auth0|user');
             const refreshToken = 'rt';
-            await givenUser('auth0|userid', 'test-user@example.test');
-            await givenRefreshToken(refreshToken, 'auth0|userid');
+            await givenUser(userId, 'test-user@example.test');
+            await givenRefreshToken(refreshToken, userId);
 
             const tokenEndpoint = await auth0Server.forPost('/oauth/token')
                 .withForm({

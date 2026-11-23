@@ -7,7 +7,8 @@ import {
     startAPI,
     givenUser,
     freshAuthToken,
-    givenAuthToken
+    givenAuthToken,
+    uniqueUserId
 } from './test-setup/setup.ts';
 import { testDB } from './test-setup/database.ts';
 
@@ -35,7 +36,7 @@ describe('Request student account API', () => {
 
     it('grants a student account for an academic email', async () => {
         const authToken = freshAuthToken();
-        const userId = 'student-user';
+        const userId = uniqueUserId('student-user');
         const userEmail = 'student@stanford.edu';
 
         await givenUser(userId, userEmail, {});
@@ -64,7 +65,7 @@ describe('Request student account API', () => {
 
     it('rejects non-academic emails', async () => {
         const authToken = freshAuthToken();
-        const userId = 'non-student-user';
+        const userId = uniqueUserId('non-student-user');
         const userEmail = 'user@gmail.com';
 
         await givenUser(userId, userEmail, {});
@@ -86,7 +87,7 @@ describe('Request student account API', () => {
 
     it('rejects existing student accounts', async () => {
         const authToken = freshAuthToken();
-        const userId = 'paying-student-user';
+        const userId = uniqueUserId('paying-student-user');
         const userEmail = 'paying-student@stanford.edu';
 
         const initialData = {
@@ -116,7 +117,7 @@ describe('Request student account API', () => {
 
     it('rejects existing paying users', async () => {
         const authToken = freshAuthToken();
-        const userId = 'paying-student-user';
+        const userId = uniqueUserId('paying-student-user');
         const userEmail = 'paying-student@stanford.edu';
 
         const initialData = {

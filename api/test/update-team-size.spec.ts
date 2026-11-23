@@ -9,14 +9,15 @@ import {
     freshAuthToken,
     givenTeam,
     givenAuthToken,
-    givenUser
+    givenUser,
+    uniqueUserId
 } from './test-setup/setup.ts';
 import {
     paddleServer,
     givenPaddleSubscription,
     PADDLE_PORT,
 } from './test-setup/paddle.ts';
-import { auth0Server } from './test-setup/auth0.ts';
+import { auth0Server, watchAuth0UserUpdates } from './test-setup/auth0.ts';
 import { testDB } from './test-setup/database.ts';
 
 const updateTeamSize = (server: net.Server, authToken: string | undefined, newTeamSize: number) => fetch(
@@ -45,7 +46,7 @@ const givenPaddleTeam = async (team: TeamSlots, renewalQuantity = team.length) =
 };
 
 const givenMembersAndSpaces = (members: number, licenses: number): TeamSlots => [
-    ..._.range(members).map((i) => ({ id: i.toString(), email: `member${i}@example.com` })),
+    ..._.range(members).map((i) => ({ id: uniqueUserId('member'), email: `member${i}@example.com` })),
     ..._.range(licenses - members).map(() => undefined)
 ];
 
@@ -86,7 +87,7 @@ describe('/update-team-size', () => {
     describe("for free users", () => {
         it("returns 403", async () => {
             const authToken = freshAuthToken();
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
 
             await givenUser(userId, userEmail);
@@ -101,7 +102,7 @@ describe('/update-team-size', () => {
     describe("for Pro users", () => {
         it("returns 403", async () => {
             const authToken = freshAuthToken();
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
             const subExpiry = Date.now();
 
@@ -123,7 +124,7 @@ describe('/update-team-size', () => {
     describe("for Team users", () => {
         it("allows increasing the team size", async () => {
             const team = _.range(4).map((i) => ({
-                id: i.toString(),
+                id: uniqueUserId('member'),
                 email: `member${i}@example.com`
             }));
 
@@ -157,7 +158,7 @@ describe('/update-team-size', () => {
                 | { id: string, email: string}
                 | undefined
             > = _.range(4).map((i) => ({
-                id: i.toString(),
+                id: uniqueUserId('member'),
                 email: `member${i}@example.com`
             }));
             team.push(undefined);
@@ -193,7 +194,7 @@ describe('/update-team-size', () => {
                 | { id: string, email: string}
                 | undefined
             > = _.range(4).map((i) => ({
-                id: i.toString(),
+                id: uniqueUserId('member'),
                 email: `member${i}@example.com`
             }));
             while (team.length < 10) team.push(undefined);
@@ -225,7 +226,7 @@ describe('/update-team-size', () => {
 
         it("allows decreasing below the number of locked licenses", async () => {
             const { ownerAuthToken, updateOwnerData } = await givenPaddleTeam([
-                { id: '0', email: 'member0@example.com' },
+                { id: uniqueUserId('member'), email: 'member0@example.com' },
                 undefined
             ]);
             await updateOwnerData({ locked_licenses: [Date.now()] });
@@ -271,6 +272,7 @@ describe('/update-team-size', () => {
             const { ownerId, ownerAuthToken } = await givenPaddleTeam(givenMembersAndSpaces(4, 5));
             await paddleServer.forPost('/api/2.0/subscription/users/update')
                 .thenJson(200, { success: true });
+            const getUserUpdates = await watchAuth0UserUpdates();
 
             const response = await updateTeamSize(apiServer, ownerAuthToken, 7);
             expect(response.status).to.equal(200);
@@ -279,6 +281,11 @@ describe('/update-team-size', () => {
             expect(pendingUpgrade.from).to.equal(5);
             expect(pendingUpgrade.to).to.equal(7);
             expect(pendingUpgrade.requested_at).to.be.closeTo(Date.now(), 5000);
+
+            expect(await getUserUpdates(1)).to.deep.equal([{
+                url: `/api/v2/users/${ownerId}`,
+                body: { app_metadata: { pending_upgrade: pendingUpgrade } }
+            }]);
         });
 
         it("doesn't record downgrades as pending upgrades", async () => {
@@ -352,7 +359,7 @@ describe('/update-team-size', () => {
 
         it("refuses non-integer and oversized quantities", async () => {
             const team = _.range(4).map((i) => ({
-                id: i.toString(),
+                id: uniqueUserId('member'),
                 email: `member${i}@example.com`
             }));
 
@@ -374,7 +381,7 @@ describe('/update-team-size', () => {
                 | { id: string, email: string}
                 | undefined
             > = _.range(4).map((i) => ({
-                id: i.toString(),
+                id: uniqueUserId('member'),
                 email: `member${i}@example.com`
             }));
             team.push(undefined);

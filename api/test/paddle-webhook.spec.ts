@@ -6,14 +6,15 @@ import { DestroyableServer } from 'destroyable-server';
 import { expect } from 'chai';
 
 import {
-    delay,
     startAPI,
     privateKey,
     givenUser,
     givenNoUsers,
+    uniqueUserId
 } from './test-setup/setup.ts';
 import { auth0Server } from './test-setup/auth0.ts';
 import { testDB } from './test-setup/database.ts';
+import { waitForRequests } from './test-setup/utils.ts';
 
 import { serializeWebhookData, PaddleWebhookData, UnsignedWebhookData } from '../src/paddle.ts';
 
@@ -72,7 +73,7 @@ describe('Paddle webhooks', () => {
     describe("for Pro subscriptions", () => {
 
         it('successfully handle new subscriptions for an existing user', async () => {
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
             await givenUser(userId, userEmail);
 
@@ -96,11 +97,8 @@ describe('Paddle webhooks', () => {
 
             const expectedExpiry = nextRenewal.add(1, 'days').valueOf();
 
-            // Auth0 writes are fire-and-forget, give them a moment:
-            await delay(50);
-
             // Confirm the write to Auth0:
-            const updateRequests = await userUpdate.getSeenRequests();
+            const updateRequests = await waitForRequests(userUpdate, 1);
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
@@ -137,7 +135,7 @@ describe('Paddle webhooks', () => {
             const userEmail = 'user@example.com';
             givenNoUsers();
 
-            const userId = "qwe";
+            const userId = uniqueUserId('user');
             const userCreate = await auth0Server
                 .forPost('/api/v2/users')
                 .thenJson(201, {
@@ -164,11 +162,8 @@ describe('Paddle webhooks', () => {
 
             const expectedExpiry = nextRenewal.add(1, 'days').valueOf();
 
-            // Auth0 writes are fire-and-forget, give them a moment:
-            await delay(50);
-
             // Confirm the writes to Auth0:
-            const createRequests = await userCreate.getSeenRequests();
+            const createRequests = await waitForRequests(userCreate, 1);
             expect(createRequests.length).to.equal(1);
             expect(await createRequests[0].body.getJson()).to.deep.equal({
                 email: userEmail,
@@ -177,7 +172,7 @@ describe('Paddle webhooks', () => {
                 app_metadata: {}
             });
 
-            const updateRequests = await userUpdate.getSeenRequests();
+            const updateRequests = await waitForRequests(userUpdate, 1);
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
@@ -211,9 +206,9 @@ describe('Paddle webhooks', () => {
         });
 
         it('should accept new Pro subscriptions for an ex-Team user', async () => {
-            const ownerId = "team-owner";
+            const ownerId = uniqueUserId('team-owner');
             const ownerEmail = 'owner@example.com';
-            const memberId = "team-member";
+            const memberId = uniqueUserId('team-member');
             const memberEmail = 'member@example.com';
 
             await givenUser(ownerId, ownerEmail, {
@@ -254,10 +249,7 @@ describe('Paddle webhooks', () => {
                 quantity: '1'
             });
 
-            // Auth0 writes are fire-and-forget, give them a moment:
-            await delay(50);
-
-            const ownerUpdateRequests = await ownerUpdate.getSeenRequests();
+            const ownerUpdateRequests = await waitForRequests(ownerUpdate, 1);
             expect(ownerUpdateRequests.length).to.equal(1);
             expect(await ownerUpdateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
@@ -265,7 +257,7 @@ describe('Paddle webhooks', () => {
                 }
             });
 
-            const memberUpdateRequests = await memberUpdate.getSeenRequests();
+            const memberUpdateRequests = await waitForRequests(memberUpdate, 1);
             expect(memberUpdateRequests.length).to.equal(1);
 
             const expectedExpiry = nextRenewal.add(1, 'days').valueOf();
@@ -312,9 +304,9 @@ describe('Paddle webhooks', () => {
         });
 
         it('should reject new Pro subscriptions for an active Team user', async () => {
-            const ownerId = "team-owner";
+            const ownerId = uniqueUserId('team-owner');
             const ownerEmail = 'owner@example.com';
-            const memberId = "team-member";
+            const memberId = uniqueUserId('team-member');
             const memberEmail = 'member@example.com';
 
             await givenUser(ownerId, ownerEmail, {
@@ -365,7 +357,7 @@ describe('Paddle webhooks', () => {
         });
 
         it('should successfully renew subscriptions', async () => {
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
             const nextRenewal = moment('2030-01-01');
 
@@ -395,11 +387,8 @@ describe('Paddle webhooks', () => {
 
             const expectedExpiry = nextRenewal.add(1, 'days').valueOf();
 
-            // Auth0 writes are fire-and-forget, give them a moment:
-            await delay(50);
-
             // Confirm the write to Auth0:
-            const updateRequests = await userUpdate.getSeenRequests();
+            const updateRequests = await waitForRequests(userUpdate, 1);
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
@@ -432,7 +421,7 @@ describe('Paddle webhooks', () => {
         });
 
         it('successfully cancel subscriptions on request', async () => {
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
             const cancellationDate = moment('2030-01-01');
 
@@ -458,8 +447,7 @@ describe('Paddle webhooks', () => {
                 cancellation_effective_date: cancellationDate.format('YYYY-MM-DD')
             });
 
-            await delay(50);
-            const updateRequests = await userUpdate.getSeenRequests();
+            const updateRequests = await waitForRequests(userUpdate, 1);
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
@@ -490,7 +478,7 @@ describe('Paddle webhooks', () => {
         });
 
         it('successfully cancel subscriptions after failed payments', async () => {
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
 
             const currentDate = moment('2020-01-01');
@@ -522,6 +510,10 @@ describe('Paddle webhooks', () => {
                 new_quantity: '1'
             })
 
+            // Each webhook mirrors to Auth0 independently, so we wait for each one in turn to
+            // ensure they arrive in order:
+            await waitForRequests(userUpdate, 1);
+
             await triggerWebhook(apiServer, {
                 alert_name: 'subscription_payment_failed',
                 status: 'past_due',
@@ -532,8 +524,7 @@ describe('Paddle webhooks', () => {
                 next_retry_date: finalDate.format('YYYY-MM-DD')
             });
 
-            await delay(50);
-            let updateRequests = await userUpdate.getSeenRequests();
+            let updateRequests = await waitForRequests(userUpdate, 2);
             expect(updateRequests.length).to.equal(2);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
@@ -568,6 +559,7 @@ describe('Paddle webhooks', () => {
                 subscription_plan_id: '550382', // Pro-annual
                 // N.B: no next_retry_date, we're done
             });
+            await waitForRequests(userUpdate, 3);
 
             await triggerWebhook(apiServer, {
                 alert_name: 'subscription_cancelled',
@@ -578,8 +570,7 @@ describe('Paddle webhooks', () => {
                 cancellation_effective_date: finalDate.format('YYYY-MM-DD')
             });
 
-            await delay(50);
-            updateRequests = await userUpdate.getSeenRequests();
+            updateRequests = await waitForRequests(userUpdate, 4);
             expect(updateRequests.length).to.equal(4);
             expect(await updateRequests[2].body.getJson()).to.deep.equal({
                 app_metadata: {
@@ -623,7 +614,7 @@ describe('Paddle webhooks', () => {
     describe("for Team subscriptions", () => {
 
         it('successfully handle new subscriptions for an existing user', async () => {
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
             await givenUser(userId, userEmail);
 
@@ -646,11 +637,8 @@ describe('Paddle webhooks', () => {
 
             const expectedExpiry = nextRenewal.add(1, 'days').valueOf();
 
-            // Auth0 writes are fire-and-forget, give them a moment:
-            await delay(50);
-
             // Confirm the write to Auth0:
-            const updateRequests = await userUpdate.getSeenRequests();
+            const updateRequests = await waitForRequests(userUpdate, 1);
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
@@ -691,7 +679,7 @@ describe('Paddle webhooks', () => {
             const userEmail = 'user@example.com';
             givenNoUsers();
 
-            const userId = "qwe";
+            const userId = uniqueUserId('user');
             const userCreate = await auth0Server
                 .forPost('/api/v2/users')
                 .thenJson(201, {
@@ -718,11 +706,8 @@ describe('Paddle webhooks', () => {
 
             const expectedExpiry = nextRenewal.add(1, 'days').valueOf();
 
-            // Auth0 writes are fire-and-forget, give them a moment:
-            await delay(50);
-
             // Confirm the writes to Auth0:
-            const createRequests = await userCreate.getSeenRequests();
+            const createRequests = await waitForRequests(userCreate, 1);
             expect(createRequests.length).to.equal(1);
             expect(await createRequests[0].body.getJson()).to.deep.equal({
                 email: userEmail,
@@ -731,7 +716,7 @@ describe('Paddle webhooks', () => {
                 app_metadata: {}
             });
 
-            const updateRequests = await userUpdate.getSeenRequests();
+            const updateRequests = await waitForRequests(userUpdate, 1);
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
@@ -768,7 +753,7 @@ describe('Paddle webhooks', () => {
         });
 
         it('successfully handle subscriptions renewals', async () => {
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
             await givenUser(userId, userEmail, {
                 team_member_ids: ['teamMemberId']
@@ -791,8 +776,7 @@ describe('Paddle webhooks', () => {
                 next_bill_date: nextRenewal.format('YYYY-MM-DD'),
             });
 
-            await delay(50);
-            const updateRequests = await userUpdate.getSeenRequests();
+            const updateRequests = await waitForRequests(userUpdate, 1);
             expect(updateRequests.length).to.equal(1);
 
             const expectedExpiry = nextRenewal.add(1, 'days').valueOf();
@@ -832,7 +816,7 @@ describe('Paddle webhooks', () => {
         });
 
         it('cleans up expired locks at subscription renewal', async () => {
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
             await givenUser(userId, userEmail, {
                 team_member_ids: ['teamMemberId'],
@@ -859,8 +843,7 @@ describe('Paddle webhooks', () => {
                 next_bill_date: nextRenewal.format('YYYY-MM-DD'),
             });
 
-            await delay(50);
-            const updateRequests = await userUpdate.getSeenRequests();
+            const updateRequests = await waitForRequests(userUpdate, 1);
             expect(updateRequests.length).to.equal(1);
 
             const expectedExpiry = nextRenewal.add(1, 'days').valueOf();
@@ -900,7 +883,7 @@ describe('Paddle webhooks', () => {
         });
 
         it('caps locks to the licenses nobody holds when the subscription shrinks', async () => {
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
 
             // Two members, and three live locks from recent removals, on a subscription
@@ -930,8 +913,7 @@ describe('Paddle webhooks', () => {
                 next_bill_date: moment('2030-01-01').format('YYYY-MM-DD'),
             });
 
-            await delay(50);
-            const updateRequests = await userUpdate.getSeenRequests();
+            const updateRequests = await waitForRequests(userUpdate, 1);
             expect(updateRequests.length).to.equal(1);
 
             const metadata = (await updateRequests[0].body.getJson() as any).app_metadata;
@@ -942,7 +924,7 @@ describe('Paddle webhooks', () => {
         });
 
         it('defers license reductions until the next renewal payment', async () => {
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
             await givenUser(userId, userEmail, {
                 team_member_ids: ['memberA', 'memberB'],
@@ -971,7 +953,6 @@ describe('Paddle webhooks', () => {
                 alert_name: 'subscription_updated',
                 new_quantity: '6'
             });
-            await delay(50);
             expect(await storedQuantity()).to.equal(10);
 
             // It applies when the renewal is charged at the new quantity:
@@ -984,12 +965,11 @@ describe('Paddle webhooks', () => {
                 sale_gross: '189.66',
                 payment_tax: '17.22'
             });
-            await delay(50);
             expect(await storedQuantity()).to.equal(6);
         });
 
         it('clears a pending upgrade once its payment arrives', async () => {
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
             await givenUser(userId, userEmail, {
                 team_member_ids: [],
@@ -1015,7 +995,6 @@ describe('Paddle webhooks', () => {
                 payment_tax: '1.57',
                 coupon: ''
             });
-            await delay(50);
 
             const metadata = (await testDB.query(
                 `SELECT app_metadata FROM users WHERE auth0_user_id = $1`, [userId]
@@ -1025,7 +1004,7 @@ describe('Paddle webhooks', () => {
         });
 
         it('tracks the coupon used by the latest payment', async () => {
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
             await givenUser(userId, userEmail, {
                 team_member_ids: [],
@@ -1051,11 +1030,9 @@ describe('Paddle webhooks', () => {
             };
 
             await triggerWebhook(apiServer, { ...payment, coupon: 'DISCOUNT10' });
-            await delay(50);
             expect(await storedCoupon()).to.equal('DISCOUNT10');
 
             await triggerWebhook(apiServer, { ...payment, coupon: '' });
-            await delay(50);
             expect(await storedCoupon()).to.equal(false);
         });
 
@@ -1064,7 +1041,7 @@ describe('Paddle webhooks', () => {
     describe("for disputed payments", () => {
 
         it("should ban the user until they contact support", async () => {
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
             await givenUser(userId, userEmail);
 
@@ -1077,8 +1054,7 @@ describe('Paddle webhooks', () => {
                 email: userEmail
             });
 
-            await delay(50);
-            const updateRequests = await userUpdate.getSeenRequests();
+            const updateRequests = await waitForRequests(userUpdate, 1);
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {

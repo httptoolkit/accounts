@@ -12,11 +12,13 @@ import {
     givenUser,
     givenNoUsers,
     PAYPRO_IPN_VALIDATION_KEY,
-    updateUser
+    updateUser,
+    uniqueUserId
 } from './test-setup/setup.ts';
 import { profitwellApiServer } from './test-setup/profitwell.ts';
 import { auth0Server } from './test-setup/auth0.ts';
 import { testDB } from './test-setup/database.ts';
+import { id, waitForRequests } from './test-setup/utils.ts';
 
 import {
     PayProOrderDateFormat,
@@ -96,11 +98,13 @@ describe('PayPro webhooks', () => {
     });
 
     it('should reject invalid webhooks', async () => {
-        const auth0ApiMock = await auth0Server
-            .forAnyRequest()
-            .always()
-            .asPriority(100)
-            .thenReply(200);
+        const userId = uniqueUserId();
+        const userEmail = 'test@email.com';
+        await givenUser(userId, userEmail);
+
+        const userUpdate = await auth0Server
+            .forPatch('/api/v2/users/' + userId)
+            .thenJson(200, {});
 
         await triggerWebhook(apiServer, {
             IPN_TYPE_NAME: 'OrderCharged',
@@ -112,7 +116,7 @@ describe('PayPro webhooks', () => {
             INVOICE_LINK: "https://store.payproglobal.com/Invoice?Id=MY_UUID",
             PRODUCT_QUANTITY: '1',
             TEST_MODE: '0',
-            CUSTOMER_EMAIL: 'test@email.com',
+            CUSTOMER_EMAIL: userEmail,
 
             SIGNATURE: 'BAD-SIGNATURE'
         }, {
@@ -121,8 +125,11 @@ describe('PayPro webhooks', () => {
         });
 
         // Should not do anything with user data:
-        const authRequests = await auth0ApiMock.getSeenRequests();
-        expect(authRequests.length).to.equal(0);
+        const dbUser = (await testDB.query(
+            `SELECT app_metadata FROM users WHERE auth0_user_id = $1`, [userId]
+        )).rows[0];
+        expect(dbUser.app_metadata).to.deep.equal({});
+        expect(await userUpdate.getSeenRequests()).to.have.length(0);
     });
 
     describe("for Pro subscriptions", () => {
@@ -131,7 +138,7 @@ describe('PayPro webhooks', () => {
             const userEmail = 'user@example.com';
             givenNoUsers();
 
-            const userId = "qwe";
+            const userId = uniqueUserId('user');
             const userCreate = await auth0Server
                 .forPost('/api/v2/users')
                 .thenJson(201, {
@@ -160,8 +167,7 @@ describe('PayPro webhooks', () => {
                 CUSTOMER_EMAIL: userEmail
             });
 
-            await delay(50);
-            const createRequests = await userCreate.getSeenRequests();
+            const createRequests = await waitForRequests(userCreate, 1);
             expect(createRequests.length).to.equal(1);
             expect(await createRequests[0].body.getJson()).to.deep.equal({
                 email: userEmail,
@@ -170,7 +176,7 @@ describe('PayPro webhooks', () => {
                 app_metadata: {}
             });
 
-            const updateRequests = await userUpdate.getSeenRequests();
+            const updateRequests = await waitForRequests(userUpdate, 1);
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
@@ -203,7 +209,7 @@ describe('PayPro webhooks', () => {
         });
 
         it('successfully handle new subscriptions for an existing user', async () => {
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
             await givenUser(userId, userEmail);
 
@@ -228,8 +234,7 @@ describe('PayPro webhooks', () => {
                 CUSTOMER_EMAIL: userEmail
             });
 
-            await delay(50);
-            const updateRequests = await userUpdate.getSeenRequests();
+            const updateRequests = await waitForRequests(userUpdate, 1);
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
@@ -262,7 +267,7 @@ describe('PayPro webhooks', () => {
         });
 
         it('should successfully renew subscriptions', async () => {
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
             const nextRenewal = moment('2030-01-01');
 
@@ -288,8 +293,7 @@ describe('PayPro webhooks', () => {
                 CUSTOMER_EMAIL: userEmail
             });
 
-            await delay(50);
-            const updateRequests = await userUpdate.getSeenRequests();
+            const updateRequests = await waitForRequests(userUpdate, 1);
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
@@ -320,7 +324,7 @@ describe('PayPro webhooks', () => {
         });
 
         it('should cancel terminated subscriptions', async () => {
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
             const nextRenewal = moment('2030-01-01');
 
@@ -346,8 +350,7 @@ describe('PayPro webhooks', () => {
                 CUSTOMER_EMAIL: userEmail
             });
 
-            await delay(50);
-            const updateRequests = await userUpdate.getSeenRequests();
+            const updateRequests = await waitForRequests(userUpdate, 1);
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
@@ -378,7 +381,7 @@ describe('PayPro webhooks', () => {
         });
 
         it('should cancel suspended subscriptions', async () => {
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
             const nextRenewal = moment('2030-01-01');
 
@@ -404,8 +407,7 @@ describe('PayPro webhooks', () => {
                 CUSTOMER_EMAIL: userEmail
             });
 
-            await delay(50);
-            const updateRequests = await userUpdate.getSeenRequests();
+            const updateRequests = await waitForRequests(userUpdate, 1);
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
@@ -436,7 +438,7 @@ describe('PayPro webhooks', () => {
         });
 
         it('should handle users whose renewal payments fail', async () => {
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
             const nextRenewal = moment('2030-01-01');
 
@@ -462,8 +464,7 @@ describe('PayPro webhooks', () => {
                 CUSTOMER_EMAIL: userEmail
             });
 
-            await delay(50);
-            const updateRequests = await userUpdate.getSeenRequests();
+            const updateRequests = await waitForRequests(userUpdate, 1);
             expect(updateRequests.length).to.equal(1);
             expect(await updateRequests[0].body.getJson()).to.deep.equal({
                 app_metadata: {
@@ -494,18 +495,19 @@ describe('PayPro webhooks', () => {
         });
 
         it('should log subscriptions in Profitwell', async () => {
-            const userId = "abc";
-            const userEmail = 'profitwell-test-user@example.com';
+            const userId = uniqueUserId('user');
+            const userEmail = `profitwell-test-user-${id()}@example.com`;
             await givenUser(userId, userEmail);
 
             await auth0Server
                 .forPatch('/api/v2/users/' + userId)
                 .thenJson(200, {});
 
-            const subscriptionId = '456';
+            const subscriptionId = `sub-${id()}`;
 
             const profitwellSubscriptionCreation = await profitwellApiServer
                 .forPost('/v2/subscriptions/')
+                .withJsonBodyIncluding({ email: userEmail })
                 .thenReply(200);
 
             const profitwellSubscriptionTraits = await profitwellApiServer
@@ -545,7 +547,7 @@ describe('PayPro webhooks', () => {
             await triggerWebhook(apiServer, {
                 IPN_TYPE_NAME: 'SubscriptionTerminated',
                 ORDER_ITEM_SKU: 'pro-annual',
-                SUBSCRIPTION_ID: '456',
+                SUBSCRIPTION_ID: subscriptionId,
                 SUBSCRIPTION_RENEWAL_TYPE: 'Auto',
                 SUBSCRIPTION_STATUS_NAME: 'Terminated',
                 SUBSCRIPTION_NEXT_CHARGE_DATE: "",
@@ -555,9 +557,7 @@ describe('PayPro webhooks', () => {
                 ORDER_CUSTOM_FIELDS: 'x-passthrough={"country":"ABC"}'
             });
 
-            await delay(50);
-
-            const creationRequests = await profitwellSubscriptionCreation.getSeenRequests();
+            const creationRequests = await waitForRequests(profitwellSubscriptionCreation, 1);
             expect(creationRequests.length).to.equal(1);
             expect(await creationRequests[0].body.getJson()).to.deep.equal({
                 email: userEmail,
@@ -570,7 +570,7 @@ describe('PayPro webhooks', () => {
                 effective_date: Math.round(subscriptionCreation.valueOf() / 1000)
             });
 
-            const customerTraitRequests = await profitwellSubscriptionTraits.getSeenRequests();
+            const customerTraitRequests = await waitForRequests(profitwellSubscriptionTraits, 2);
             expect(customerTraitRequests.length).to.equal(2);
             expect(
                 await Promise.all(customerTraitRequests.map(async (r) => await r.body.getJson()))
@@ -579,7 +579,7 @@ describe('PayPro webhooks', () => {
                 { email: userEmail, category: 'Country code', trait: 'ABC' }
             ]);
 
-            const deletionRequests = await profitwellSubscriptionDeletion.getSeenRequests();
+            const deletionRequests = await waitForRequests(profitwellSubscriptionDeletion, 1);
             expect(deletionRequests.length).to.equal(1);
             const deletionParams = new URL(deletionRequests[0].url).searchParams;
             expect([...deletionParams.entries()]).to.deep.equal([
@@ -590,8 +590,8 @@ describe('PayPro webhooks', () => {
         it('should retry rate-limited Profitwell requests without blocking the webhook', async function () {
             this.timeout(5000);
 
-            const userId = "abc";
-            const userEmail = 'profitwell-test-user@example.com';
+            const userId = uniqueUserId('user');
+            const userEmail = `profitwell-test-user-${id()}@example.com`;
             await givenUser(userId, userEmail);
 
             await auth0Server
@@ -600,10 +600,12 @@ describe('PayPro webhooks', () => {
 
             await profitwellApiServer
                 .forPost('/v2/subscriptions/')
+                .withJsonBodyIncluding({ email: userEmail })
                 .once()
                 .thenReply(429, 'Too many requests', { 'retry-after': '0' });
             const profitwellSubscriptionCreation = await profitwellApiServer
                 .forPost('/v2/subscriptions/')
+                .withJsonBodyIncluding({ email: userEmail })
                 .thenReply(200);
 
             const nextRenewal = moment.utc('2030-01-01');
@@ -639,7 +641,7 @@ describe('PayPro webhooks', () => {
     describe("for disputed payments", () => {
 
         it("should ban the user until they contact support", async () => {
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
             await givenUser(userId, userEmail);
 
@@ -652,8 +654,7 @@ describe('PayPro webhooks', () => {
                 CUSTOMER_EMAIL: userEmail
             });
 
-            await delay(50);
-            const updateRequests = await userUpdate.getSeenRequests();
+            const updateRequests = await waitForRequests(userUpdate, 1);
             expect(updateRequests.length).to.equal(1);
             const metadataUpdate = (await updateRequests[0].body.getJson() as any).app_metadata;
             expect(_.omit(metadataUpdate, 'subscription_expiry')).to.deep.equal({

@@ -4,7 +4,7 @@ import { getLocal, RulePriority } from 'mockttp';
 
 import { AppMetadata } from '../../src/user-data-facade.ts';
 
-import { id } from './utils.ts';
+import { id, waitForRequests } from './utils.ts';
 import{ freshAuthToken, publicKey } from './setup.ts';
 import { createPublicKey } from 'crypto';
 
@@ -23,7 +23,39 @@ export const auth0Server = getLocal({
     }
 });
 
+// The API writes to Auth0 in the background, so these writes (and their retries) can arrive
+// after the test that caused them has finished. To keep tests independent regardless, each
+// test must use its own unique user ids, and only observe updates to its own users.
+const userIdTests = new Map<string, number>();
+let currentTest = 0;
+
+beforeEach(() => {
+    currentTest++;
+});
+
+export function uniqueUserId(prefix = 'user') {
+    const userId = `${prefix}-${id()}`;
+    claimUserId(userId);
+    return userId;
+}
+
+function claimUserId(userId: string) {
+    const userIdTest = userIdTests.get(userId);
+    if (userIdTest !== undefined && userIdTest !== currentTest) {
+        throw new Error(`User id ${userId} was already used in another test. Use uniqueUserId() instead.`);
+    }
+    userIdTests.set(userId, currentTest);
+}
+
+const USER_UPDATE_PATH = /\/api\/v2\/users\/([^\/]+)$/;
+
+const isCurrentTestUserUpdate = (url: string) => {
+    const userId = USER_UPDATE_PATH.exec(new URL(url).pathname)?.[1];
+    return userId !== undefined && userIdTests.get(decodeURIComponent(userId)) === currentTest;
+};
+
 export function givenAuth0User(userId: string, email: string, appMetadata: {} | undefined = undefined) {
+    claimUserId(userId);
     return Promise.all([
         auth0Server
         .forGet(`/api/v2/users/${userId}`)
@@ -69,7 +101,8 @@ export function givenAuth0Token(authToken: string, userId: string, email?: strin
 
 export async function withAuth0UserUpdateNetworkFailures() {
     return auth0Server
-        .forPatch(/\/api\/v2\/users\/[^\/]+/)
+        .forPatch(USER_UPDATE_PATH)
+        .matching((req) => isCurrentTestUserUpdate(req.url))
         .always()
         .thenCloseConnection();
 }
@@ -80,7 +113,7 @@ export async function watchAuth0UserCreation() {
     const createEndpoint = await auth0Server
         .forPost('/api/v2/users')
         .thenCallback(() => {
-            const newUserId = `new-user-${id()}`;
+            const newUserId = uniqueUserId('new-user');
             ids.push(newUserId);
             return {
                 status: 200,
@@ -102,7 +135,8 @@ export async function watchAuth0UserCreation() {
 
 export async function watchAuth0UserUpdates() {
     const updateEndpoint = await auth0Server
-        .forPatch(/\/api\/v2\/users\/[^\/]+/)
+        .forPatch(USER_UPDATE_PATH)
+        .matching((req) => isCurrentTestUserUpdate(req.url))
         .always()
         .thenCallback((req) => {
             const idMatch = req.url.match(/\/([^\/]+)$/);
@@ -113,8 +147,8 @@ export async function watchAuth0UserUpdates() {
             };
         });
 
-    return async () => {
-        const updates = await updateEndpoint.getSeenRequests();
+    return async (expectedCount: number) => {
+        const updates = await waitForRequests(updateEndpoint, expectedCount);
         return Promise.all(updates.map(async (update) => ({
             url: update.url.replace(auth0Server.url, ''),
             body: await update.body.getJson() as any
@@ -130,7 +164,8 @@ export async function givenAuth0Team(
     )[]
 ) {
     const ownerAuthToken = freshAuthToken();
-    const ownerId = "abc";
+    const ownerId = uniqueUserId('owner');
+    teamMembersAndSpaces.forEach((member) => member && claimUserId(member.id));
     const ownerEmail = `billinguser${id()}@example.com`;
     const subExpiry = Date.now() + 60_000;
 

@@ -10,7 +10,8 @@ import {
     publicKey,
     freshAuthToken,
     givenUser,
-    givenAuthToken
+    givenAuthToken,
+    uniqueUserId
 } from './test-setup/setup.ts';
 import { id } from './test-setup/utils.ts';
 import { auth0Server  } from './test-setup/auth0.ts';
@@ -85,7 +86,7 @@ describe('/get-billing-data', () => {
     describe("for free users", () => {
         it("returns signed but empty data", async () => {
             const authToken = freshAuthToken();
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
 
             await givenUser(userId, userEmail);
@@ -108,7 +109,7 @@ describe('/get-billing-data', () => {
     describe("for Pro users", () => {
         it("returns signed subscription data for older Paddle customers", async () => {
             const authToken = freshAuthToken();
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
 
             const subId = id();
@@ -164,7 +165,7 @@ describe('/get-billing-data', () => {
 
         it("returns signed subscription data for new Paddle customers", async () => {
             const authToken = freshAuthToken();
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
 
             const subId = id();
@@ -222,7 +223,7 @@ describe('/get-billing-data', () => {
 
         it("returns signed subscription data for PayPro customers", async () => {
             const authToken = freshAuthToken();
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
 
             const subId = id();
@@ -288,9 +289,9 @@ describe('/get-billing-data', () => {
     describe("for Team users", () => {
         it("returns signed team membership data for team members", async () => {
             const authToken = freshAuthToken();
-            const billingUserId = "abc";
+            const billingUserId = uniqueUserId('user');
             const billingUserEmail = 'billinguser@example.com';
-            const teamUserId = "def";
+            const teamUserId = uniqueUserId('team-user');
             const teamUserEmail = 'teamuser@example.com';
 
             const subId = id();
@@ -331,7 +332,7 @@ describe('/get-billing-data', () => {
 
         it("returns signed subscription & member data for team owners", async () => {
             const authToken = freshAuthToken();
-            const billingUserId = "abc";
+            const billingUserId = uniqueUserId('user');
             const billingUserEmail = 'billinguser@example.com';
             const team = [
                 { id: '1', email: "teammember1@example.com" },
@@ -426,7 +427,7 @@ describe('/get-billing-data', () => {
 
         it("doesn't offer team size changes to subscriptions with a coupon", async () => {
             const authToken = freshAuthToken();
-            const billingUserId = "abc";
+            const billingUserId = uniqueUserId('user');
             const subId = id();
 
             await givenUser(billingUserId, 'billinguser@example.com', {
@@ -457,7 +458,7 @@ describe('/get-billing-data', () => {
 
         it("returns subscription + member data for owners in their own team", async () => {
             const authToken = freshAuthToken();
-            const billingUserId = "abc";
+            const billingUserId = uniqueUserId('user');
             const billingUserEmail = 'billinguser@example.com';
 
             const subId = id();
@@ -539,9 +540,9 @@ describe('/get-billing-data', () => {
 
         it("returns owner + error for team members beyond the subscribed quantity", async () => {
             const authToken = freshAuthToken();
-            const billingUserId = "abc";
+            const billingUserId = uniqueUserId('user');
             const billingUserEmail = 'billinguser@example.com';
-            const teamUserId = "def";
+            const teamUserId = uniqueUserId('team-user');
             const teamUserEmail = 'teamuser@example.com';
 
             const subId = id();
@@ -585,9 +586,9 @@ describe('/get-billing-data', () => {
 
         it("returns owner + error for team members beyond the subscribed quantity due to locks", async () => {
             const authToken = freshAuthToken();
-            const billingUserId = "abc";
+            const billingUserId = uniqueUserId('user');
             const billingUserEmail = 'billinguser@example.com';
-            const teamUserId = "def";
+            const teamUserId = uniqueUserId('team-user');
             const teamUserEmail = 'teamuser@example.com';
             const subExpiry = Date.now();
 
@@ -630,9 +631,9 @@ describe('/get-billing-data', () => {
 
         it("returns owner + error for team members with inconsistent membership data", async () => {
             const authToken = freshAuthToken();
-            const billingUserId = "abc";
+            const billingUserId = uniqueUserId('user');
             const billingUserEmail = 'billinguser@example.com';
-            const teamUserId = "def";
+            const teamUserId = uniqueUserId('team-user');
             const teamUserEmail = 'teamuser@example.com';
             const subExpiry = Date.now();
 

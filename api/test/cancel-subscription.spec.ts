@@ -8,7 +8,8 @@ import {
     startAPI,
     givenUser,
     freshAuthToken,
-    givenAuthToken
+    givenAuthToken,
+    uniqueUserId
 } from './test-setup/setup.ts';
 import { PADDLE_PORT, paddleServer } from './test-setup/paddle.ts';
 import { PAYPRO_API_PORT, payproApiServer } from './test-setup/paypro.ts';
@@ -46,7 +47,7 @@ describe('Subscription cancellation API', () => {
 
     it("should successfully cancel active Paddle subscriptions", async () => {
         const authToken = freshAuthToken();
-        const userId = "abc";
+        const userId = uniqueUserId('user');
         const userEmail = 'user@example.com';
 
         await givenUser(userId, userEmail, {
@@ -70,7 +71,7 @@ describe('Subscription cancellation API', () => {
 
     it("should successfully cancel active PayPro subscriptions", async () => {
         const authToken = freshAuthToken();
-        const userId = "abc";
+        const userId = uniqueUserId('user');
         const userEmail = 'user@example.com';
 
         await givenUser(userId, userEmail, {
@@ -94,7 +95,7 @@ describe('Subscription cancellation API', () => {
 
     it("should refuse to cancel subscriptions for users who don't have one", async () => {
         const authToken = freshAuthToken();
-        const userId = "abc";
+        const userId = uniqueUserId('user');
         const userEmail = 'user@example.com';
 
         await givenUser(userId, userEmail, {});
@@ -112,9 +113,9 @@ describe('Subscription cancellation API', () => {
 
     it("should successfully cancel subscriptions for team owners", async () => {
         const authToken = freshAuthToken();
-        const billingUserId = "abc";
+        const billingUserId = uniqueUserId('user');
         const billingUserEmail = 'billinguser@example.com';
-        const teamUserId = "def";
+        const teamUserId = uniqueUserId('team-user');
 
         await givenUser(billingUserId, billingUserEmail, {
             payment_provider: 'paddle',
@@ -138,9 +139,9 @@ describe('Subscription cancellation API', () => {
 
     it("should refuse to cancel subscriptions for team members", async () => {
         const authToken = freshAuthToken();
-        const billingUserId = "abc";
+        const billingUserId = uniqueUserId('user');
         const billingUserEmail = 'billinguser@example.com';
-        const teamUserId = "def";
+        const teamUserId = uniqueUserId('team-user');
         const teamUserEmail = 'teamuser@example.com';
 
         await givenUser(teamUserId, teamUserEmail, {
@@ -167,7 +168,7 @@ describe('Subscription cancellation API', () => {
 
     it("should refuse to cancel already cancelled subscriptions", async () => {
         const authToken = freshAuthToken();
-        const userId = "abc";
+        const userId = uniqueUserId('user');
         const userEmail = 'user@example.com';
 
         await givenUser(userId, userEmail, {

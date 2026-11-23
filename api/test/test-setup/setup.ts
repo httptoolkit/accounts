@@ -14,6 +14,7 @@ if (process.env.NODE_ENV === 'production') {
 process.env.LOGLEVEL = 'warn';
 
 import * as auth0 from './auth0.ts';
+export { uniqueUserId } from './auth0.ts';
 import { testDB } from './database.ts';
 import { generateKeyPair, keyWithoutHeaders } from './utils.ts';
 

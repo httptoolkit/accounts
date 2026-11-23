@@ -23,6 +23,7 @@ import {
     watchAuth0UserCreation,
     watchAuth0UserUpdates,
     applyAuth0MetadataUpdate,
+    uniqueUserId,
     withAuth0UserUpdateNetworkFailures
 } from './test-setup/auth0.ts';
 import {
@@ -48,6 +49,13 @@ const updateTeam = (server: net.Server, authToken: string | undefined, team: {
         },
         body: JSON.stringify(team)
     }
+);
+
+const findUpdate = <U extends { url: string }>(updates: U[], userId: string) =>
+    updates.find(u => u.url === `/api/v2/users/${userId}`)!;
+
+const getDbUsers = async () => new Map(
+    (await testDB.query(`SELECT * FROM users`)).rows.map((row) => [row.auth0_user_id, row])
 );
 
 describe('/update-team', () => {
@@ -76,7 +84,7 @@ describe('/update-team', () => {
     describe("for free users", () => {
         it("returns 403", async () => {
             const authToken = freshAuthToken();
-            const userId = "abc";
+            const userId = uniqueUserId();
             const userEmail = 'user@example.com';
 
             await givenUser(userId, userEmail);
@@ -93,7 +101,7 @@ describe('/update-team', () => {
     describe("for Pro users", () => {
         it("returns 403", async () => {
             const authToken = freshAuthToken();
-            const userId = "abc";
+            const userId = uniqueUserId();
             const userEmail = 'user@example.com';
             const subExpiry = Date.now();
 
@@ -116,7 +124,7 @@ describe('/update-team', () => {
     describe("for Team users", () => {
         it("allows removing a user by id", async () => {
             const team = _.range(4).map((i) => ({
-                id: i.toString(),
+                id: uniqueUserId('member'),
                 email: `member${i}@example.com`
             }));
 
@@ -130,15 +138,9 @@ describe('/update-team', () => {
 
             expect(response.status).to.equal(200);
 
-            // Auth0 writes are fire-and-forget, give them a moment:
-            await delay(50);
-
-            // Confirm the writes to Auth0:
-            const updates = await getUserUpdates();
-
-            // Auth0 member removals are parallel fire-and-forget, so order is non-deterministic:
-            const removals = updates.slice(0, 2).sort((a, b) => a.url.localeCompare(b.url));
-            expect(removals).to.deep.equal([
+            // Confirm the writes to Auth0 (sent in parallel, so in any order):
+            const updates = await getUserUpdates(3);
+            expect(updates).to.have.deep.members([
                 {
                     url: `/api/v2/users/${team[0].id}`,
                     body: {
@@ -156,9 +158,8 @@ describe('/update-team', () => {
                             joined_team_at: null
                         }
                     }
-                }
-            ]);
-            expect(updates[2]).to.deep.equal({
+                },
+                {
                     url: `/api/v2/users/${ownerId}`,
                     body: {
                         app_metadata: {
@@ -169,26 +170,26 @@ describe('/update-team', () => {
                             locked_licenses: []
                         }
                     }
-            });
+                }
+            ]);
 
             // Confirm the writes to the DB:
-            const dbUsers = await testDB.query(`SELECT * FROM users ORDER BY auth0_user_id`);
-            expect(dbUsers.rows).to.have.length(5);
-            const [user1, user2, user3, user4, owner] = dbUsers.rows;
+            const dbUsers = await getDbUsers();
+            expect(dbUsers.size).to.equal(5);
 
-            expect(owner.app_metadata.team_member_ids).to.deep.equal([
-                user2.auth0_user_id,
-                user3.auth0_user_id
+            expect(dbUsers.get(ownerId).app_metadata.team_member_ids).to.deep.equal([
+                team[1].id,
+                team[2].id
             ]);
-            expect(user1.app_metadata.subscription_owner_id).to.equal(undefined);
-            expect(user2.app_metadata.subscription_owner_id).to.equal(owner.auth0_user_id);
-            expect(user3.app_metadata.subscription_owner_id).to.equal(owner.auth0_user_id);
-            expect(user4.app_metadata.subscription_owner_id).to.equal(undefined);
+            expect(dbUsers.get(team[0].id).app_metadata.subscription_owner_id).to.equal(undefined);
+            expect(dbUsers.get(team[1].id).app_metadata.subscription_owner_id).to.equal(ownerId);
+            expect(dbUsers.get(team[2].id).app_metadata.subscription_owner_id).to.equal(ownerId);
+            expect(dbUsers.get(team[3].id).app_metadata.subscription_owner_id).to.equal(undefined);
         });
 
         it("allows adding a new user by email", async () => {
             const team = [
-                { id: 'id-1', email: `member1@example.com` },
+                { id: uniqueUserId('member'), email: `member1@example.com` },
                 undefined // 1 empty space
             ] as const;
 
@@ -204,9 +205,6 @@ describe('/update-team', () => {
 
             expect(response.status).to.equal(200);
 
-            // Auth0 writes are fire-and-forget, give them a moment:
-            await delay(50);
-
             const newUsers = await getNewUsers();
             expect(newUsers.length).to.equal(1);
             expect(newUsers[0].url).to.equal('/api/v2/users');
@@ -220,7 +218,7 @@ describe('/update-team', () => {
             // Can't deep match because of this timestamp:
             expect(newUserMetadata.joined_team_at).to.be.within(Date.now() - 1000, Date.now());
 
-            const updates = await getUserUpdates();
+            const updates = await getUserUpdates(1);
             expect(updates).to.deep.equal([
                 {
                     url: `/api/v2/users/${ownerId}`,
@@ -248,13 +246,13 @@ describe('/update-team', () => {
 
         it("allows adding an existing user by email", async () => {
             const team = [
-                { id: 'id-1', email: `member1@example.com` },
+                { id: uniqueUserId('member'), email: `member1@example.com` },
                 undefined // 1 empty space
             ] as const;
 
             const { ownerId, ownerAuthToken } = await givenTeam(team);
 
-            const existingUserId = 'existing-user';
+            const existingUserId = uniqueUserId('existing-user');
             const existingUserEmail = 'existing@example.com';
 
             await givenUser(existingUserId, existingUserEmail);
@@ -267,23 +265,19 @@ describe('/update-team', () => {
 
             expect(response.status).to.equal(200);
 
-            // Auth0 writes are fire-and-forget, give them a moment:
-            await delay(50);
-
             const newUsers = await getNewUsers();
             expect(newUsers.length).to.equal(0);
 
-            const updates = await getUserUpdates();
+            const updates = await getUserUpdates(2);
             expect(updates.length).to.equal(2);
 
-            const memberUpdate = updates[0];
-            expect(memberUpdate.url).to.equal(`/api/v2/users/${existingUserId}`);
+            const memberUpdate = findUpdate(updates, existingUserId);
             const updatedMemberMetadata = memberUpdate.body!.app_metadata;
             expect(updatedMemberMetadata.subscription_owner_id).to.equal(ownerId);
             // Can't deep match because of this timestamp:
             expect(updatedMemberMetadata.joined_team_at).to.be.within(Date.now() - 1000, Date.now());
 
-            const ownerUpdate = updates[1];
+            const ownerUpdate = findUpdate(updates, ownerId);
             expect(ownerUpdate).to.deep.equal({
                 url: `/api/v2/users/${ownerId}`,
                 body: {
@@ -309,14 +303,14 @@ describe('/update-team', () => {
 
         it("allows adding and removing many team members all in one go", async () => {
             const team = [
-                { id: 'id-1', email: `member1@example.com` },
-                { id: 'id-2', email: `member2@example.com` },
+                { id: uniqueUserId('member'), email: `member1@example.com` },
+                { id: uniqueUserId('member'), email: `member2@example.com` },
                 // No empty spaces!
             ] as const;
 
             const { ownerId, ownerAuthToken } = await givenTeam(team);
 
-            const existingUserId = 'existing-user';
+            const existingUserId = uniqueUserId('existing-user');
             const existingUserEmail = 'existing@example.com';
             const newUserEmail = 'new@example.com';
 
@@ -332,9 +326,6 @@ describe('/update-team', () => {
 
             expect(response.status).to.equal(200);
 
-            // Auth0 writes are fire-and-forget, give them a moment:
-            await delay(50);
-
             // Creates 1 new user on the team:
             const newUsers = await getNewUsers();
             expect(newUsers.length).to.equal(1);
@@ -349,12 +340,15 @@ describe('/update-team', () => {
             // Can't deep match because of this timestamp:
             expect(newUserMetadata.joined_team_at).to.be.within(Date.now() - 1000, Date.now());
 
-            const updates = await getUserUpdates();
+            // Auth0 updates are sent in parallel, so they can arrive in any order:
+            const updates = await getUserUpdates(4);
             expect(updates.length).to.equal(4);
 
-            // Removed the 2 existing team members (order is non-deterministic):
-            const removals = updates.slice(0, 2).sort((a, b) => a.url.localeCompare(b.url));
-            expect(removals).to.deep.equal([
+            // Removed the 2 existing team members:
+            expect([
+                findUpdate(updates, team[0].id),
+                findUpdate(updates, team[1].id)
+            ]).to.deep.equal([
                 {
                     url: `/api/v2/users/${team[0].id}`,
                     body: {
@@ -376,14 +370,13 @@ describe('/update-team', () => {
             ]);
 
             // Updates the existing user who's joining:
-            const memberUpdate = updates[2];
-            expect(memberUpdate.url).to.equal(`/api/v2/users/${existingUserId}`);
+            const memberUpdate = findUpdate(updates, existingUserId);
             const updatedMemberMetadata = memberUpdate.body!.app_metadata;
             expect(updatedMemberMetadata.subscription_owner_id).to.equal(ownerId);
             // Can't deep match because of this timestamp:
             expect(updatedMemberMetadata.joined_team_at).to.be.within(Date.now() - 1000, Date.now());
 
-            const ownerUpdate = updates[3];
+            const ownerUpdate = findUpdate(updates, ownerId);
             expect(ownerUpdate).to.deep.equal({
                 url: `/api/v2/users/${ownerId}`,
                 body: {
@@ -398,8 +391,12 @@ describe('/update-team', () => {
             });
 
             // Check final DB state:
-            const dbUsers = await testDB.query(`SELECT * FROM users ORDER BY auth0_user_id`);
-            const [billingUser, existingUser, member1, member2, newUser] = dbUsers.rows;
+            const dbUsers = await getDbUsers();
+            const billingUser = dbUsers.get(ownerId);
+            const existingUser = dbUsers.get(existingUserId);
+            const newUser = dbUsers.get(newUsers[0].id);
+            const member1 = dbUsers.get(team[0].id);
+            const member2 = dbUsers.get(team[1].id);
 
             expect(billingUser.app_metadata.team_member_ids).to.deep.equal([
                 newUser.auth0_user_id,
@@ -413,16 +410,14 @@ describe('/update-team', () => {
             expect(member2.app_metadata.subscription_owner_id).to.equal(undefined);
         });
 
-        it("succeeds even when Auth0 updates fail (fire-and-forget)", async function () {
-            this.timeout(10000);
-
+        it("succeeds even when Auth0 updates fail (fire-and-forget)", async () => {
             const team = [
                 undefined
             ] as const;
 
             const { ownerAuthToken } = await givenTeam(team);
 
-            const newUserId = 'non-subscribed-user';
+            const newUserId = uniqueUserId('non-subscribed-user');
             const newUserEmail = 'non-subscribed-user-email';
 
             await givenUser(newUserId, newUserEmail);
@@ -435,14 +430,11 @@ describe('/update-team', () => {
 
             // Auth0 failures are now ignored - only DB failures cause errors:
             expect(response.status).to.equal(200);
-
-            // Wait for fire-and-forget Auth0 retries to exhaust (3 retries × 1s):
-            await delay(3500);
         });
 
         it("does not allow adding team members beyond the subscribed quantity", async () => {
             const team = [
-                { id: 'id-1', email: `member1@example.com` },
+                { id: uniqueUserId('member'), email: `member1@example.com` },
                 // No empty spaces!
             ] as const;
 
@@ -456,12 +448,12 @@ describe('/update-team', () => {
             });
 
             expect(response.status).to.equal(403);
-            expect((await getUserUpdates()).length).to.equal(0);
+            expect(await getUserUpdates(0)).to.deep.equal([]);
         });
 
         it("does not allow adding team members who are already in the team", async () => {
             const team = [
-                { id: 'id-1', email: 'member1@example.com' },
+                { id: uniqueUserId('member'), email: 'member1@example.com' },
                 undefined // One empty space
             ] as const;
 
@@ -475,7 +467,7 @@ describe('/update-team', () => {
             });
 
             expect(response.status).to.equal(409);
-            expect((await getUserUpdates()).length).to.equal(0);
+            expect(await getUserUpdates(0)).to.deep.equal([]);
         });
 
         it("does not allow adding duplicate team members", async () => {
@@ -494,18 +486,18 @@ describe('/update-team', () => {
             });
 
             expect(response.status).to.equal(400);
-            expect((await getUserUpdates()).length).to.equal(0);
+            expect(await getUserUpdates(0)).to.deep.equal([]);
         });
 
         it("does not allow adding team members who are independently subscribed", async () => {
             const team = [
-                { id: 'id-1', email: `member1@example.com` },
+                { id: uniqueUserId('member'), email: `member1@example.com` },
                 undefined // 1 empty space
             ] as const;
 
             const { ownerAuthToken } = await givenTeam(team);
 
-            const existingUserId = 'existing-user';
+            const existingUserId = uniqueUserId('existing-user');
             const existingUserEmail = 'existing@example.com';
 
             await givenUser(existingUserId, existingUserEmail, {
@@ -525,7 +517,7 @@ describe('/update-team', () => {
             });
 
             expect(response.status).to.equal(409);
-            expect((await getUserUpdates()).length).to.equal(0);
+            expect(await getUserUpdates(0)).to.deep.equal([]);
         });
 
         it("does not half-add team members, if only some members are independently subscribed", async () => {
@@ -536,12 +528,12 @@ describe('/update-team', () => {
 
             const { ownerAuthToken } = await givenTeam(team);
 
-            const newUserId = 'non-subscribed-user';
+            const newUserId = uniqueUserId('non-subscribed-user');
             const newUserEmail = 'non-subscribed-user-email';
 
             await givenUser(newUserId, newUserEmail);
 
-            const existingUserId = 'existing-user';
+            const existingUserId = uniqueUserId('existing-user');
             const existingUserEmail = 'existing@example.com';
 
             await givenUser(existingUserId, existingUserEmail, {
@@ -562,12 +554,12 @@ describe('/update-team', () => {
 
             expect(response.status).to.equal(409);
             await delay(100);
-            expect((await getUserUpdates()).length).to.equal(0);
+            expect(await getUserUpdates(0)).to.deep.equal([]);
         });
 
         it("does allow adding the team owner to their own team", async () => {
             const team = [
-                { id: 'id-1', email: `member1@example.com` },
+                { id: uniqueUserId('member'), email: `member1@example.com` },
                 undefined // 1 empty space
             ] as const;
 
@@ -580,16 +572,15 @@ describe('/update-team', () => {
 
             expect(response.status).to.equal(200);
 
-            // Auth0 writes are fire-and-forget, give them a moment:
-            await delay(50);
+            // Takes 2 separate updates (arriving in any order), it's fiddly to combine unfortunately:
+            const updates = await getUserUpdates(2);
+            expect(updates.length).to.equal(2);
 
-            const updates = await getUserUpdates();
-            expect(updates.length).to.equal(2); // Takes 2 updates, it's fiddly to combine unfortunately
-
-            expect(updates[0].url).to.equal(`/api/v2/users/${ownerId}`);
-            expect(updates[0].body.app_metadata.subscription_owner_id).to.equal(ownerId);
-            expect(updates[0].body.app_metadata.joined_team_at).to.be.within(Date.now() - 1000, Date.now());
-            expect(updates[1]).to.deep.equal({
+            const membershipUpdate = updates.find(u => 'subscription_owner_id' in u.body.app_metadata)!;
+            expect(membershipUpdate.url).to.equal(`/api/v2/users/${ownerId}`);
+            expect(membershipUpdate.body.app_metadata.subscription_owner_id).to.equal(ownerId);
+            expect(membershipUpdate.body.app_metadata.joined_team_at).to.be.within(Date.now() - 1000, Date.now());
+            expect(updates.find(u => u !== membershipUpdate)).to.deep.equal({
                 url: `/api/v2/users/${ownerId}`,
                 body: {
                     app_metadata: {
@@ -613,13 +604,13 @@ describe('/update-team', () => {
 
         it("does allow adding team members who recently cancelled", async () => {
             const team = [
-                { id: 'id-1', email: `member1@example.com` },
+                { id: uniqueUserId('member'), email: `member1@example.com` },
                 undefined // 1 empty space
             ] as const;
 
             const { ownerId, ownerAuthToken } = await givenTeam(team);
 
-            const existingUserId = 'existing-user';
+            const existingUserId = uniqueUserId('existing-user');
             const existingUserEmail = 'existing@example.com';
 
             await givenUser(existingUserId, existingUserEmail, {
@@ -638,8 +629,7 @@ describe('/update-team', () => {
             });
 
             expect(response.status).to.equal(200);
-            await delay(50);
-            expect((await getUserUpdates()).length).to.equal(2);
+            expect((await getUserUpdates(2)).length).to.equal(2);
 
             // Confirm the writes to the DB:
             const dbOwner = (await testDB.query(
@@ -655,13 +645,13 @@ describe('/update-team', () => {
 
         it("does not allow adding team members who are already in another team", async () => {
             const team = [
-                { id: 'id-1', email: `member1@example.com` },
+                { id: uniqueUserId('member'), email: `member1@example.com` },
                 undefined // 1 empty space
             ] as const;
 
             const { ownerAuthToken } = await givenTeam(team);
 
-            const existingUserId = 'existing-user';
+            const existingUserId = uniqueUserId('existing-user');
             const existingUserEmail = 'existing@example.com';
 
             await givenUser(existingUserId, existingUserEmail, {
@@ -674,12 +664,12 @@ describe('/update-team', () => {
             });
 
             expect(response.status).to.equal(409);
-            expect((await getUserUpdates()).length).to.equal(0);
+            expect(await getUserUpdates(0)).to.deep.equal([]);
         });
 
         it("does not allow duplicate team members removals", async () => {
             const team = [
-                { id: 'id-1', email: 'member1@example.com' },
+                { id: uniqueUserId('member'), email: 'member1@example.com' },
                 undefined // One empty space
             ] as const;
 
@@ -693,12 +683,12 @@ describe('/update-team', () => {
             });
 
             expect(response.status).to.equal(400);
-            expect((await getUserUpdates()).length).to.equal(0);
+            expect(await getUserUpdates(0)).to.deep.equal([]);
         });
 
         it("does not allow removing team members who are not in this team", async () => {
             const team = [
-                { id: 'id-1', email: `member1@example.com` }
+                { id: uniqueUserId('member'), email: `member1@example.com` }
             ] as const;
 
             const { ownerAuthToken } = await givenTeam(team);
@@ -710,12 +700,12 @@ describe('/update-team', () => {
             });
 
             expect(response.status).to.equal(409);
-            expect((await getUserUpdates()).length).to.equal(0);
+            expect(await getUserUpdates(0)).to.deep.equal([]);
         });
 
         it("does not allow removing team members who are inconsistently registered in the team", async () => {
             const team = [
-                { id: 'id-1', email: `member1@example.com` }
+                { id: uniqueUserId('member'), email: `member1@example.com` }
             ] as const;
 
             const { ownerAuthToken, updateOwnerData } = await givenTeam(team);
@@ -728,7 +718,7 @@ describe('/update-team', () => {
             });
 
             expect(response.status).to.equal(409);
-            expect((await getUserUpdates()).length).to.equal(0);
+            expect(await getUserUpdates(0)).to.deep.equal([]);
         });
 
         it("locks licenses after reassignment", async () => {
@@ -736,7 +726,7 @@ describe('/update-team', () => {
 
             const team = [
                 // One user: added to the team mere moments ago
-                { id: 'id-1', email: 'member1@example.com', joinedAt: memberJoinedAt }
+                { id: uniqueUserId('member'), email: 'member1@example.com', joinedAt: memberJoinedAt }
             ] as const;
 
             const { ownerId, ownerAuthToken } = await givenTeam(team);
@@ -747,11 +737,8 @@ describe('/update-team', () => {
             });
             expect(response.status).to.equal(200);
 
-            // Auth0 writes are fire-and-forget, give them a moment:
-            await delay(50);
-
-            const updates = await getUserUpdates();
-            expect(updates).to.deep.equal([
+            const updates = await getUserUpdates(2);
+            expect(updates).to.have.deep.members([
                 {
                     url: `/api/v2/users/${team[0].id}`,
                     body: {
@@ -796,7 +783,7 @@ describe('/update-team', () => {
                 updateTeamMembers
             } = await givenTeam(team);
 
-            const memberId = "member-id";
+            const memberId = uniqueUserId('member');
             const memberEmail = "member@example.com";
 
             let memberData: any = {};
@@ -815,11 +802,8 @@ describe('/update-team', () => {
             });
             expect(response1.status).to.equal(200);
 
-            // Auth0 writes are fire-and-forget, give them a moment:
-            await delay(50);
-
             // Update mocks with the updates this triggers (order is non-deterministic):
-            let updates = await getUserUpdates();
+            let updates = await getUserUpdates(2);
             let memberUpdate = updates.find(u => u.url === `/api/v2/users/${memberId}`)!;
             let ownerUpdate = updates.find(u => u.url !== `/api/v2/users/${memberId}`)!;
             memberData = applyAuth0MetadataUpdate(memberData, memberUpdate.body.app_metadata);
@@ -836,10 +820,8 @@ describe('/update-team', () => {
             });
             expect(response2.status).to.equal(200);
 
-            await delay(50);
-
             // Update mocks again (order is non-deterministic):
-            updates = (await getUserUpdates()).slice(2);
+            updates = (await getUserUpdates(4)).slice(2);
             memberUpdate = updates.find(u => u.url === `/api/v2/users/${memberId}`)!;
             ownerUpdate = updates.find(u => u.url !== `/api/v2/users/${memberId}`)!;
             memberData = applyAuth0MetadataUpdate(memberData, memberUpdate.body.app_metadata);
@@ -864,7 +846,7 @@ describe('/update-team', () => {
                 updateTeamMembers
             } = await givenTeam(team);
 
-            const memberId = "member-id";
+            const memberId = uniqueUserId('member');
             const memberEmail = "member@example.com";
 
             let memberData: any = {};
@@ -883,11 +865,8 @@ describe('/update-team', () => {
             });
             expect(response1.status).to.equal(200);
 
-            // Auth0 writes are fire-and-forget, give them a moment:
-            await delay(50);
-
             // Update mocks with the updates this triggers (order is non-deterministic):
-            const updates = await getUserUpdates();
+            const updates = await getUserUpdates(2);
             const memberUpdate = updates.find(u => u.url === `/api/v2/users/${memberId}`)!;
             const ownerUpdate = updates.find(u => u.url !== `/api/v2/users/${memberId}`)!;
             memberData = applyAuth0MetadataUpdate(memberData, memberUpdate.body.app_metadata);
@@ -898,7 +877,7 @@ describe('/update-team', () => {
             }]);
             await updateOwnerData(ownerUpdate.body.app_metadata);
 
-            const replacementMemberId = "2nd-member";
+            const replacementMemberId = uniqueUserId('replacement-member');
             const replacementMemberEmail = "2nd@example.com";
 
             await givenUser(replacementMemberId, replacementMemberEmail);
@@ -923,7 +902,7 @@ describe('/update-team', () => {
                 updateTeamMembers
             } = await givenTeam(team);
 
-            const memberId = "member-id";
+            const memberId = uniqueUserId('member');
             const memberEmail = "member@example.com";
 
             let memberData: any = {};
@@ -942,11 +921,8 @@ describe('/update-team', () => {
             });
             expect(response1.status).to.equal(200);
 
-            // Auth0 writes are fire-and-forget, give them a moment:
-            await delay(50);
-
             // Update mocks with the updates this triggers (order is non-deterministic):
-            let updates = await getUserUpdates();
+            let updates = await getUserUpdates(2);
             let memberUpdate = updates.find(u => u.url === `/api/v2/users/${memberId}`)!;
             let ownerUpdateEntry = updates.find(u => u.url !== `/api/v2/users/${memberId}`)!;
             memberData = applyAuth0MetadataUpdate(memberData, memberUpdate.body.app_metadata);
@@ -963,10 +939,8 @@ describe('/update-team', () => {
             });
             expect(response2.status).to.equal(200);
 
-            await delay(50);
-
             // Update mocks again (order is non-deterministic):
-            updates = (await getUserUpdates()).slice(2);
+            updates = (await getUserUpdates(4)).slice(2);
             memberUpdate = updates.find(u => u.url === `/api/v2/users/${memberId}`)!;
             ownerUpdateEntry = updates.find(u => u.url !== `/api/v2/users/${memberId}`)!;
             memberData = applyAuth0MetadataUpdate(memberData, memberUpdate.body.app_metadata);

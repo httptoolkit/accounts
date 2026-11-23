@@ -9,7 +9,8 @@ import {
     publicKey,
     freshAuthToken,
     givenUser,
-    givenAuthToken
+    givenAuthToken,
+    uniqueUserId
 } from './test-setup/setup.ts';
 import { auth0Server } from './test-setup/auth0.ts';
 import { TeamOwnerMetadata } from '../src/user-data-facade.ts';
@@ -71,7 +72,7 @@ describe('/get-app-data', () => {
     describe("for free users", () => {
         it("returns signed but empty data", async () => {
             const authToken = freshAuthToken();
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
 
             await givenUser(userId, userEmail, {});
@@ -89,7 +90,7 @@ describe('/get-app-data', () => {
 
         it("retries to work around intermittent Auth0 error responses", async () => {
             const authToken = freshAuthToken();
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
 
             await auth0Server.forGet('/userinfo')
@@ -114,7 +115,7 @@ describe('/get-app-data', () => {
             this.timeout(5000);
 
             const authToken = freshAuthToken();
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
 
             await auth0Server.forGet('/userinfo')
@@ -166,7 +167,7 @@ describe('/get-app-data', () => {
     describe("for Pro users", () => {
         it("returns signed subscription data", async () => {
             const authToken = freshAuthToken();
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
             const subExpiry = Date.now();
 
@@ -198,7 +199,7 @@ describe('/get-app-data', () => {
 
         it("returns valid but expired data for 24h after expiry", async () => {
             const authToken = freshAuthToken();
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
 
             // Expire the data 23 hours ago:
@@ -234,7 +235,7 @@ describe('/get-app-data', () => {
 
         it("stops returning subscription data 24h after expiry", async () => {
             const authToken = freshAuthToken();
-            const userId = "abc";
+            const userId = uniqueUserId('user');
             const userEmail = 'user@example.com';
 
             // Expire the data 25 hours ago:
@@ -266,9 +267,9 @@ describe('/get-app-data', () => {
     describe("for Team users", () => {
         it("returns signed subscription data for team members", async () => {
             const authToken = freshAuthToken();
-            const billingUserId = "abc";
+            const billingUserId = uniqueUserId('user');
             const billingUserEmail = 'billinguser@example.com';
-            const teamUserId = "def";
+            const teamUserId = uniqueUserId('team-user');
             const teamUserEmail = 'teamuser@example.com';
             const subExpiry = Date.now();
 
@@ -308,7 +309,7 @@ describe('/get-app-data', () => {
 
         it("returns separated team subscription data for team owners", async () => {
             const authToken = freshAuthToken();
-            const billingUserId = "abc";
+            const billingUserId = uniqueUserId('user');
             const billingUserEmail = 'billinguser@example.com';
             const subExpiry = Date.now();
 
@@ -351,7 +352,7 @@ describe('/get-app-data', () => {
 
         it("returns real+separated subscription data for owners who are in their team", async () => {
             const authToken = freshAuthToken();
-            const billingUserId = "abc";
+            const billingUserId = uniqueUserId('user');
             const billingUserEmail = 'billinguser@example.com';
             const subExpiry = Date.now();
 
@@ -403,9 +404,9 @@ describe('/get-app-data', () => {
 
         it("returns empty data for team members beyond the subscribed quantity", async () => {
             const authToken = freshAuthToken();
-            const billingUserId = "abc";
+            const billingUserId = uniqueUserId('user');
             const billingUserEmail = 'billinguser@example.com';
-            const teamUserId = "def";
+            const teamUserId = uniqueUserId('team-user');
             const teamUserEmail = 'teamuser@example.com';
             const subExpiry = Date.now();
 
@@ -439,9 +440,9 @@ describe('/get-app-data', () => {
 
         it("returns empty data for team members beyond the subscribed quantity due to locked licenses", async () => {
             const authToken = freshAuthToken();
-            const billingUserId = "abc";
+            const billingUserId = uniqueUserId('user');
             const billingUserEmail = 'billinguser@example.com';
-            const teamUserId = "def";
+            const teamUserId = uniqueUserId('team-user');
             const teamUserEmail = 'teamuser@example.com';
             const subExpiry = Date.now();
 
@@ -476,9 +477,9 @@ describe('/get-app-data', () => {
 
         it("returns empty data for team members with inconsistent membership data", async () => {
             const authToken = freshAuthToken();
-            const billingUserId = "abc";
+            const billingUserId = uniqueUserId('user');
             const billingUserEmail = 'billinguser@example.com';
-            const teamUserId = "def";
+            const teamUserId = uniqueUserId('team-user');
             const teamUserEmail = 'teamuser@example.com';
             const subExpiry = Date.now();
 
