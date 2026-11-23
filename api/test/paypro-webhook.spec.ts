@@ -587,6 +587,47 @@ describe('PayPro webhooks', () => {
             ]);
         });
 
+        it('should log cancellations as immediate for subscriptions replaced by a lifetime license', async () => {
+            const userId = uniqueUserId('user');
+            const userEmail = `profitwell-test-user-${id()}@example.com`;
+            const lifetimeLicense = {
+                subscription_status: 'active',
+                subscription_sku: 'pro-perpetual',
+                subscription_quantity: 1,
+                subscription_expiry: moment.utc('2126-01-01').valueOf(),
+                payment_provider: 'paddle',
+                paddle_order_id: '83115903'
+            };
+            await givenUser(userId, userEmail, lifetimeLicense);
+
+            const subscriptionId = `sub-${id()}`;
+            const profitwellSubscriptionDeletion = await profitwellApiServer
+                .forDelete(`/v2/subscriptions/${subscriptionId}`)
+                .thenReply(200);
+
+            const cancellationTime = Date.now();
+            await triggerWebhook(apiServer, {
+                IPN_TYPE_NAME: 'SubscriptionTerminated',
+                ORDER_ITEM_SKU: 'pro-annual',
+                SUBSCRIPTION_ID: subscriptionId,
+                SUBSCRIPTION_RENEWAL_TYPE: 'Auto',
+                SUBSCRIPTION_STATUS_NAME: 'Terminated',
+                SUBSCRIPTION_NEXT_CHARGE_DATE: "",
+                PRODUCT_QUANTITY: '1',
+                TEST_MODE: '0',
+                CUSTOMER_EMAIL: userEmail
+            });
+
+            const deletionRequests = await waitForRequests(profitwellSubscriptionDeletion, 1);
+            expect(deletionRequests.length).to.equal(1);
+            const effectiveDate = new URL(deletionRequests[0].url).searchParams.get('effective_date');
+            expect(parseFloat(effectiveDate!) * 1000).to.be.within(cancellationTime, Date.now());
+
+            // The license itself is untouched:
+            const dbUsers = await testDB.query(`SELECT * FROM users WHERE email = $1`, [userEmail]);
+            expect(dbUsers.rows[0].app_metadata).to.deep.equal(lifetimeLicense);
+        });
+
         it('should retry rate-limited Profitwell requests without blocking the webhook', async function () {
             this.timeout(5000);
 

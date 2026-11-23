@@ -6,7 +6,7 @@ import moment from 'moment';
 import log from 'loglevel';
 import { SubscriptionStatus } from '@httptoolkit/accounts';
 
-import { isProSubscription, isTeamSubscription, SKUs } from '../products.ts';
+import { isOneOffLicense, isProSubscription, isTeamSubscription, SKUs } from '../products.ts';
 import { recordCancellation, recordSubscription } from '../accounting.ts';
 import { PayingUserMetadata, getUsersByEmail } from '../user-data-facade.ts';
 import { parseCheckoutPassthrough, reportSuccessfulCheckout, updateProUserData, updateTeamData } from '../webhook-handling.ts';
@@ -156,6 +156,10 @@ async function getExistingSubscriptionExpiry(email: string) {
     const users = await getUsersByEmail(email);
     if (users.length !== 1) throw new Error(`${users.length} users with email ${email}`);
     const user = users[0];
+
+    // A lifetime license replaces the subscription, and its distant expiry isn't when
+    // the subscription ends: that's happening right now.
+    if (isOneOffLicense(user.app_metadata)) return undefined;
 
     return (user.app_metadata as PayingUserMetadata)?.subscription_expiry;
 }
