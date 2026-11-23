@@ -27,7 +27,8 @@ const getCheckoutUrl = (
         passthrough?: string,
         quantity?: number,
         paymentProvider?: string,
-        discountCode?: string
+        discountCode?: string,
+        returnUrl?: string
     } = {}
 ) => fetch(
     `http://localhost:${
@@ -40,6 +41,8 @@ const getCheckoutUrl = (
         options.paymentProvider ? `&paymentProvider=${options.paymentProvider}` : ''
     }${
         options.discountCode ? `&discountCode=${options.discountCode}` : ''
+    }${
+        options.returnUrl ? `&returnUrl=${encodeURIComponent(options.returnUrl)}` : ''
     }`, {
         headers: {
             'X-Forwarded-For': options.ip ?? '1.1.1.1'
@@ -94,7 +97,9 @@ describe('/redirect-to-checkout', () => {
                                 recurringPrices.join(',')
                             }&quantityVariable=${params!['quantity_variable'] ?? ''}&expires=${
                                 params!['expires'] ?? ''
-                            }&coupon=${params!['coupon_code'] ?? ''}`
+                            }&coupon=${params!['coupon_code'] ?? ''}&returnUrl=${
+                                encodeURIComponent((params!['return_url'] as string | undefined) ?? '')
+                            }`
                         }
                     }
                 };
@@ -260,6 +265,53 @@ describe('/redirect-to-checkout', () => {
         expect(response.status).to.equal(400);
         const responseBody = await response.text()
         expect(responseBody).to.equal('Quantity parameter is required for team SKUs');
+    });
+
+    describe("after the checkout completes", () => {
+
+        for (const sku of ['pro-monthly', 'pro-annual', 'pro-perpetual'] as const) {
+            it(`returns ${sku} customers to our thank you page by default`, async () => {
+                await givenExchangeRate('USD', 2);
+                const response = await getCheckoutUrl(
+                    apiServer,
+                    'return-test@email.example',
+                    sku
+                );
+
+                const targetUrl = new URL(response.headers.get('location')!);
+                expect(targetUrl.searchParams.get('returnUrl')).to.equal(
+                    'https://httptoolkit.com/web-purchase-thank-you/'
+                );
+            });
+        }
+
+        it("returns customers to a specific page if one is requested", async () => {
+            await givenExchangeRate('USD', 2);
+            const response = await getCheckoutUrl(
+                apiServer,
+                'return-test@email.example',
+                'pro-perpetual',
+                { returnUrl: 'https://httptoolkit.com/app-purchase-thank-you/' }
+            );
+
+            const targetUrl = new URL(response.headers.get('location')!);
+            expect(targetUrl.searchParams.get('returnUrl')).to.equal(
+                'https://httptoolkit.com/app-purchase-thank-you/'
+            );
+        });
+
+        it("doesn't add a default thank you page for Team checkouts", async () => {
+            await givenExchangeRate('USD', 2);
+            const response = await getCheckoutUrl(
+                apiServer,
+                'return-test@email.example',
+                'team-annual',
+                { quantity: 5 }
+            );
+
+            const targetUrl = new URL(response.headers.get('location')!);
+            expect(targetUrl.searchParams.get('returnUrl')).to.equal('');
+        });
     });
 
     describe("for the Black Friday lifetime license deal", () => {

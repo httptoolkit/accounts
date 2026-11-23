@@ -21,6 +21,8 @@ import { getAllPrices } from '../pricing.ts';
 import { getIpData } from '../ip-geolocate.ts';
 import { flushMetrics, generateSessionId, trackEvent } from '../metrics.ts';
 
+const DEFAULT_PRO_THANK_YOU_URL = 'https://httptoolkit.com/web-purchase-thank-you/';
+
 const PAYPRO_COUNTRIES = [
     'BRA',
     'CHN',
@@ -200,7 +202,7 @@ export const handler = catchErrors(async (event) => {
             ? productPrices['pro-annual'] * BLACK_FRIDAY_DEAL_PRICE_IN_YEARS
             : productPrices[sku],
         source: source || 'unknown',
-        returnUrl,
+        returnUrl: returnUrl || (isProSubscription(sku) ? DEFAULT_PRO_THANK_YOU_URL : undefined),
         passthrough
     });
 
