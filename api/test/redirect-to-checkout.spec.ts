@@ -7,6 +7,7 @@ import {
     exchangeRateServer,
     EXCHANGE_RATE_API_PORT,
     givenExchangeRate,
+    givenBlackFridayDealEnded,
     ipApiServer,
     IP_API_PORT,
     startAPI
@@ -24,7 +25,9 @@ const getCheckoutUrl = (
     options: {
         ip?: string,
         passthrough?: string,
-        quantity?: number
+        quantity?: number,
+        paymentProvider?: string,
+        discountCode?: string
     } = {}
 ) => fetch(
     `http://localhost:${
@@ -33,6 +36,10 @@ const getCheckoutUrl = (
         options.passthrough ? `&passthrough=${encodeURIComponent(options.passthrough)}` : ''
     }${
         options.quantity !== undefined ? `&quantity=${options.quantity}` : ''
+    }${
+        options.paymentProvider ? `&paymentProvider=${options.paymentProvider}` : ''
+    }${
+        options.discountCode ? `&discountCode=${options.discountCode}` : ''
     }`, {
         headers: {
             'X-Forwarded-For': options.ip ?? '1.1.1.1'
@@ -58,6 +65,10 @@ describe('/redirect-to-checkout', () => {
                     .filter(([key]) => key.startsWith('prices'))
                     .map(([_, value]) => value);
 
+                const recurringPrices = Object.entries(params!)
+                    .filter(([key]) => key.startsWith('recurring_prices'))
+                    .map(([_, value]) => value);
+
                 const passthrough = params!['passthrough'] as string | undefined;
 
                 const emailParam = params?.['customer_email']
@@ -79,7 +90,11 @@ describe('/redirect-to-checkout', () => {
                                 quantityParam
                             }&passthrough=${
                                 passthrough ? encodeURIComponent(passthrough) : '<undefined>'
-                            }`
+                            }&product=${params!['product_id']}&recurringPrices=${
+                                recurringPrices.join(',')
+                            }&quantityVariable=${params!['quantity_variable'] ?? ''}&expires=${
+                                params!['expires'] ?? ''
+                            }&coupon=${params!['coupon_code'] ?? ''}`
                         }
                     }
                 };
@@ -245,6 +260,154 @@ describe('/redirect-to-checkout', () => {
         expect(response.status).to.equal(400);
         const responseBody = await response.text()
         expect(responseBody).to.equal('Quantity parameter is required for team SKUs');
+    });
+
+    describe("for the Black Friday lifetime license deal", () => {
+
+        it("stops offering checkouts once the deal has ended", async () => {
+            givenBlackFridayDealEnded();
+
+            const response = await getCheckoutUrl(
+                apiServer,
+                'test@email.example',
+                'pro-perpetual'
+            );
+
+            expect(response.status).to.equal(410);
+            expect(response.headers.get('location')).to.equal(null);
+            expect(await response.text()).to.include('deal has now ended');
+        });
+
+        it("still offers subscriptions once the deal has ended", async () => {
+            givenBlackFridayDealEnded();
+            await givenExchangeRate('USD', 2);
+
+            const response = await getCheckoutUrl(
+                apiServer,
+                'test@email.example',
+                'pro-annual'
+            );
+
+            expect(response.status).to.equal(302);
+        });
+
+        it("ends at the end of December 1st 2026, anywhere on Earth", async () => {
+            delete process.env.BLACK_FRIDAY_DEAL_END;
+            const { getBlackFridayDealEnd } = await import('../src/products.ts');
+
+            expect(new Date(getBlackFridayDealEnd()).toISOString()).to.equal('2026-12-02T12:00:00.000Z');
+        });
+
+        it("creates checkout links that expire when the deal does", async () => {
+            await givenExchangeRate('USD', 2);
+            const response = await getCheckoutUrl(
+                apiServer,
+                'expiry-test@email.example',
+                'pro-perpetual'
+            );
+
+            const targetUrl = new URL(response.headers.get('location')!);
+            expect(targetUrl.searchParams.get('expires')).to.equal('2100-01-01');
+        });
+
+        it("redirects to a one-off Paddle checkout", async () => {
+            await givenExchangeRate('USD', 2);
+            const response = await getCheckoutUrl(
+                apiServer,
+                'test@email.example',
+                'pro-perpetual'
+            );
+
+            expect(response.status).to.equal(302);
+
+            const targetUrl = new URL(response.headers.get('location')!);
+            expect(targetUrl.origin).to.equal('https://paddle.example');
+            expect(targetUrl.searchParams.get('product')).to.equal('932080');
+            expect(targetUrl.searchParams.get('prices')).to.equal('USD:240,EUR:120');
+            expect(targetUrl.searchParams.get('recurringPrices')).to.equal('');
+            expect(targetUrl.searchParams.get('email')).to.equal('test@email.example');
+            expect(targetUrl.searchParams.get('quantity')).to.equal('1');
+            expect(targetUrl.searchParams.get('quantityVariable')).to.equal('0');
+            expect(targetUrl.searchParams.get('coupon')).to.equal('BLACKFRIDAY26');
+        });
+
+        it("still sends recurring prices for subscriptions", async () => {
+            await givenExchangeRate('USD', 2);
+            const response = await getCheckoutUrl(
+                apiServer,
+                'test@email.example',
+                'pro-annual'
+            );
+
+            const targetUrl = new URL(response.headers.get('location')!);
+            expect(targetUrl.searchParams.get('product')).to.equal('550382');
+            expect(targetUrl.searchParams.get('recurringPrices')).to.equal('USD:60,EUR:30');
+            expect(targetUrl.searchParams.get('quantityVariable')).to.equal('');
+            expect(targetUrl.searchParams.get('expires')).to.equal('');
+            expect(targetUrl.searchParams.get('coupon')).to.equal('');
+        });
+
+        it("always applies the deal's coupon, replacing any other discount code", async () => {
+            await givenExchangeRate('USD', 2);
+            const response = await getCheckoutUrl(
+                apiServer,
+                'coupon-test@email.example',
+                'pro-perpetual',
+                { discountCode: 'OTHERCODE' }
+            );
+
+            const targetUrl = new URL(response.headers.get('location')!);
+            expect(targetUrl.searchParams.get('coupon')).to.equal('BLACKFRIDAY26');
+        });
+
+        it("still passes other discount codes through for subscriptions", async () => {
+            await givenExchangeRate('USD', 2);
+            const response = await getCheckoutUrl(
+                apiServer,
+                'coupon-test@email.example',
+                'pro-annual',
+                { discountCode: 'OTHERCODE' }
+            );
+
+            const targetUrl = new URL(response.headers.get('location')!);
+            expect(targetUrl.searchParams.get('coupon')).to.equal('OTHERCODE');
+        });
+
+        it("uses Paddle even in countries that buy subscriptions through PayPro", async () => {
+            const VIETNAM_IP = '14.160.0.0';
+            await ipApiServer.forGet(`/json/${VIETNAM_IP}`).thenJson(200, {
+                status: 'success',
+                countryCode: 'VN',
+                countryCode3: 'VNM',
+                continentCode: 'AS',
+                currency: 'VND'
+            });
+            await givenExchangeRate('USD', 2);
+
+            const response = await getCheckoutUrl(
+                apiServer,
+                'test@email.example',
+                'pro-perpetual',
+                { ip: VIETNAM_IP }
+            );
+
+            expect(response.status).to.equal(302);
+
+            const targetUrl = new URL(response.headers.get('location')!);
+            expect(targetUrl.origin).to.equal('https://paddle.example');
+            expect(targetUrl.searchParams.get('prices')).to.equal('USD:120,EUR:60');
+        });
+
+        it("refuses to use PayPro", async () => {
+            const response = await getCheckoutUrl(
+                apiServer,
+                'test@email.example',
+                'pro-perpetual',
+                { paymentProvider: 'paypro' }
+            );
+
+            expect(response.status).to.equal(400);
+        });
     });
 
 });

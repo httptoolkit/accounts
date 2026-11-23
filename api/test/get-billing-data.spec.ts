@@ -20,6 +20,7 @@ import {
     PADDLE_PORT,
     givenPaddleSubscription,
     givenPaddleTransactions,
+    givenPaddleOrderTransactions
 } from './test-setup/paddle.ts';
 import {
     givenPayProOrders,
@@ -217,6 +218,59 @@ describe('/get-billing-data', () => {
                     status: "completed"
                 }],
                 can_manage_subscription: true,
+                can_update_team_size: false
+            });
+        });
+
+        it("returns the order's invoice for lifetime licenses", async () => {
+            const authToken = freshAuthToken();
+            const userId = uniqueUserId('user');
+            const userEmail = 'user@example.com';
+            const licenseExpiry = Date.now() + 1000 * 60 * 60 * 24 * 365 * 100;
+
+            await givenUser(userId, userEmail, {
+                payment_provider: 'paddle',
+                paddle_order_id: '83115903',
+                subscription_expiry: licenseExpiry,
+                subscription_sku: 'pro-perpetual',
+                subscription_status: "active",
+                subscription_quantity: 1
+            });
+            await givenAuthToken(authToken, userId);
+
+            const transactionDate = new Date();
+            transactionDate.setMilliseconds(0);
+            await givenPaddleOrderTransactions(83115903, [{
+                amount: "264.00",
+                currency: "USD",
+                created_at: asPaddleDate(transactionDate),
+                order_id: "83115903",
+                product_id: 932080,
+                receipt_url: "receipt.example",
+                status: "completed"
+            }]);
+
+            const response = await getBillingData(apiServer, authToken);
+            expect(response.status).to.equal(200);
+
+            const data = getJwtData(await response.text());
+            expect(data).to.deep.equal({
+                user_id: userId,
+                email: userEmail,
+                subscription_expiry: licenseExpiry,
+                subscription_sku: 'pro-perpetual',
+                subscription_status: "active",
+                subscription_quantity: 1,
+                transactions: [{
+                    amount: "264.00",
+                    currency: "USD",
+                    created_at: transactionDate.toISOString(),
+                    order_id: "83115903",
+                    sku: 'pro-perpetual',
+                    receipt_url: "receipt.example",
+                    status: "completed"
+                }],
+                can_manage_subscription: false,
                 can_update_team_size: false
             });
         });

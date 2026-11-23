@@ -43,3 +43,12 @@ export function givenPaddleTransactions(userId: number, transactions: PaddleTran
             response: transactions
         });
 }
+
+export function givenPaddleOrderTransactions(orderId: number | string, transactions: PaddleTransaction[]) {
+    return paddleServer
+        .forPost(`/api/2.0/order/${orderId}/transactions`)
+        .thenJson(200, {
+            success: true,
+            response: transactions
+        });
+}

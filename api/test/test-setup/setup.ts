@@ -30,6 +30,18 @@ export const {
 
 export const PAYPRO_IPN_VALIDATION_KEY = 'test_key_123';
 
+// The deal is open by default, so the tests don't depend on when they're run:
+export const OPEN_BLACK_FRIDAY_DEAL_END = '2100-01-01T12:00:00Z';
+process.env.BLACK_FRIDAY_DEAL_END = OPEN_BLACK_FRIDAY_DEAL_END;
+
+export function givenBlackFridayDealEnded() {
+    process.env.BLACK_FRIDAY_DEAL_END = new Date(Date.now() - 1000).toISOString();
+}
+
+afterEach(() => {
+    process.env.BLACK_FRIDAY_DEAL_END = OPEN_BLACK_FRIDAY_DEAL_END;
+});
+
 // We generate one key, then use it for both paddle webhook signing and our own
 // /get-app-data data signing, because we're lazy like that. It's good enough though.
 process.env.PADDLE_PUBLIC_KEY = keyWithoutHeaders(publicKey);

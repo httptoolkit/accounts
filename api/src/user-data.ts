@@ -13,6 +13,7 @@ import { delay, UnreachableCheck } from '@httptoolkit/util';
 
 import {
     getPaddleUserIdFromSubscription,
+    lookupPaddleOrderTransactions,
     lookupPaddleUserTransactions
 } from './paddle.ts';
 import {
@@ -27,6 +28,7 @@ import {
 } from './user-data-facade.ts';
 import {
     getSku,
+    isOneOffLicense,
     isTeamSubscription
 } from './products.ts';
 import { lookupPayProOrders } from './paypro.ts';
@@ -101,6 +103,7 @@ const INTERNAL_FIELDS = [
     'paddle_user_id',
     'locked_licenses',
     'payment_provider',
+    'paddle_order_id',
     'subscription_coupon',
     'pending_upgrade'
 ] as const;
@@ -192,7 +195,10 @@ async function buildUserAppData(rawMetadata: RawMetadata) {
         }
     }
 
-    if (userMetadata.subscription_status === 'active' || userMetadata.subscription_status === 'past_due') {
+    if (
+        (userMetadata.subscription_status === 'active' || userMetadata.subscription_status === 'past_due') &&
+        !isOneOffLicense(rawMetadata) // Nothing to update or cancel
+    ) {
         userMetadata.can_manage_subscription = userMetadata.subscription_owner_id
             // If your sub has an owner, you can only manage the subscription if that's you:
             ? userMetadata.subscription_owner_id === userId
@@ -256,7 +262,8 @@ async function buildUserBillingData(
     if (
         (rawMetadata.subscription_status === 'active' || rawMetadata.subscription_status === 'past_due') &&
         rawMetadata.payment_provider !== 'manual' &&
-        rawMetadata.payment_provider !== 'student-account'
+        rawMetadata.payment_provider !== 'student-account' &&
+        !isOneOffLicense(rawMetadata) // Nothing to update or cancel
     ) {
         can_manage_subscription = owner
             // If your sub has an owner, you can only manage the subscription if that's you:
@@ -311,7 +318,11 @@ async function getTransactions(rawMetadata: RawMetadata) {
     let transactionsRequest: Promise<TransactionData[]>;
     let transactionsCacheKey: string;
 
-    if (
+    if (isOneOffLicense(rawMetadata)) {
+        // The order has no subscription to find a Paddle user from, so we look it up directly:
+        transactionsCacheKey = `paddle-order-${rawMetadata.paddle_order_id}`;
+        transactionsRequest = lookupPaddleOrderTransactions(rawMetadata.paddle_order_id);
+    } else if (
         billingMetadata.payment_provider === 'paddle' ||
         !billingMetadata.payment_provider // Subscriptions that predate multiple providers
     ) {

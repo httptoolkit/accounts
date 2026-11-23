@@ -115,6 +115,7 @@ export type AppMetadata =
     | BaseMetadata
     | TrialUserMetadata
     | PayingUserMetadata
+    | LifetimeUserMetadata
     | TeamOwnerMetadata
     | TeamMemberMetadata;
 
@@ -146,6 +147,15 @@ export interface PayingUserMetadata extends TrialUserMetadata {
     subscription_coupon?: string | false,
     update_url: string,
     cancel_url: string
+}
+
+// A lifetime license, bought as a one-off order. There's no subscription behind it, so it
+// never renews and can't be cancelled - it only ends if the order is refunded.
+export interface LifetimeUserMetadata extends TrialUserMetadata {
+    payment_provider: 'paddle';
+    paddle_order_id: string;
+    subscription_quantity: number;
+    last_receipt_url?: string;
 }
 
 export interface TeamOwnerMetadata extends PayingUserMetadata {

@@ -22,6 +22,7 @@ export type User = {
 };
 export type TrialUserMetadata = auth0.TrialUserMetadata;
 export type PayingUserMetadata = auth0.PayingUserMetadata;
+export type LifetimeUserMetadata = auth0.LifetimeUserMetadata;
 export type TeamOwnerMetadata = auth0.TeamOwnerMetadata;
 export type TeamMemberMetadata = auth0.TeamMemberMetadata;
 

@@ -1,6 +1,6 @@
 import { SKU, PricedSKU, Interval } from '@httptoolkit/accounts';
 
-import { AppMetadata, TrialUserMetadata } from './user-data-facade.ts';
+import { AppMetadata, LifetimeUserMetadata, TrialUserMetadata } from './user-data-facade.ts';
 
 export const ProductDetails = {
     'pro-monthly': {
@@ -31,6 +31,18 @@ export const SKUs = Object.keys(ProductDetails) as
 export const PricedSKUs = SKUs
     .filter(sku => sku !== 'pro-perpetual') as Array<PricedSKU>;
 
+const BLACK_FRIDAY_DEAL_END = '2026-12-02T12:00:00Z';
+export const BLACK_FRIDAY_DEAL_COUPON = 'BLACKFRIDAY26';
+
+// The list price, in years of the local annual Pro price, before the coupon above:
+export const BLACK_FRIDAY_DEAL_PRICE_IN_YEARS = 4;
+
+export const getBlackFridayDealEnd = () =>
+    new Date(process.env.BLACK_FRIDAY_DEAL_END || BLACK_FRIDAY_DEAL_END).getTime();
+
+export const isBlackFridayDealActive = () =>
+    Date.now() < getBlackFridayDealEnd();
+
 export const isProSubscription = (sku: string | undefined) =>
     sku?.startsWith('pro-');
 
@@ -45,6 +57,19 @@ export const getSkuInterval = (sku: string): Interval => {
 
     return interval;
 }
+
+export const isLifetimeSku = (sku: string | undefined): sku is 'pro-perpetual' =>
+    sku === 'pro-perpetual';
+
+// A license bought as a single order, with no subscription behind it. Older perpetual
+// accounts share the same SKU, but are very long subscriptions, so don't count here.
+export const isOneOffLicense = (
+    metadata: AppMetadata | undefined
+): metadata is LifetimeUserMetadata =>
+    !!metadata &&
+    'paddle_order_id' in metadata &&
+    !('subscription_id' in metadata) &&
+    isLifetimeSku(metadata.subscription_sku);
 
 export const getSku = (metadata: AppMetadata | undefined): SKU | undefined => {
     if (!metadata) return undefined;

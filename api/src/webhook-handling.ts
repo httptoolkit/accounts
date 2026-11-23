@@ -15,6 +15,7 @@ import {
 } from './user-data-facade.ts';
 import { formatErrorMessage, reportError, StatusError } from './errors.ts';
 import { flushMetrics, trackEvent } from './metrics.ts';
+import { isOneOffLicense } from './products.ts';
 
 function dropUndefinedValues(obj: { [key: string]: any }) {
     Object.keys(obj).forEach((key: any) => {
@@ -32,6 +33,22 @@ export async function updateProUserData(email: string, subscriptionUpdate: Parti
 
     const user = await getOrCreateUser(email);
     const appData = user.app_metadata;
+
+    // A lifetime license is never replaced by a subscription. We do expect a few last events
+    // here from the subscription that the license replaced, but nothing should still be live.
+    if (isOneOffLicense(appData) && appData.subscription_status === 'active') {
+        if (
+            subscriptionUpdate.subscription_status === 'active' ||
+            subscriptionUpdate.subscription_status === 'trialing'
+        ) {
+            reportError(`Lifetime license holder ${email} has a live subscription`, {
+                extraMetadata: { existing: appData, updated: subscriptionUpdate }
+            });
+        } else {
+            log.warn(`Ignoring subscription event for lifetime license holder ${email}`);
+        }
+        return;
+    }
 
     // Does the user already have unrelated subscription data?
     if (

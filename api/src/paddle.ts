@@ -10,6 +10,7 @@ import { CustomError } from '@httptoolkit/util';
 
 import { reportError, StatusError } from './errors.ts';
 import { getLatestRates } from './exchange-rates.ts';
+import { getBlackFridayDealEnd, isLifetimeSku } from './products.ts';
 import {
     SKU,
     SubscriptionPricing,
@@ -26,11 +27,15 @@ const PADDLE_KEY = process.env.PADDLE_KEY!;
 
 const PADDLE_BASE_URL = process.env.PADDLE_BASE_URL || "https://vendors.paddle.com";
 
+// Lifetime licenses are a one-off product, not a subscription plan:
+const PADDLE_LIFETIME_PRODUCT_ID = 932080;
+
 // Map the legacy Paddle subscription plan IDs to SKUs
 const PADDLE_ID_TO_SKU = {
     550380: 'pro-monthly',
     550382: 'pro-annual',
-    599788: 'pro-perpetual',
+    599788: 'pro-perpetual', // Manually arranged 99-year subscriptions, no longer sold
+    [PADDLE_LIFETIME_PRODUCT_ID]: 'pro-perpetual',
     550789: 'team-monthly',
     550788: 'team-annual'
 } as const;
@@ -41,16 +46,23 @@ export const getSkuForPaddleId = (id: number | undefined) =>
     ? PADDLE_ID_TO_SKU[id as PADDLE_PLAN_ID]
     : undefined;
 
-const SKU_TO_PADDLE_ID = _.mapValues(
-    _.invert(PADDLE_ID_TO_SKU),
-    v => parseInt(v, 10)
-);
+// The product to sell for each SKU:
+const SKU_TO_PADDLE_ID: { [sku: string]: number | undefined } = {
+    'pro-monthly': 550380,
+    'pro-annual': 550382,
+    'pro-perpetual': PADDLE_LIFETIME_PRODUCT_ID,
+    'team-monthly': 550789,
+    'team-annual': 550788
+} satisfies Record<SKU, number>;
 
 export const getPaddleIdForSku = (sku: SKU) => {
     const planId = SKU_TO_PADDLE_ID[sku];
     if (!planId) throw new Error(`Invalid SKU: ${sku}`);
     return planId;
 }
+
+export const isPaddleLifetimeProduct = (id: number) =>
+    id === PADDLE_LIFETIME_PRODUCT_ID;
 
 export type PaddleAlertNames =
     | 'subscription_created'
@@ -59,6 +71,7 @@ export type PaddleAlertNames =
     | 'subscription_payment_succeeded'
     | 'subscription_payment_failed'
     | 'subscription_payment_refunded'
+    | 'payment_succeeded'
     | 'payment_dispute_created';
 
 export interface BaseWebhookData {
@@ -124,6 +137,21 @@ export interface DisputeCreatedData extends BaseWebhookData {
     alert_name: 'payment_dispute_created';
 }
 
+// A completed purchase of a one-off product, which has no subscription attached:
+export interface ProductPaymentSuccessHookData {
+    alert_name: 'payment_succeeded';
+    event_time: string; // YYYY-MM-DD HH:MM:SS
+    p_signature: string;
+
+    email: string;
+    checkout_id: string;
+    order_id: string; // \d+
+    product_id: string; // \d+
+    quantity: string; // \d+
+    receipt_url: string;
+    passthrough?: string; // JSON with checkout metadata (by our convention)
+}
+
 export type PaddleWebhookData =
     | NewSubscriptionHookData
     | UpdatedSubscriptionHookData
@@ -131,6 +159,7 @@ export type PaddleWebhookData =
     | PaymentSuccessHookData
     | PaymentRefundedHookData
     | PaymentFailedHookData
+    | ProductPaymentSuccessHookData
     | DisputeCreatedData;
 
 export type UnsignedWebhookData = Omit<PaddleWebhookData, 'p_signature'>;
@@ -332,11 +361,18 @@ export interface PaddleTransaction {
     amount: string;
 }
 
-export async function lookupPaddleUserTransactions(
-    userId: string | number
+export const lookupPaddleUserTransactions = (userId: string | number) =>
+    lookupPaddleTransactions('user', userId);
+
+export const lookupPaddleOrderTransactions = (orderId: string | number) =>
+    lookupPaddleTransactions('order', orderId);
+
+async function lookupPaddleTransactions(
+    entity: 'user' | 'order',
+    id: string | number
 ): Promise<TransactionData[]> {
     const response = await makePaddleApiRequest(
-        `/api/2.0/user/${userId}/transactions`, {
+        `/api/2.0/${entity}/${id}/transactions`, {
             method: 'POST',
             body: new URLSearchParams({
                 vendor_id: PADDLE_VENDOR_ID,
@@ -422,6 +458,9 @@ export async function createCheckout(options: {
 
     const productId = getPaddleIdForSku(options.sku);
 
+    // Lifetime licenses are a one-off product: a single payment for a single license
+    const isLifetime = isLifetimeSku(options.sku);
+
     const recurringPrices: { [currency: string]: number } = {};
     const initialPrices: { [currency: string]: number } = {};
 
@@ -473,7 +512,9 @@ export async function createCheckout(options: {
             const recurringPrice = recurringPrices[currency];
 
             priceParams[`prices[${i}]`] = `${currency}:${initialPrice}`;
-            priceParams[`recurring_prices[${i}]`] = `${currency}:${recurringPrice}`;
+            if (!isLifetime) {
+                priceParams[`recurring_prices[${i}]`] = `${currency}:${recurringPrice}`;
+            }
             return priceParams;
         }, {} as { [key: string]: string })
 
@@ -491,7 +532,16 @@ export async function createCheckout(options: {
             : {}
         ),
 
-        ...(options.quantity !== undefined
+        ...(isLifetime
+            ? {
+                quantity: '1',
+                quantity_variable: '0',
+                // These are only sold during the Black Friday deal. Paddle keeps links usable
+                // until the end of this UTC day, so checkouts opened before the deal ends can
+                // still complete, but not much later:
+                expires: moment.utc(getBlackFridayDealEnd()).format('YYYY-MM-DD')
+            }
+        : options.quantity !== undefined
             ? {
                 quantity: options.quantity.toString(),
                 allowQuantity: 'false' // If set, don't let them change it

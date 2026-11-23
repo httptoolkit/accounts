@@ -117,6 +117,7 @@ apiRouter.get('/get-team-size-quote', lambdaWrapper('get-team-size-quote'));
 
 apiRouter.post('/paddle-webhook', lambdaWrapper('paddle-webhook'));
 apiRouter.post('/paypro-webhook', lambdaWrapper('paypro-webhook'));
+apiRouter.post('/paddle-purchase-webhook', lambdaWrapper('paddle-purchase-webhook'));
 
 apiRouter.get('/redirect-to-checkout', lambdaWrapper('redirect-to-checkout'));
 // PayPro may send users here with either method, so we accept both:

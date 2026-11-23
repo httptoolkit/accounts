@@ -197,6 +197,36 @@ describe('/get-app-data', () => {
             });
         });
 
+        it("returns unmanageable subscription data for lifetime licenses", async () => {
+            const authToken = freshAuthToken();
+            const userId = uniqueUserId('user');
+            const userEmail = 'user@example.com';
+            const licenseExpiry = Date.now() + 1000 * 60 * 60 * 24 * 365 * 100;
+
+            await givenUser(userId, userEmail, {
+                subscription_expiry: licenseExpiry,
+                payment_provider: 'paddle',
+                paddle_order_id: '83115903',
+                subscription_sku: 'pro-perpetual',
+                subscription_status: "active",
+                subscription_quantity: 1
+            });
+            await givenAuthToken(authToken, userId);
+
+            const response = await getAppData(apiServer, authToken);
+            expect(response.status).to.equal(200);
+
+            const data = getJwtData(await response.text());
+            expect(data).to.deep.equal({
+                user_id: userId,
+                email: userEmail,
+                subscription_expiry: licenseExpiry,
+                subscription_sku: 'pro-perpetual',
+                subscription_status: "active",
+                subscription_quantity: 1
+            });
+        });
+
         it("returns valid but expired data for 24h after expiry", async () => {
             const authToken = freshAuthToken();
             const userId = uniqueUserId('user');

@@ -3,12 +3,20 @@ initSentry();
 
 import log from 'loglevel';
 
-import type { PricedSKU } from '@httptoolkit/accounts';
+import type { SKU } from '@httptoolkit/accounts';
 
 import * as Paddle from '../paddle.ts';
 import * as PayPro from '../paypro.ts';
 
-import { isProSubscription, isTeamSubscription, PricedSKUs } from '../products.ts';
+import {
+    BLACK_FRIDAY_DEAL_COUPON,
+    BLACK_FRIDAY_DEAL_PRICE_IN_YEARS,
+    isBlackFridayDealActive,
+    isLifetimeSku,
+    isProSubscription,
+    isTeamSubscription,
+    PricedSKUs
+} from '../products.ts';
 import { getAllPrices } from '../pricing.ts';
 import { getIpData } from '../ip-geolocate.ts';
 import { flushMetrics, generateSessionId, trackEvent } from '../metrics.ts';
@@ -57,7 +65,7 @@ export const handler = catchErrors(async (event) => {
         checkoutCountry: checkoutCountryOverride
     } = event.queryStringParameters as {
         email?: string,
-        sku?: PricedSKU,
+        sku?: SKU,
         quantity?: string,
         source?: string,
         returnUrl?: string,
@@ -71,7 +79,10 @@ export const handler = catchErrors(async (event) => {
 
     const { sourceIp } = event.requestContext?.identity;
 
-    if (!email || !sku || !PricedSKUs.includes(sku)) throw new StatusError(400,
+    const isLifetime = isLifetimeSku(sku);
+    const isValidSku = isLifetime || (PricedSKUs as SKU[]).includes(sku!);
+
+    if (!email || !sku || !isValidSku) throw new StatusError(400,
         `Checkout requires specifying ${
             (!email && !sku)
                 ? 'an email address and plan SKU'
@@ -92,6 +103,28 @@ export const handler = catchErrors(async (event) => {
         if (Number.isNaN(quantity)) throw new StatusError(400, `Could not parse provided quantity (${quantityString})`);
         if (quantity < 1) throw new StatusError(400, `Quantity must be >= 1 (was ${quantity})`);
         if (quantity % 1 !== 0) throw new StatusError(400, `Quantity must be an integer (was ${quantity})`);
+    }
+
+    if (isLifetime) {
+        // Lifetime licenses are only sold during the Black Friday deal. This is returned
+        // rather than thrown, as late visitors are expected and not an error:
+        if (!isBlackFridayDealActive()) {
+            const headers: { [name: string]: string } = {
+                'cache-control': 'no-store',
+                'content-type': 'text/plain'
+            };
+
+            return {
+                statusCode: 410,
+                headers,
+                body: 'The HTTP Toolkit Black Friday lifetime license deal has now ended.'
+            };
+        }
+
+        // They're a one-off purchase, which we only sell through Paddle:
+        if (requestedPaymentProvider === 'paypro') {
+            throw new StatusError(400, 'Lifetime licenses are not available through PayPro');
+        }
     }
 
     const ipData = await getIpData(sourceIp, event.headers);
@@ -123,7 +156,10 @@ export const handler = catchErrors(async (event) => {
     // We use PayPro to handle payments only for Pro subscriptions, for a set of countries where
     // the wider support for global payment methods & currencies is likely to be useful:
     const paymentProvider = requestedPaymentProvider ?? (
-        isProSubscription(sku) && PAYPRO_COUNTRIES.includes(ipData?.countryCode3!) && !discountCode
+        isProSubscription(sku) &&
+        !isLifetime &&
+        PAYPRO_COUNTRIES.includes(ipData?.countryCode3!) &&
+        !discountCode
             ? 'paypro'
             : 'paddle'
     );
@@ -155,10 +191,14 @@ export const handler = catchErrors(async (event) => {
             : email,
         sku,
         quantity,
-        discountCode,
+        // Lifetime licenses are only sold through the Black Friday deal, and its discount
+        // replaces any other code, as only one can apply:
+        discountCode: isLifetime ? BLACK_FRIDAY_DEAL_COUPON : discountCode,
         countryCode: checkoutCountryOverride || ipData?.countryCode,
         currency: productPrices.currency,
-        price: productPrices[sku],
+        price: isLifetimeSku(sku)
+            ? productPrices['pro-annual'] * BLACK_FRIDAY_DEAL_PRICE_IN_YEARS
+            : productPrices[sku],
         source: source || 'unknown',
         returnUrl,
         passthrough

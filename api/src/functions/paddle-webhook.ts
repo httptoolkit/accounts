@@ -17,7 +17,8 @@ import {
     validatePaddleWebhook,
     PaddleWebhookData,
     PaymentSuccessHookData,
-    getSkuForPaddleId
+    getSkuForPaddleId,
+    isPaddleLifetimeProduct
 } from '../paddle.ts';
 import {
     getSku,
@@ -33,6 +34,7 @@ import {
     parseCheckoutPassthrough
 } from '../webhook-handling.ts';
 import { setRevenueTraits } from '../accounting.ts';
+import { grantLifetimeLicense } from '../lifetime-licenses.ts';
 import { RequestedUpgrade, checkProratedCharge } from '../proration.ts';
 
 function getSubscriptionFromHookData(hookData: PaddleWebhookData): Partial<PayingUserMetadata> {
@@ -179,7 +181,30 @@ export const handler = catchErrors(async (event) => {
     // https://community.auth0.com/t/creating-a-user-converts-email-to-lowercase/6678/4
     const email = paddleData.email.toLowerCase();
 
-    if ([
+    // One-off orders, which only exist for lifetime licenses:
+    const isLifetimePurchase = paddleData.alert_name === 'payment_succeeded' &&
+        isPaddleLifetimeProduct(parseInt(paddleData.product_id, 10));
+
+    if (paddleData.alert_name === 'payment_succeeded') {
+        if (isLifetimePurchase) {
+            if (paddleData.quantity !== '1') {
+                reportError(`Lifetime order ${paddleData.order_id} for ${email} has quantity ${
+                    paddleData.quantity
+                }, but only one license can be activated`);
+            }
+
+            const purchaseTime = moment.utc(paddleData.event_time, 'YYYY-MM-DD HH:mm:ss');
+
+            log.info(`Activating lifetime license for ${email} from order ${paddleData.order_id}`);
+            await grantLifetimeLicense(email, {
+                orderId: paddleData.order_id,
+                receiptUrl: paddleData.receipt_url,
+                purchasedAt: purchaseTime.isValid() ? purchaseTime.valueOf() : Date.now()
+            });
+        } else {
+            log.debug(`Ignoring payment for unrecognized product ${paddleData.product_id}`);
+        }
+    } else if ([
         'subscription_created',
         'subscription_updated',
         'subscription_cancelled',
@@ -251,6 +276,15 @@ export const handler = catchErrors(async (event) => {
         })().catch((e) => {
             log.warn(e);
             reportError(`Failed to record new Paddle subscription: ${e.message || e}`);
+        });
+    }
+
+    // Manual checkouts have no passthrough data, so there's nothing to record for those:
+    if (isLifetimePurchase && paddleData.passthrough) {
+        const checkoutId = parseCheckoutPassthrough(paddleData.passthrough)?.id;
+        reportSuccessfulCheckout(checkoutId).catch((e) => {
+            log.warn(e);
+            reportError(`Failed to record new lifetime purchase: ${e.message || e}`);
         });
     }
 
